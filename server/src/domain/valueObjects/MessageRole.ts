@@ -1,0 +1,8 @@
+export enum MessageRole {
+    USER = "user",
+    ASSISTANT = "assistant",
+    SYSTEM = "system",
+}
+
+export default MessageRole;
+
