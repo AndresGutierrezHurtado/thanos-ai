@@ -1,12 +1,8 @@
 export default class DateTimeValue {
     private readonly value: Date;
 
-    constructor(value: Date) {
-        this.value = value;
-    }
-
-    public static now(): DateTimeValue {
-        return new DateTimeValue(new Date());
+    constructor(value: Date | null = null) {
+        this.value = value || new Date();
     }
 
     public getValue(): Date {
@@ -17,4 +13,3 @@ export default class DateTimeValue {
         return this.value.toISOString();
     }
 }
-

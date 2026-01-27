@@ -2,7 +2,7 @@ import Identifier from "../valueObjects/Identifier";
 import DateTimeValue from "../valueObjects/DateTimeValue";
 
 export default class Document {
-    private id: Identifier;
+    private id: Identifier | null;
     private driveId: string;
     private title: string;
     private mimeType: string;
@@ -13,7 +13,7 @@ export default class Document {
     private createdAt: DateTimeValue;
 
     constructor(
-        id: Identifier,
+        id: Identifier | null,
         driveId: string,
         title: string,
         mimeType: string,
@@ -35,7 +35,7 @@ export default class Document {
     }
 
     // Getters
-    public getId(): Identifier {
+    public getId(): Identifier | null {
         return this.id;
     }
 
@@ -72,7 +72,7 @@ export default class Document {
     }
 
     // Setters
-    public setId(id: Identifier): void {
+    public setId(id: Identifier | null): void {
         this.id = id;
     }
 

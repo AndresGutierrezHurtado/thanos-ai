@@ -2,13 +2,13 @@ import Identifier from "../valueObjects/Identifier";
 import DateTimeValue from "../valueObjects/DateTimeValue";
 
 export default class Chat {
-    private id: Identifier;
+    private id: Identifier | null;
     private userId: Identifier | null;
     private title: string;
     private createdAt: DateTimeValue;
     private updatedAt: DateTimeValue;
 
-    constructor(id: Identifier, userId: Identifier | null, title: string, createdAt: DateTimeValue, updatedAt: DateTimeValue) {
+    constructor(id: Identifier | null, userId: Identifier | null, title: string, createdAt: DateTimeValue, updatedAt: DateTimeValue) {
         this.id = id;
         this.userId = userId;
         this.title = title;
@@ -17,7 +17,7 @@ export default class Chat {
     }
 
     // Getters
-    public getId(): Identifier {
+    public getId(): Identifier | null {
         return this.id;
     }
 
@@ -38,7 +38,7 @@ export default class Chat {
     }
 
     // Setters
-    public setId(id: Identifier): void {
+    public setId(id: Identifier | null): void {
         this.id = id;
     }
 

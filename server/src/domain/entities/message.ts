@@ -3,7 +3,7 @@ import DateTimeValue from "../valueObjects/DateTimeValue";
 import MessageRole from "../valueObjects/MessageRole";
 
 export default class Message {
-    private id: Identifier;
+    private id: Identifier | null;
     private chatId: Identifier;
     private role: MessageRole;
     private content: string;
@@ -12,7 +12,7 @@ export default class Message {
     private metadata: Record<string, unknown> | null;
 
     constructor(
-        id: Identifier,
+        id: Identifier | null,
         chatId: Identifier,
         role: MessageRole,
         content: string,
@@ -30,7 +30,7 @@ export default class Message {
     }
 
     // Getters
-    public getId(): Identifier {
+    public getId(): Identifier | null {
         return this.id;
     }
 
@@ -59,7 +59,7 @@ export default class Message {
     }
 
     // Setters
-    public setId(id: Identifier): void {
+    public setId(id: Identifier | null): void {
         this.id = id;
     }
 

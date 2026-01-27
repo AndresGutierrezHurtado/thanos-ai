@@ -2,7 +2,7 @@ import Identifier from "../valueObjects/Identifier";
 import MediaContentType from "../valueObjects/MediaContentType";
 
 export default class MediaContent {
-    private id: Identifier;
+    private id: Identifier | null;
     private messageId: Identifier;
     private type: MediaContentType;
     private url: string;
@@ -11,7 +11,7 @@ export default class MediaContent {
     private size: number;
 
     constructor(
-        id: Identifier,
+        id: Identifier | null,
         messageId: Identifier,
         type: MediaContentType,
         url: string,
@@ -29,7 +29,7 @@ export default class MediaContent {
     }
 
     // Getters
-    public getId(): Identifier {
+    public getId(): Identifier | null {
         return this.id;
     }
 
@@ -58,7 +58,7 @@ export default class MediaContent {
     }
 
     // Setters
-    public setId(id: Identifier): void {
+    public setId(id: Identifier | null): void {
         this.id = id;
     }
 
