@@ -5,6 +5,9 @@ import bodyParser from "body-parser";
 // Middlewares
 import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "./infrastructure/http/middlewares";
 
+// Routes
+import healthRoutes from "./infrastructure/http/routes/healthRoutes";
+
 // App Config
 process.loadEnvFile();
 const app = express();
@@ -19,7 +22,8 @@ app.use(cors({
 // Rate limiting general para todas las rutas API
 app.use("/api/v1", generalRateLimiter);
 
-// TODO: API Routes
+// API Routes
+app.use("/api/v1", healthRoutes);
 
 // Error handling middleware (debe ir después de las rutas)
 app.use(errorHandlerMiddleware);
