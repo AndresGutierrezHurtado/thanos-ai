@@ -4,7 +4,6 @@ import ILlmProvider from "../ports/provider/ILlmProvider";
 
 // DTOs
 import { SendMessageDto, MessageResponseDto } from "../dtos/SendMessageDTO";
-import Chat from "../../domain/entities/chat";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import Message from "../../domain/entities/message";
@@ -19,23 +18,10 @@ export default class MessageUseCase {
 
     public async sendMessage(messageDto: SendMessageDto): Promise<MessageResponseDto> {
         const { chatId, content, mediaContent } = messageDto;
-        let chat: Chat;
 
-        // Get or create chat
-        if (!chatId) {
-            chat = await this.chatRepository.create(
-                new Chat(null, null, "New Chat", new DateTimeValue(), new DateTimeValue())
-            );
-        } else {
-            const foundChat = await this.chatRepository.findById(new Identifier(chatId));
-            if (!foundChat) {
-                chat = await this.chatRepository.create(
-                    new Chat(null, null, "New Chat", new DateTimeValue(), new DateTimeValue())
-                );
-            } else {
-                chat = foundChat;
-            }
-        }
+        // Find the chat
+        const chat = await this.chatRepository.findById(new Identifier(chatId as string));
+        if (!chat) throw new Error("Chat not found");
 
         // Save the user message
         const userMessage = await this.messageRepository.create(
@@ -61,8 +47,8 @@ export default class MessageUseCase {
             assistantMessage: {
                 content: assistantMessage.getContent(),
                 timestamp: assistantMessage.getTimestamp().getValue(),
-                sources: null
-            }
-        }
+                sources: null,
+            },
+        };
     }
 }

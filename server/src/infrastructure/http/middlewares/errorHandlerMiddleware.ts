@@ -10,6 +10,7 @@ export default function errorHandlerMiddleware(
 
     // Error de validación u otros errores conocidos
     if (error instanceof Error) {
+        console.error("Error message:", error.message, "File: ", error.stack);
         return res.status(500).json({
             success: false,
             message: error.message || "An error occurred",
