@@ -67,7 +67,7 @@ export default class ChatUseCase {
         );
 
         // Generate the assistant message and save it
-        const assistantMessageResponse = await this.llmProvider.generateResponse([userMessage]);
+        const assistantMessageResponse = await this.llmProvider.generateResponse(chat, [userMessage]);
         const assistantMessage = await this.messageRepository.create(assistantMessageResponse);
 
         // Return the response

@@ -1,19 +1,30 @@
+// Application
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
+
+// Domain
+import Chat from "../../domain/entities/chat";
 import Message from "../../domain/entities/message";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 
-export default class LlmProvider implements ILlmProvider {
-    public async generateResponse(messages: Message[]): Promise<Message> {
-        const lastMessage = messages[messages.length - 1];
-        const chatId = lastMessage.getChatId();
+// Providers
+import OpenAiModel from "./OpenAiModel";
 
-        const responseContent = `Echo: ${lastMessage.getContent()}`;
+export default class LlmProvider implements ILlmProvider {
+    private openAiModel: OpenAiModel;
+
+    constructor() {
+        this.openAiModel = new OpenAiModel();
+    }
+
+    public async generateResponse(chat: Chat, messages: Message[]): Promise<Message> {
+        // const responseContent = await this.openAiModel.generateResponse(messages);
+        const responseContent = "No encontré información sobre esto en los documentos disponibles.";
 
         const response = new Message(
             null,
-            chatId,
+            chat.getId() as Identifier,
             MessageRole.ASSISTANT,
             responseContent,
             null,
@@ -21,15 +32,6 @@ export default class LlmProvider implements ILlmProvider {
             null
         );
 
-        // As with repositories, assign an id when creating the message
-        if (!response.getId()) {
-            const newId = new Identifier(
-                `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
-            );
-            response.setId(newId);
-        }
-
         return response;
     }
 }
-
