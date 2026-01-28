@@ -18,6 +18,8 @@ import ChatRepository from "../persistence/repositories/ChatRepository";
 import MessageRepository from "../persistence/repositories/MessageRepository";
 import Database from "../persistence/Database";
 import ChatController from "../http/controllers/chatController";
+import GoogleDriveProvider from "../drive/googleDriveProvider";
+import IDriveProvider from "../../application/ports/provider/IDriveProvider";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -72,5 +74,9 @@ export default class DIContainer {
     // Providers
     private getLlmProvider(): ILlmProvider {
         return new LlmProvider();
+    }
+
+    public getDriveProvider(): IDriveProvider {
+        return new GoogleDriveProvider();
     }
 }
