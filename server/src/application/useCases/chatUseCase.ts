@@ -35,7 +35,10 @@ export default class ChatUseCase {
 
     public async getChatById(id: string): Promise<ChatResponseDTO | null> {
         const chat = await this.chatRepository.findById(new Identifier(id));
-        if (!chat) return null;
+        
+        if (!chat) {
+            throw new Error("Chat not found");
+        };
 
         return {
             id: chat.getId()?.getValue() ?? "",
