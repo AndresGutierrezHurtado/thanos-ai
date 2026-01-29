@@ -1,8 +1,14 @@
-import { DriveFile } from "../../../infrastructure/drive/googleDriveProvider";
+export interface DriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+    modifiedTime: string;
+    md5Checksum?: string;
+    size?: number;
+    webViewLink?: string;
+}
 
-interface IDriveProvider {
+export default interface IDriveProvider {
     listFiles(): Promise<DriveFile[]>;
     downloadFile(fileId: string): Promise<Buffer>;
 }
-
-export default IDriveProvider;
