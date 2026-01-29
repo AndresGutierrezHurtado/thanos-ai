@@ -38,23 +38,10 @@ Agrega tu clave de API de OpenAI y otros proveedores al archivo `.env`
 
 Asegúrate de tener corriendo MongoDB localmente o en la nube y actualiza la configuración en tu archivo `.env` si es necesario.
 
-### 6. Iniciar Docker (opcional)
-
-Si prefieres usar Docker para todos los servicios, ejecuta:
-
-```bash
-docker-compose up
-```
-_Asegúrate de tener un archivo `docker-compose.yml` configurado según tus necesidades._
-
 ### 7. Iniciar ChromaDB
 
-Si usas ChromaDB de manera local:
+Si prefieres usar Docker para todos los servicios y usas chromadb de manera local, ejecuta:
 
 ```bash
-docker run -d -p 8000:8000 ghcr.io/chroma-core/chroma:latest
+docker-compose up -d
 ```
-
----
-
-Consulta cada sección de la documentación para detalles y posibles configuraciones adicionales.
