@@ -16,6 +16,7 @@
     "license": "MIT",
     "type": "module",
     "dependencies": {
+        "@chroma-core/default-embed": "^0.1.9",
         "@langchain/core": "^1.1.18",
         "@langchain/openai": "^1.2.4",
         "chromadb": "^3.2.2",
@@ -25,8 +26,11 @@
         "express-rate-limit": "^8.2.1",
         "googleapis": "^171.1.0",
         "langchain": "^1.2.16",
+        "mammoth": "^1.11.0",
         "mongodb": "^7.0.0",
-        "stream": "^0.0.3"
+        "pdf-parse": "^2.4.5",
+        "stream": "^0.0.3",
+        "xlsx": "^0.18.5"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",
