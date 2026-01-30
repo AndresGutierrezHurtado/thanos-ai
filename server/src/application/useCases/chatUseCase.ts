@@ -35,10 +35,10 @@ export default class ChatUseCase {
 
     public async getChatById(id: string): Promise<ChatResponseDTO | null> {
         const chat = await this.chatRepository.findById(new Identifier(id));
-        
+
         if (!chat) {
             throw new Error("Chat not found");
-        };
+        }
 
         return {
             id: chat.getId()?.getValue() ?? "",
@@ -69,18 +69,20 @@ export default class ChatUseCase {
             )
         );
 
-        // Generate the assistant message and save it
-        const assistantMessageResponse = await this.llmProvider.generateResponse(chat, [userMessage]);
-        const assistantMessage = await this.messageRepository.create(assistantMessageResponse);
+        // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
+        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+            chat,
+            [userMessage]
+        );
+        const savedMessage = await this.messageRepository.create(assistantMessage);
 
-        // Return the response
         return {
             chatId: chat.getId()?.getValue() ?? null,
             messageId: userMessage.getId()?.getValue() ?? null,
             assistantMessage: {
-                content: assistantMessage.getContent(),
-                timestamp: assistantMessage.getTimestamp().getValue(),
-                sources: null,
+                content: savedMessage.getContent(),
+                timestamp: savedMessage.getTimestamp().getValue(),
+                sources: sources.length > 0 ? sources : null,
             },
         } as MessageResponseDto;
     }

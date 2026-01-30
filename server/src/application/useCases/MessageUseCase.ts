@@ -36,18 +36,24 @@ export default class MessageUseCase {
             )
         );
 
-        // Generate the assistant message and save it
-        const assistantMessageResponse = await this.llmProvider.generateResponse([userMessage]);
-        const assistantMessage = await this.messageRepository.create(assistantMessageResponse);
+        // Load conversation history for context
+        const previousMessages = await this.messageRepository.findByChatId(
+            chat.getId() as Identifier
+        );
+        const messagesForLlm = [...previousMessages];
 
-        // Return the response
+        // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
+        const { message: assistantMessage, sources } =
+            await this.llmProvider.generateResponse(chat, messagesForLlm);
+        const savedMessage = await this.messageRepository.create(assistantMessage);
+
         return {
             chatId: chat.getId(),
             messageId: userMessage.getId(),
             assistantMessage: {
-                content: assistantMessage.getContent(),
-                timestamp: assistantMessage.getTimestamp().getValue(),
-                sources: null,
+                content: savedMessage.getContent(),
+                timestamp: savedMessage.getTimestamp().getValue(),
+                sources: sources.length > 0 ? sources : null,
             },
         };
     }
