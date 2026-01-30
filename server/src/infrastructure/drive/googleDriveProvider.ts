@@ -1,17 +1,7 @@
 import { google, drive_v3 } from "googleapis";
 
 // Application
-import IDriveProvider from "../../application/ports/provider/IDriveProvider";
-
-export interface DriveFile {
-    id: string;
-    name: string;
-    mimeType: string;
-    modifiedTime: string;
-    md5Checksum?: string;
-    size?: number;
-    webViewLink?: string;
-}
+import IDriveProvider, { type DriveFile } from "../../application/ports/provider/IDriveProvider";
 
 export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;
