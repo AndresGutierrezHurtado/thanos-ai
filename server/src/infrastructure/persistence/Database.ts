@@ -6,7 +6,7 @@ export default class Database {
     private db: Db | null = null;
 
     private constructor() {
-        this.client = new MongoClient(process.env.MONGODB_URI as string);
+        this.client = new MongoClient(process.env.MONGODB_URI ?? "mongodb://localhost:27017");
     }
 
     public static getInstance(): Database {
