@@ -7,8 +7,8 @@ Sigue estos pasos para instalar y configurar el proyecto correctamente:
 Clona el repositorio:
 
 ```bash
-git clone https://github.com/AndresGutierrezHurtado/tu_repositorio.git
-cd tu_repositorio
+git clone https://github.com/AndresGutierrezHurtado/thanos_ai.git
+cd thanos_ai/server
 ```
 
 ### 2. Instalar dependencias
