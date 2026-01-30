@@ -9,6 +9,7 @@ import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "
 import healthRoutes from "./infrastructure/http/routes/healthRoutes";
 import messageRoutes from "./infrastructure/http/routes/messageRoutes";
 import chatRoutes from "./infrastructure/http/routes/chatRoutes";
+import driveRoutes from "./infrastructure/http/routes/driveRoutes";
 
 // App Config
 process.loadEnvFile();
@@ -28,6 +29,7 @@ app.use("/api/v1", generalRateLimiter);
 app.use("/api/v1", healthRoutes);
 app.use("/api/v1", chatRoutes);
 app.use("/api/v1", messageRoutes);
+app.use("/api/v1", driveRoutes);
 
 // Error handling middleware (debe ir después de las rutas)
 app.use(errorHandlerMiddleware);

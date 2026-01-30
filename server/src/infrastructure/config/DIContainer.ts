@@ -6,20 +6,28 @@ import MessageController from "../http/controllers/messageController";
 // Application
 import MessageUseCase from "../../application/useCases/MessageUseCase";
 import ChatUseCase from "../../application/useCases/chatUseCase";
+import InformationUseCase from "../../application/useCases/informationUseCase";
 
 // Ports
 import IChatRepository from "../../application/ports/repositories/IChatRepository";
 import IMessageRepository from "../../application/ports/repositories/IMessageRepository";
+import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
+import IDriveProvider from "../../application/ports/provider/IDriveProvider";
 
-// Providers
+// Infrastructure
 import LlmProvider from "../providers/LlmProvider";
+import OpenAiModel from "../providers/OpenAiModel";
+import OpenAIEmbeddingProvider from "../providers/OpenAIEmbeddingProvider";
 import ChatRepository from "../persistence/repositories/ChatRepository";
 import MessageRepository from "../persistence/repositories/MessageRepository";
+import DocumentRepository from "../persistence/repositories/DocumentRepository";
 import Database from "../persistence/Database";
 import ChatController from "../http/controllers/chatController";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
-import IDriveProvider from "../../application/ports/provider/IDriveProvider";
+import ProcessorFactory from "../services/ProcessorFactory";
+import HierarchicalChunker from "../services/HierarchicalChunker";
+import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -62,6 +70,16 @@ export default class DIContainer {
         );
     }
 
+    public getInformationUseCase(): InformationUseCase {
+        return new InformationUseCase(
+            this.getDriveProvider(),
+            this.getDocumentRepository(),
+            this.getProcessorFactory(),
+            this.getChunker(),
+            this.getVectorStore()
+        );
+    }
+
     // Repositories
     private getChatRepository(): IChatRepository {
         return new ChatRepository(this.db);
@@ -71,9 +89,36 @@ export default class DIContainer {
         return new MessageRepository(this.db);
     }
 
-    // Providers
-    private getLlmProvider(): ILlmProvider {
-        return new LlmProvider();
+    private getDocumentRepository(): IDocumentRepository {
+        return new DocumentRepository(this.db);
+    }
+
+    // Services
+    private getProcessorFactory(): ProcessorFactory {
+        return new ProcessorFactory();
+    }
+
+    private getChunker(): HierarchicalChunker {
+        return new HierarchicalChunker();
+    }
+
+    private getVectorStore(): ChromaVectorStore {
+        return new ChromaVectorStore(this.getEmbeddingProvider());
+    }
+
+    private getEmbeddingProvider(): OpenAIEmbeddingProvider {
+        return new OpenAIEmbeddingProvider();
+    }
+
+    private getLlmProvider(): LlmProvider {
+        return new LlmProvider(
+            this.getOpenAiModel(),
+            this.getVectorStore()
+        );
+    }
+
+    private getOpenAiModel(): OpenAiModel {
+        return new OpenAiModel();
     }
 
     public getDriveProvider(): IDriveProvider {
