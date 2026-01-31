@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { useApi } from "../hooks/useApi";
+import Link from "next/link";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -18,7 +19,6 @@ const geistMono = Geist_Mono({
 export default function RootLayout({ children }) {
     const [chats, setChats] = useState([]);
     const [loadingChats, setLoadingChats] = useState(true);
-    const [selectedChatId, setSelectedChatId] = useState(null);
 
     useEffect(() => {
         const fetchChats = async () => {
@@ -33,7 +33,6 @@ export default function RootLayout({ children }) {
                 }
 
                 setChats(response.data ?? []);
-                setSelectedChatId(response.data?.[0]?.id ?? null);
             } catch (error) {
                 console.error("Failed to load chats", error);
                 setChats([]);
@@ -50,10 +49,16 @@ export default function RootLayout({ children }) {
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <main className="min-h-screen flex bg-base-200 text-base-content">
                     <aside className="w-72 border-r border-base-300 bg-base-100 flex flex-col">
-                        <div className="p-4 border-b border-base-300">
-                            <p className="text-lg font-semibold">Tus chats</p>
-                            <p className="text-sm opacity-70">Sincronizados desde el backend</p>
-                        </div>
+                        <Link
+                            href="/"
+                            className="p-4 border-b border-base-300 tooltip tooltip-right"
+                            data-tip="Crear nueva conversación"
+                        >
+                            <p className="text-3xl font-extrabold">
+                                THANOS <span className="text-primary italic">AI</span>
+                            </p>
+                            <p className="text-sm opacity-70">Gestor de documentos</p>
+                        </Link>
 
                         <div className="flex-1 overflow-y-auto">
                             {loadingChats && (
@@ -69,15 +74,12 @@ export default function RootLayout({ children }) {
                             )}
 
                             {!loadingChats && chats.length > 0 && (
-                                <ul className="menu menu-sm p-2 gap-1">
+                                <ul className="menu w-full p-2 gap-1">
                                     {chats.map((chat) => (
-                                        <li key={chat.id}>
-                                            <button
-                                                type="button"
-                                                className={`justify-start rounded-lg ${
-                                                    selectedChatId === chat.id ? "active" : ""
-                                                }`}
-                                                onClick={() => setSelectedChatId(chat.id)}
+                                        <li key={chat.id} className="w-full">
+                                            <Link
+                                                href={`/chat/${chat.id}`}
+                                                className="w-full flex justify-between"
                                             >
                                                 <span className="font-medium">
                                                     {chat.title ?? "Chat sin título"}
@@ -87,7 +89,7 @@ export default function RootLayout({ children }) {
                                                         ? new Date(chat.updatedAt).toLocaleString()
                                                         : "Sin fecha"}
                                                 </span>
-                                            </button>
+                                            </Link>
                                         </li>
                                     ))}
                                 </ul>

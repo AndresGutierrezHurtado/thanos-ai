@@ -1,9 +1,26 @@
 "use client";
 
+import { useApi } from "../hooks/useApi";
+import { useRouter } from "next/navigation";
+
 export default function Page() {
-    const handleSubmit = (event) => {
+    const router = useRouter();
+
+    const handleSubmit = async (event) => {
         event.preventDefault();
+
         const formData = new FormData(event.currentTarget);
+        const data = Object.fromEntries(formData);
+
+        if (!data.message?.trim()) return;
+
+        const response = await useApi("POST", "/chats", {
+            content: data.message,
+        });
+
+        if (!response.success) return;
+
+        router.push(`/chat/${response.data.chatId}`);
     };
 
     return (
