@@ -26,6 +26,11 @@ export default class LlmProvider implements ILlmProvider {
         private readonly vectorStore: IVectorStore
     ) {}
 
+    public async generateChatTitle(content: string): Promise<string> {
+        const title = await this.openAiModel.generateChatTitle(content);
+        return title.replaceAll('"', "").trim();
+    }
+
     // FUNCION FOR GENERATING THE RESPONSE WITH THE CONTEXT OF THE DOCUMENTS
     public async generateResponse(
         chat: Chat,

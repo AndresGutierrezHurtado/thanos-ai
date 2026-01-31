@@ -53,7 +53,13 @@ export default class ChatUseCase {
         const { chatId, content, mediaContent } = dto;
 
         const chat = await this.chatRepository.create(
-            new Chat(null, null, "New Chat", new DateTimeValue(), new DateTimeValue())
+            new Chat(
+                null,
+                null,
+                await this.llmProvider.generateChatTitle(content),
+                new DateTimeValue(),
+                new DateTimeValue()
+            )
         );
 
         // Save the user message
@@ -79,12 +85,14 @@ export default class ChatUseCase {
         return {
             chatId: chat.getId()?.getValue() ?? null,
             messageId: userMessage.getId()?.getValue() ?? null,
-            assistantMessage: {
-                content: savedMessage.getContent(),
-                timestamp: savedMessage.getTimestamp().getValue(),
+            role: MessageRole.ASSISTANT,
+            timestamp: savedMessage.getTimestamp().getValue(),
+            content: {
+                text: savedMessage.getContent(),
                 sources: sources.length > 0 ? sources : null,
+                mediaContent: null,
             },
-        } as MessageResponseDto;
+        };
     }
 
     public async deleteChat(id: string): Promise<void> {

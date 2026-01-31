@@ -4,7 +4,8 @@
     "description": "AI assistant for Platform Software Documentation",
     "main": "index.js",
     "scripts": {
-        "server": "npm start --prefix server",
-        "client": "npm run dev --prefix client"
+        "download": "npm install --prefix server && npm install --prefix client",
+        "server": "clear && npm start --prefix server",
+        "client": "clear && npm run dev --prefix client"
     }
 }

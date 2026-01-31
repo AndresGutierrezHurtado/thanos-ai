@@ -14,6 +14,7 @@ export interface GenerateResponseResult {
 
 interface ILlmProvider {
     generateResponse(chat: Chat, messages: Message[]): Promise<GenerateResponseResult>;
+    generateChatTitle(content: string): Promise<string>;
 }
 
 export default ILlmProvider;

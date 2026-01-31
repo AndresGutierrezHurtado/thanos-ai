@@ -44,6 +44,18 @@ FORMATO DE RESPUESTA:
         return response.content.toString();
     }
 
+    public async generateChatTitle(content: string): Promise<string> {
+        const response = await this.model.invoke([
+            {
+                role: "system" as const,
+                content:
+                    "Genera un titulo corto y descriptivo para la conversación segun el contenido de la conversación",
+            },
+            { role: "user" as const, content: content },
+        ]);
+        return response.content.toString();
+    }
+
     private buildSystemPromptWithContext(context: string): string {
         return `CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n${context}\n---\n${this.systemPrompt}`;
     }
