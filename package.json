@@ -1,0 +1,10 @@
+{
+    "name": "thanos_ai",
+    "version": "1.0.0",
+    "description": "AI assistant for Platform Software Documentation",
+    "main": "index.js",
+    "scripts": {
+        "server": "npm start --prefix server",
+        "client": "npm run dev --prefix client"
+    }
+}
