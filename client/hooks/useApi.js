@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 async function fetchApi(method, endpoint, body) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1${endpoint}`;
+    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
     const options = {
         headers: {
             "Content-Type": "application/json",
