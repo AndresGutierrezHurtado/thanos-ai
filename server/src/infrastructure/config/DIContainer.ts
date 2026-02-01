@@ -39,6 +39,7 @@ import LoggerAdapter from "../services/LoggerAdapter";
 import LlmProvider from "../ai/LlmProvider";
 import OpenAiModel from "../ai/OpenAiModel";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
+import MessageService from "../../application/services/MessageService";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -77,9 +78,9 @@ export default class DIContainer {
             this.getChatRepository(),
             this.getMessageRepository(),
             this.getSourceRepository(),
-            this.getLlmProvider(),
             this.getDocumentRepository(),
             this.getMediaContentRepository(),
+            this.getMessageService(),
         );
     }
 
@@ -87,9 +88,8 @@ export default class DIContainer {
         return new ChatUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
-            this.getSourceRepository(),
             this.getMediaContentRepository(),
-            this.getLlmProvider(),
+            this.getMessageService(),
         );
     }
 
@@ -133,7 +133,16 @@ export default class DIContainer {
         return new MediaContentRepository(this.db);
     }
 
-    // Services
+    // Application Services
+    private getMessageService(): MessageService {
+        return new MessageService(this.getLlmProvider(), this.getMessageRepository(), this.getSourceRepository());
+    }
+
+    private getProcessorFactory(): ProcessorFactory {
+        return new ProcessorFactory();
+    }
+
+    // Infrastructure Services
     private getTransactionRepository(): ITransactionRepository {
         return new TransactionRepository(Database.getInstance(), this.getVectorStore());
     }
@@ -152,10 +161,6 @@ export default class DIContainer {
 
     public getLogger(): ILogger {
         return new LoggerAdapter();
-    }
-
-    private getProcessorFactory(): ProcessorFactory {
-        return new ProcessorFactory();
     }
 
     private getChunker(): HierarchicalChunker {

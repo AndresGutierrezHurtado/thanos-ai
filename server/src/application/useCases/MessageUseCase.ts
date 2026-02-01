@@ -2,7 +2,6 @@
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
-import ILlmProvider from "../ports/provider/ILlmProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
 
@@ -21,14 +20,17 @@ import MessageRole from "../../domain/valueObjects/MessageRole";
 import MediaContent from "../../domain/entities/mediaContent";
 import { MediaContentType } from "../../domain/valueObjects/MediaContentType";
 
+// Application Services
+import MessageService from "../services/MessageService";
+
 export default class MessageUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
-        private readonly llmProvider: ILlmProvider,
         private readonly documentRepository: IDocumentRepository,
         private readonly mediaContentRepository: IMediaContentRepository,
+        private readonly messageService: MessageService,
     ) {}
 
     public async sendMessage(
@@ -69,20 +71,13 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
         // Generate the assistant message and save it and its sources
-        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
             onChunk,
         );
-        const savedMessage = await this.messageRepository.create(assistantMessage);
 
-        for (const source of sources) {
-            source.setMessageId(savedMessage.getId() as Identifier);
-            const savedSource = await this.sourceRepository.create(source);
-            savedMessage.addSource(savedSource);
-        }
-
-        return toMessageResource(savedMessage);
+        return toMessageResource(aiResponse);
     }
 
     public async updateMessage(
@@ -109,20 +104,13 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(message.getChatId());
 
         // Generate the assistant message and save it and its sources
-        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
             onChunk,
         );
-        const savedAssistantMessage = await this.messageRepository.create(assistantMessage);
 
-        for (const source of sources) {
-            source.setMessageId(savedAssistantMessage.getId() as Identifier);
-            const savedSource = await this.sourceRepository.create(source);
-            savedAssistantMessage.addSource(savedSource);
-        }
-
-        return toMessageResource(savedAssistantMessage);
+        return toMessageResource(aiResponse);
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResource[]> {

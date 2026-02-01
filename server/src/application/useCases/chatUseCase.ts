@@ -15,17 +15,17 @@ import { ChatResource, toChatResource, toChatResourceArray } from "../ports/reso
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
-import ILlmProvider from "../ports/provider/ILlmProvider";
-import ISourceRepository from "../ports/repositories/ISourceRepository";
 import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
+
+// Application Services
+import MessageService from "../services/MessageService";
 
 export default class ChatUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
-        private readonly sourceRepository: ISourceRepository,
         private readonly mediaContentRepository: IMediaContentRepository,
-        private readonly llmProvider: ILlmProvider,
+        private readonly messageService: MessageService,
     ) {}
 
     public async getChats(): Promise<ChatResource[]> {
@@ -54,7 +54,7 @@ export default class ChatUseCase {
             new Chat(
                 null,
                 null,
-                await this.llmProvider.generateChatTitle(content),
+                await this.messageService.generateTitle(content),
                 new DateTimeValue(),
                 new DateTimeValue(),
             ),
@@ -89,17 +89,9 @@ export default class ChatUseCase {
         }
 
         // Generate the assistant message and save it and its sources
-        const { message: assistantMessage, sources: retrievedSources } =
-            await this.llmProvider.generateResponse(chat, [userMessage], onChunk);
-        const savedMessage = await this.messageRepository.create(assistantMessage);
+        const aiResponse = await this.messageService.generateResponse(chat, [userMessage], onChunk);
 
-        for (const source of retrievedSources) {
-            source.setMessageId(savedMessage.getId() as Identifier);
-            const createdSource = await this.sourceRepository.create(source);
-            savedMessage.addSource(createdSource);
-        }
-
-        return toMessageResource(savedMessage);
+        return toMessageResource(aiResponse);
     }
 
     public async deleteChat(id: string): Promise<void> {
