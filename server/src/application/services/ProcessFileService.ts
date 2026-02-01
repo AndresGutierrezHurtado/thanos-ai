@@ -1,5 +1,5 @@
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
-import IDriveProvider, { DriveFile } from "../ports/provider/IDriveProvider";
+import IDriveProvider, { DriveFile } from "../ports/services/IDriveProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IChunker, { ChunkData } from "../ports/services/IChunker";

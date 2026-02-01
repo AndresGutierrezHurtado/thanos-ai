@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 
 // Application
-import ILlmProvider from "../../application/ports/provider/ILlmProvider";
+import ILlmProvider from "../../application/ports/services/ILlmProvider";
 
 // Domain
 import Chat from "../../domain/entities/chat";

@@ -1,4 +1,4 @@
-import { ExtractedDocument } from "../provider/IDocumentProcessor";
+import { ExtractedDocument } from "./IDocumentProcessor";
 
 export interface ChunkData {
     id: string;

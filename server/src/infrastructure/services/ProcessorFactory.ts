@@ -1,4 +1,4 @@
-import IDocumentProcessor from "../../application/ports/provider/IDocumentProcessor";
+import IDocumentProcessor from "../../application/ports/services/IDocumentProcessor";
 
 // Processors
 import PdfProcessor from "../processors/PdfProcessor";

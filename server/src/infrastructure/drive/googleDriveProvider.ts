@@ -2,7 +2,7 @@ import { google, drive_v3 } from "googleapis";
 
 // Ports
 import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
-import IDriveProvider, { type DriveFile } from "../../application/ports/provider/IDriveProvider";
+import IDriveProvider, { type DriveFile } from "../../application/ports/services/IDriveProvider";
 
 export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;

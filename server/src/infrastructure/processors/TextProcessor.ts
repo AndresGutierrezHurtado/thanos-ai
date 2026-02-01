@@ -1,6 +1,6 @@
 import IDocumentProcessor, {
     ExtractedDocument,
-} from "../../application/ports/provider/IDocumentProcessor";
+} from "../../application/ports/services/IDocumentProcessor";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";
 import LoggerAdapter from "../services/LoggerAdapter";
 

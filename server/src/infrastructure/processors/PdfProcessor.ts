@@ -1,6 +1,6 @@
 import IDocumentProcessor, {
     ExtractedDocument,
-} from "../../application/ports/provider/IDocumentProcessor";
+} from "../../application/ports/services/IDocumentProcessor";
 import { LoadParameters, PDFParse, VerbosityLevel } from "pdf-parse";
 import LoggerAdapter from "../services/LoggerAdapter";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";

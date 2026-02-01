@@ -4,7 +4,7 @@ import Identifier from "../../domain/valueObjects/Identifier";
 import Chat from "../../domain/entities/chat";
 
 // PORTS
-import ILlmProvider from "../ports/provider/ILlmProvider";
+import ILlmProvider from "../ports/services/ILlmProvider";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 

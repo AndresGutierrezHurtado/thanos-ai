@@ -1,4 +1,4 @@
-import IDriveProvider, { DriveFile } from "../ports/provider/IDriveProvider";
+import IDriveProvider, { DriveFile } from "../ports/services/IDriveProvider";
 import IVectorStore from "../ports/services/IVectorStore";
 import Source from "../../domain/entities/source";
 import ProcessFileService from "../services/ProcessFileService";

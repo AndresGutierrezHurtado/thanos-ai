@@ -1,5 +1,5 @@
 import IChunker, { ChunkData } from "../../application/ports/services/IChunker";
-import { ExtractedDocument } from "../../application/ports/provider/IDocumentProcessor";
+import { ExtractedDocument } from "../../application/ports/services/IDocumentProcessor";
 
 const CHUNK_SIZE = 600;
 const CHUNK_OVERLAP = 0.15;

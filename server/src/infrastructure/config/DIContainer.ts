@@ -20,8 +20,8 @@ import IDocumentRepository from "../../application/ports/repositories/IDocumentR
 import ISourceRepository from "../../application/ports/repositories/ISourceRepository";
 import IMediaContentRepository from "../../application/ports/repositories/IMediaContentRepository";
 import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
-import ILlmProvider from "../../application/ports/provider/ILlmProvider";
-import IDriveProvider from "../../application/ports/provider/IDriveProvider";
+import ILlmProvider from "../../application/ports/services/ILlmProvider";
+import IDriveProvider from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
 
 // Infrastructure
