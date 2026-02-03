@@ -20,36 +20,44 @@ export default function ChatMessageList({ messages = [], loading = false }) {
     return (
         <div className="flex flex-col gap-4 pb-4">
             {messages.map((item, index) => {
-                const role = item.role ?? "assistant";
-                const isUser = role === "user";
-                const key = item.messageId ?? item.id ?? `${item.role}-${item.timestamp}-${index}`;
-                const text = item.content?.text ?? "";
-
                 return (
-                    <div
-                        key={key}
-                        className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                    >
-                        <div
-                            className={`max-w-xl rounded-2xl border px-4 py-3 shadow-sm ${
-                                isUser
-                                    ? "bg-primary text-primary-content border-primary"
-                                    : "bg-base-100 border-base-300"
-                            }`}
-                        >
-                            <p className="text-sm opacity-70 mb-1">
-                                {isUser ? "Tú" : "Asistente"}
-                            </p>
-                            <p className="whitespace-pre-wrap">{text}</p>
-                            {item.timestamp && (
-                                <p className="mt-2 text-xs opacity-60 text-right">
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                    <ChatMessageItem
+                        key={item.messageId ?? item.id ?? `${item.role}-${item.timestamp}-${index}`}
+                        message={item}
+                    />
                 );
             })}
+        </div>
+    );
+}
+
+function ChatMessageItem({ message }) {
+    const role = message.role ?? "assistant";
+    const isUser = role === "user";
+
+    return (
+        <div className={`chat ${isUser ? "chat-end" : "chat-start"}`}>
+            <div className="chat-image avatar">
+                <div className="w-10 rounded-full">
+                    <img
+                        alt={`Imagen del ${isUser ? "usuario" : "asistente"}`}
+                        src={isUser ? "/user.jpg" : "/assistant.png"}
+                    />
+                </div>
+            </div>
+            <div className="chat-header flex items-center gap-2">
+                <span className="text-base">{isUser ? "Tú" : "Asistente"}</span>
+                <time className="text-xs opacity-50">
+                    {new Date(message.timestamp).toLocaleString()}
+                </time>
+            </div>
+            <div
+                className={`chat-bubble ${
+                    isUser ? "bg-primary text-primary-content" : "bg-base-100 text-base-content"
+                }`}
+            >
+                {message.content.text}
+            </div>
         </div>
     );
 }
