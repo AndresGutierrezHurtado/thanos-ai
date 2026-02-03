@@ -8,6 +8,6 @@ const messageController = container.getMessageController();
 
 const routes = Router();
 
-routes.post("/messages", messageController.sendMessage);
+routes.post("/messages", messageController.sendMessage.bind(messageController));
 
 export default routes;

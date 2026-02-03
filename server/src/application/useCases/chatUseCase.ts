@@ -4,7 +4,10 @@ import Message from "../../domain/entities/message";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
+
+// DTOs
 import { MessageResponseDto, SendMessageDto } from "../dtos/SendMessageDTO";
+import { ChatResponseDTO } from "../dtos/ChatResponseDTO";
 
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
@@ -15,15 +18,32 @@ export default class ChatUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
-        private readonly llmProvider: ILlmProvider,
+        private readonly llmProvider: ILlmProvider
     ) {}
 
-    public async getChats(): Promise<Chat[]> {
-        return this.chatRepository.findAll();
+    public async getChats(): Promise<ChatResponseDTO[]> {
+        const chats = await this.chatRepository.findAll();
+
+        return chats.map((chat) => ({
+            id: chat.getId()?.getValue() ?? "",
+            userId: chat.getUserId()?.getValue() ?? "",
+            title: chat.getTitle(),
+            createdAt: chat.getCreatedAt().getValue(),
+            updatedAt: chat.getUpdatedAt().getValue(),
+        }));
     }
 
-    public async getChatById(id: string): Promise<Chat | null> {
-        return this.chatRepository.findById(new Identifier(id));
+    public async getChatById(id: string): Promise<ChatResponseDTO | null> {
+        const chat = await this.chatRepository.findById(new Identifier(id));
+        if (!chat) return null;
+
+        return {
+            id: chat.getId()?.getValue() ?? "",
+            userId: chat.getUserId()?.getValue() ?? "",
+            title: chat.getTitle() ?? "",
+            createdAt: chat.getCreatedAt().getValue(),
+            updatedAt: chat.getUpdatedAt().getValue(),
+        } as ChatResponseDTO;
     }
 
     public async createChat(dto: SendMessageDto): Promise<MessageResponseDto> {
@@ -52,14 +72,14 @@ export default class ChatUseCase {
 
         // Return the response
         return {
-            chatId: chat.getId(),
-            messageId: userMessage.getId(),
+            chatId: chat.getId()?.getValue() ?? null,
+            messageId: userMessage.getId()?.getValue() ?? null,
             assistantMessage: {
                 content: assistantMessage.getContent(),
                 timestamp: assistantMessage.getTimestamp().getValue(),
                 sources: null,
             },
-        };
+        } as MessageResponseDto;
     }
 
     public async deleteChat(id: string): Promise<void> {

@@ -1,5 +1,3 @@
-import Identifier from "../../domain/valueObjects/Identifier";
-
 export interface SendMessageDto {
     chatId: string | null; // Opcional: si no existe, se crea nuevo chat
     content: string;
@@ -12,8 +10,8 @@ export interface SendMessageDto {
 }
 
 export interface MessageResponseDto {
-    chatId: Identifier | null;
-    messageId: Identifier | null;
+    chatId: string | null;
+    messageId: string | null;
     assistantMessage: {
         content: string;
         timestamp: Date;

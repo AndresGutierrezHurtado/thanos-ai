@@ -8,9 +8,9 @@ const chatController = container.getChatController();
 
 const routes = Router();
 
-routes.get("/chats", chatController.getChats);
-routes.get("/chats/:id", chatController.getChatById);
-routes.post("/chats", chatController.createChat);
-routes.delete("/chats/:id", chatController.deleteChat);
+routes.get("/chats", chatController.getChats.bind(chatController));
+routes.get("/chats/:id", chatController.getChatById.bind(chatController));
+routes.post("/chats", chatController.createChat.bind(chatController));
+routes.delete("/chats/:id", chatController.deleteChat.bind(chatController));
 
 export default routes;
