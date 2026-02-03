@@ -1,44 +1,57 @@
 "use client";
 
-import { useApi } from "../hooks/useApi";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useApi } from "@/hooks/useApi";
+import ChatInput from "@/components/ChatInput";
+import { toast } from "react-toastify";
 
 export default function Page() {
     const router = useRouter();
+    const [content, setContent] = useState("");
+    const [file, setFile] = useState(null);
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleFileChange = (event) => {
+        const selected = event.target.files?.[0] ?? null;
+        setFile(selected);
+    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        const formData = new FormData(event.currentTarget);
-        const data = Object.fromEntries(formData);
+        const trimmedContent = content.trim();
+        if (!trimmedContent) return toast.error("El contenido no puede estar vacío");
 
-        if (!data.message?.trim()) return;
+        setIsCreating(true);
+        try {
+            const response = await useApi("POST", "/chats", {
+                content: trimmedContent,
+                mediaContent: null,
+            });
 
-        const response = await useApi("POST", "/chats", {
-            content: data.message,
-        });
+            if (!response.success) return toast.error(response.message);
+            setContent("");
+            setFile(null);
 
-        if (!response.success) return;
-
-        router.push(`/chat/${response.data.chatId}`);
+            router.push(`/chat/${response.data.chatId}`);
+        } catch (error) {
+            console.error("Failed to create chat", error);
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     return (
         <div className="w-full max-w-3xl">
-            <form
+            <ChatInput
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
                 onSubmit={handleSubmit}
-                className="rounded-full bg-base-100 border border-base-300 p-2 flex items-center gap-3 shadow-sm"
-            >
-                <input
-                    name="message"
-                    type="text"
-                    placeholder="Escribe tu mensaje..."
-                    className="input input-ghost flex-1 text-base focus:outline-none"
-                />
-                <button type="submit" className="btn btn-primary px-8 rounded-full">
-                    Enviar
-                </button>
-            </form>
+                disabled={isCreating}
+                file={file}
+                onChangeFile={handleFileChange}
+            />
         </div>
     );
 }

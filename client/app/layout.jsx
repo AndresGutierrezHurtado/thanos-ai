@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { useApi } from "../hooks/useApi";
+import { ToastContainer } from "react-toastify";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
+
+// Hooks
+import { useApi } from "../hooks/useApi";
+
+// Styles
+import "./globals.css";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -20,10 +26,10 @@ export default function RootLayout({ children }) {
     const [chats, setChats] = useState([]);
     const [loadingChats, setLoadingChats] = useState(true);
 
+    const pathname = usePathname();
+
     useEffect(() => {
         const fetchChats = async () => {
-            setLoadingChats(true);
-
             try {
                 const response = await useApi("GET", "/chats");
 
@@ -42,7 +48,7 @@ export default function RootLayout({ children }) {
         };
 
         fetchChats();
-    }, []);
+    }, [pathname]);
 
     return (
         <html lang="en">
@@ -79,15 +85,10 @@ export default function RootLayout({ children }) {
                                         <li key={chat.id} className="w-full">
                                             <Link
                                                 href={`/chat/${chat.id}`}
-                                                className="w-full flex justify-between"
+                                                className="w-full"
                                             >
                                                 <span className="font-medium">
                                                     {chat.title ?? "Chat sin título"}
-                                                </span>
-                                                <span className="text-xs opacity-70">
-                                                    {chat.updatedAt
-                                                        ? new Date(chat.updatedAt).toLocaleString()
-                                                        : "Sin fecha"}
                                                 </span>
                                             </Link>
                                         </li>
@@ -101,6 +102,7 @@ export default function RootLayout({ children }) {
                         {children}
                     </section>
                 </main>
+                <ToastContainer />
             </body>
         </html>
     );
