@@ -22,16 +22,28 @@ export default class GoogleDriveProvider implements IDriveProvider {
     }
 
     // Listar archivos de una carpeta
-    async listFiles(): Promise<DriveFile[]> {
+    async listFiles(folderId: string | null = null): Promise<DriveFile[]> {
+        // Get folders
         const response = await this.drive.files.list({
-            q: `'${process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed=false and mimeType != 'application/vnd.google-apps.folder'`,
+            q: `'${folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed=false`,
             fields: "files(id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink)",
             pageSize: 1000,
         });
 
-        const files = response.data.files || [];
+        const files: DriveFile[] = [];
 
-        return files as DriveFile[];
+        for (const file of response.data.files || []) {
+            if (file.mimeType === "application/vnd.google-apps.folder") {
+                const subFiles = await this.listFiles(file.id);
+                files.push(...subFiles);
+                continue;
+            } else {
+                console.log(file.name + " - " + file.mimeType);
+                files.push(file as DriveFile);
+            }
+        }
+
+        return files;
     }
 
     // Descargar archivo
