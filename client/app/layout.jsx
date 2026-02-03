@@ -53,11 +53,11 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <main className="min-h-screen flex bg-base-200 text-base-content">
-                    <aside className="w-72 border-r border-base-300 bg-base-100 flex flex-col">
+                <main className="min-h-screen flex bg-base-100 text-base-content">
+                    <aside className="w-72 border-r border-neutral-content/10 bg-neutral text-neutral-content flex flex-col">
                         <Link
                             href="/"
-                            className="p-4 border-b border-base-300 tooltip tooltip-right"
+                            className="p-4 border-b border-neutral-content/10 tooltip tooltip-right"
                             data-tip="Crear nueva conversación"
                         >
                             <p className="text-3xl font-extrabold">

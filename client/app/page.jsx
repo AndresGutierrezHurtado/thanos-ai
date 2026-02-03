@@ -43,7 +43,15 @@ export default function Page() {
     };
 
     return (
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-3xl space-y-10">
+            <div className="space-y-2">
+                <h1 className="text-4xl font-semibold tracking-tight scale-y-105">
+                    ¡Bienvenido a Thanos AI!
+                </h1>
+                <p className="text-xl opacity-70 scale-y-105 font-light">
+                    Aquí podrás solicitar información de tus documentos.
+                </p>
+            </div>
             <ChatInput
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
