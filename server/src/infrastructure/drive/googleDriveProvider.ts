@@ -32,6 +32,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
 
         const files: DriveFile[] = [];
 
+        // Extract files in the subfolders
         for (const file of response.data.files || []) {
             if (file.mimeType === "application/vnd.google-apps.folder") {
                 const subFiles = await this.listFiles(file.id);

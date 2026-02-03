@@ -69,7 +69,7 @@ export default class ChromaVectorStore implements IVectorStore {
         const metadatas = result.metadatas?.[0] ?? [];
 
         return documents.map((document, i) => ({
-            document,
+            document: document ?? "",
             metadata: (metadatas[i] ?? {}) as Record<
                 string,
                 string | number | boolean
