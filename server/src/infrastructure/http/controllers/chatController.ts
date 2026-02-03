@@ -3,9 +3,10 @@ import { Request, Response } from "express";
 // Use Cases
 import ChatUseCase from "../../../application/useCases/chatUseCase";
 import { SendMessageDto } from "../../../application/dtos/SendMessageDTO";
+import MessageUseCase from "../../../application/useCases/MessageUseCase";
 
 export default class ChatController {
-    constructor(private readonly chatUseCase: ChatUseCase) {}
+    constructor(private readonly chatUseCase: ChatUseCase, private readonly messageUseCase: MessageUseCase) {}
 
     public async getChats(req: Request, res: Response): Promise<Response> {
         const chats = await this.chatUseCase.getChats();
@@ -13,6 +14,16 @@ export default class ChatController {
             success: true,
             message: "Chats fetched successfully",
             data: chats,
+        });
+    }
+
+    public async getMessagesByChatId(req: Request, res: Response): Promise<Response> {
+        const { id } = req.params;
+        const messages = await this.messageUseCase.getMessagesByChatId(id as string);
+        return res.status(200).json({
+            success: true,
+            message: "Messages fetched successfully",
+            data: messages ?? [],
         });
     }
 

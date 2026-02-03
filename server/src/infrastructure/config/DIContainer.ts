@@ -50,7 +50,7 @@ export default class DIContainer {
     }
 
     public getChatController(): ChatController {
-        return new ChatController(this.getChatUseCase());
+        return new ChatController(this.getChatUseCase(), this.getMessageUseCase());
     }
 
     // Use Cases

@@ -1,3 +1,5 @@
+import MessageRole from "../../domain/valueObjects/MessageRole";
+
 export interface SendMessageDto {
     chatId: string | null; // Opcional: si no existe, se crea nuevo chat
     content: string;
@@ -12,13 +14,20 @@ export interface SendMessageDto {
 export interface MessageResponseDto {
     chatId: string | null;
     messageId: string | null;
-    assistantMessage: {
-        content: string;
-        timestamp: Date;
+    role: MessageRole;
+    timestamp: Date;
+    content: {
+        text: string;
         sources: null | Array<{
             norm: string;
             section: string;
             content: string;
         }>;
+        mediaContent: null | {
+            type: "image" | "audio" | "video" | "document";
+            buffer: Buffer;
+            filename: string;
+            mimeType: string;
+        };
     };
 }

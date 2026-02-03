@@ -10,6 +10,7 @@ const routes = Router();
 
 routes.get("/chats", chatController.getChats.bind(chatController));
 routes.get("/chats/:id", chatController.getChatById.bind(chatController));
+routes.get("/chats/:id/messages", chatController.getMessagesByChatId.bind(chatController));
 routes.post("/chats", chatController.createChat.bind(chatController));
 routes.delete("/chats/:id", chatController.deleteChat.bind(chatController));
 

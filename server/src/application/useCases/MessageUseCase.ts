@@ -48,13 +48,30 @@ export default class MessageUseCase {
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
         return {
-            chatId: chat.getId(),
-            messageId: userMessage.getId(),
-            assistantMessage: {
-                content: savedMessage.getContent(),
-                timestamp: savedMessage.getTimestamp().getValue(),
+            chatId: chat.getId()?.getValue() ?? null,
+            messageId: userMessage.getId()?.getValue() ?? null,
+            role: MessageRole.ASSISTANT,
+            timestamp: savedMessage.getTimestamp().getValue(),
+            content: {
+                text: savedMessage.getContent(),
                 sources: sources.length > 0 ? sources : null,
+                mediaContent: null,
             },
         };
+    }
+
+    public async getMessagesByChatId(chatId: string): Promise<MessageResponseDto[]> {
+        const messages = await this.messageRepository.findByChatId(new Identifier(chatId));
+        return messages.map((message) => ({
+            chatId: message.getChatId().getValue(),
+            messageId: message.getId()?.getValue() ?? null,
+            role: message.getRole(),
+            timestamp: message.getTimestamp().getValue(),
+            content: {
+                text: message.getContent(),
+                sources: null,
+                mediaContent: null,
+            },
+        }));
     }
 }
