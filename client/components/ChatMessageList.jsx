@@ -1,5 +1,7 @@
 "use client";
 
+import Markdown from "react-markdown";
+
 export default function ChatMessageList({ messages = [], loading = false }) {
     if (loading) {
         return (
@@ -53,10 +55,10 @@ function ChatMessageItem({ message }) {
             </div>
             <div
                 className={`chat-bubble ${
-                    isUser ? "bg-primary text-primary-content" : "bg-base-100 text-base-content"
+                    isUser ? "bg-primary text-primary-content" : "bg-base-300 text-base-content"
                 }`}
             >
-                {message.content.text}
+                {isUser ? <>{message.content.text}</> : <Markdown>{message.content.text}</Markdown>}
             </div>
         </div>
     );
