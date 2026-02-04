@@ -2,6 +2,7 @@
 
 import {
     CopyIcon,
+    LoaderIcon,
     PenIcon,
     RefreshCcw,
     RefreshCcwIcon,
@@ -67,8 +68,13 @@ function AssistantMessage({ message }) {
                 <Sparkles size={20} />
                 <p className="text-sm scale-y-105 font-semibold">Thanos AI</p>
             </div>
-            <div className="w-fit rounded-2xl overflow-x-clip text-ellipsis">
-                <Markdown>{message.content.text}</Markdown>
+            <div className="flex flex-col gap-2 w-full">
+                <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
+                    <Markdown>{message.content.text}</Markdown>
+                    {message.streaming && (
+                        <LoaderIcon size={18} className="animate-spin shrink-0 inline-block" />
+                    )}
+                </div>
             </div>
             <div className="flex gap-2">
                 <button

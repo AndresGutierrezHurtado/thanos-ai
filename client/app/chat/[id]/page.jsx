@@ -43,6 +43,15 @@ export default function ChatByIdPage() {
     }, [chatId]);
 
     useEffect(() => {
+        if (containerRef.current) {
+            containerRef.current.scrollTo({
+                top: containerRef.current.scrollHeight,
+                behavior: "instant",
+            });
+        }
+    }, [messages]);
+
+    useEffect(() => {
         setTimeout(() => {
             if (containerRef.current) {
                 const { scrollHeight, clientHeight, scrollTop } = containerRef.current;
@@ -63,6 +72,23 @@ export default function ChatByIdPage() {
         setFile(selected);
     }, []);
 
+    const appendToLastAssistantMessage = useCallback((textToAppend) => {
+        setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") {
+                next[next.length - 1] = {
+                    ...last,
+                    content: {
+                        ...last.content,
+                        text: (last.content?.text ?? "") + textToAppend,
+                    },
+                };
+            }
+            return next;
+        });
+    }, []);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!chatId) return;
@@ -70,7 +96,7 @@ export default function ChatByIdPage() {
         const trimmedContent = content.trim();
         if (!trimmedContent && !file) return;
 
-        const message = {
+        const userMessage = {
             id: null,
             chatId,
             role: "user",
@@ -82,9 +108,21 @@ export default function ChatByIdPage() {
             },
         };
 
-        addMessage(message);
-
+        addMessage(userMessage);
+        setContent("");
+        setFile(null);
         setIsSending(true);
+
+        // Mensaje asistente vacío; se irá llenando palabra a palabra
+        addMessage({
+            id: null,
+            chatId,
+            role: "assistant",
+            timestamp: new Date(),
+            content: { text: "", sources: null, mediaContent: null },
+            streaming: true,
+        });
+
         try {
             const response = await useApi("POST", "/messages", {
                 chatId,
@@ -92,13 +130,56 @@ export default function ChatByIdPage() {
                 mediaContent: null,
             });
 
-            if (!response?.success) return;
-            setContent("");
-            setFile(null);
+            if (!response?.success) {
+                setMessages((prev) => prev.slice(0, -1));
+                return;
+            }
 
-            loadMessages();
+            const fullText = response?.data?.content?.text ?? "";
+            const words = fullText.split(/(\s+)/); // mantiene espacios
+            const delayMs = 25;
+
+            for (let i = 0; i < words.length; i++) {
+                await new Promise((r) => setTimeout(r, delayMs));
+                appendToLastAssistantMessage(words[i]);
+            }
+
+            // Sustituir por el mensaje final (con messageId, sources, etc.)
+            setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant" && response?.data) {
+                    next[next.length - 1] = {
+                        ...last,
+                        messageId: response.data.messageId,
+                        timestamp: response.data.timestamp ?? last.timestamp,
+                        streaming: false,
+                        content: {
+                            text: response.data.content?.text ?? last.content?.text,
+                            sources: response.data.content?.sources ?? null,
+                            mediaContent: null,
+                        },
+                    };
+                }
+                return next;
+            });
         } catch (error) {
             console.error("Failed to send message", error);
+            setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                    next[next.length - 1] = {
+                        ...last,
+                        streaming: false,
+                        content: {
+                            ...last.content,
+                            text: (last.content?.text ?? "") + "\n\n*Error al obtener la respuesta.*",
+                        },
+                    };
+                }
+                return next;
+            });
         } finally {
             setIsSending(false);
         }

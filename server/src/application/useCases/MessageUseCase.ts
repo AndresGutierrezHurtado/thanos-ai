@@ -16,14 +16,15 @@ export default class MessageUseCase {
         private readonly llmProvider: ILlmProvider
     ) {}
 
-    public async sendMessage(messageDto: SendMessageDto): Promise<MessageResponseDto> {
+    public async sendMessage(
+        messageDto: SendMessageDto,
+        onChunk?: (text: string) => void
+    ): Promise<MessageResponseDto> {
         const { chatId, content, mediaContent } = messageDto;
 
-        // Find the chat
         const chat = await this.chatRepository.findById(new Identifier(chatId as string));
         if (!chat) throw new Error("Chat not found");
 
-        // Save the user message
         const userMessage = await this.messageRepository.create(
             new Message(
                 null,
@@ -36,15 +37,13 @@ export default class MessageUseCase {
             )
         );
 
-        // Load conversation history for context
         const previousMessages = await this.messageRepository.findByChatId(
             chat.getId() as Identifier
         );
         const messagesForLlm = [...previousMessages];
 
-        // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
         const { message: assistantMessage, sources } =
-            await this.llmProvider.generateResponse(chat, messagesForLlm);
+            await this.llmProvider.generateResponse(chat, messagesForLlm, onChunk);
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
         return {

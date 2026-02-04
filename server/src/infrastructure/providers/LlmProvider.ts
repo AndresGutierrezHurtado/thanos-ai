@@ -34,16 +34,15 @@ export default class LlmProvider implements ILlmProvider {
     // FUNCION FOR GENERATING THE RESPONSE WITH THE CONTEXT OF THE DOCUMENTS
     public async generateResponse(
         chat: Chat,
-        messages: Message[]
+        messages: Message[],
+        onChunk?: (text: string) => void
     ): Promise<GenerateResponseResult> {
-        // Get the user message and documents context
         const lastUserContent = this.getLastUserMessageContent(messages);
         const { context, sources } = await this.retrieveContext(lastUserContent);
 
-        // Generate the response
         const responseContent =
             context.length > 0
-                ? await this.openAiModel.generateResponse(messages, context)
+                ? await this.openAiModel.generateResponse(messages, context, onChunk)
                 : NO_CONTEXT_RESPONSE;
 
         // Save the response

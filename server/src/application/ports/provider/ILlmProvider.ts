@@ -13,7 +13,11 @@ export interface GenerateResponseResult {
 }
 
 interface ILlmProvider {
-    generateResponse(chat: Chat, messages: Message[]): Promise<GenerateResponseResult>;
+    generateResponse(
+        chat: Chat,
+        messages: Message[],
+        onChunk?: (text: string) => void
+    ): Promise<GenerateResponseResult>;
     generateChatTitle(content: string): Promise<string>;
 }
 

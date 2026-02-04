@@ -27,7 +27,11 @@ FORMATO DE RESPUESTA:
         });
     }
 
-    public async generateResponse(messages: Message[], context?: string): Promise<string> {
+    public async generateResponse(
+        messages: Message[],
+        context?: string,
+        onChunk?: (text: string) => void
+    ): Promise<string> {
         const systemContent = context
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
@@ -39,6 +43,19 @@ FORMATO DE RESPUESTA:
                 content: message.getContent(),
             })),
         ];
+
+        if (onChunk) {
+            let fullText = "";
+            const stream = await this.model.stream(conversation);
+            for await (const chunk of stream) {
+                const text = chunk.content?.toString?.() ?? "";
+                if (text) {
+                    onChunk(text);
+                    fullText += text;
+                }
+            }
+            return fullText;
+        }
 
         const response = await this.model.invoke(conversation);
         return response.content.toString();
