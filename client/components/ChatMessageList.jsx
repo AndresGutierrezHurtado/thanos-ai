@@ -4,14 +4,14 @@ import {
     CopyIcon,
     LoaderIcon,
     PenIcon,
-    RefreshCcw,
     RefreshCcwIcon,
     Sparkles,
+    Square,
     Volume2Icon,
-    VolumeIcon,
 } from "lucide-react";
 import Markdown from "react-markdown";
-import React from "react";
+import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 export default function ChatMessageList({ messages = [], loading = false }) {
     if (loading) {
@@ -62,6 +62,24 @@ export default function ChatMessageList({ messages = [], loading = false }) {
 }
 
 function AssistantMessage({ message }) {
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    const handlePlayStop = () => {
+        if (isSpeaking) {
+            speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+        const text = message.content.text.replaceAll("**", "");
+        if (!text.trim()) return;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "es-ES";
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        speechSynthesis.speak(utterance);
+        setIsSpeaking(true);
+    };
+
     return (
         <div className="w-full flex flex-col gap-5 relative">
             <div className="flex items-center gap-2 text-primary">
@@ -80,18 +98,30 @@ function AssistantMessage({ message }) {
                 <button
                     className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
                     data-tip="Copiar respuesta"
+                    onClick={() => {
+                        navigator.clipboard.writeText(message.content.text);
+                        toast.success("Respuesta copiada al portapapeles");
+                    }}
                 >
                     <CopyIcon size={15} />
                 </button>
                 <button
                     className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
-                    data-tip="Reproducir audio"
+                    data-tip={isSpeaking ? "Detener" : "Reproducir audio"}
+                    onClick={handlePlayStop}
                 >
-                    <Volume2Icon size={15} />
+                    {isSpeaking ? (
+                        <Square size={15} className="fill-current" />
+                    ) : (
+                        <Volume2Icon size={15} />
+                    )}
                 </button>
                 <button
                     className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
                     data-tip="Recargar respuesta"
+                    onClick={() => {
+                        // TODO: Recargar respuesta
+                    }}
                 >
                     <RefreshCcwIcon size={15} />
                 </button>
