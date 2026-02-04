@@ -27,7 +27,6 @@ export default class LlmProvider implements ILlmProvider {
     ) {}
 
     public async generateChatTitle(content: string): Promise<string> {
-        return "new chat test";
         const title = await this.openAiModel.generateChatTitle(content);
         return title.replaceAll('"', "").trim();
     }
@@ -37,19 +36,6 @@ export default class LlmProvider implements ILlmProvider {
         chat: Chat,
         messages: Message[]
     ): Promise<GenerateResponseResult> {
-        return {
-            message: new Message(
-                null,
-                chat.getId() as Identifier,
-                MessageRole.ASSISTANT,
-                "new chat test",
-                null,
-                new DateTimeValue(),
-                null
-            ),
-            sources: [],
-        };
-
         // Get the user message and documents context
         const lastUserContent = this.getLastUserMessageContent(messages);
         const { context, sources } = await this.retrieveContext(lastUserContent);

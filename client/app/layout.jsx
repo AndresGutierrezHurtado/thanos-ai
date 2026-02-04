@@ -80,6 +80,10 @@ export default function RootLayout({ children }) {
 
     return (
         <html lang="en">
+            <head>
+                <title>THANOS AI | Gestor de documentos</title>
+                <link rel="icon" href="/assistant.png" />
+            </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <main className="min-h-screen flex bg-base-100 text-base-content">
                     <aside className="w-72 border-r border-neutral-content/10 bg-neutral text-neutral-content flex flex-col overflow-x-visible">
