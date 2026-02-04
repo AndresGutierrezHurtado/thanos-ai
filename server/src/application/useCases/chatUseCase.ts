@@ -76,7 +76,7 @@ export default class ChatUseCase {
         );
 
         // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
-        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        const { message: assistantMessage, sources: retrievedSources } = await this.llmProvider.generateResponse(
             chat,
             [userMessage]
         );
@@ -89,7 +89,7 @@ export default class ChatUseCase {
             timestamp: savedMessage.getTimestamp().getValue(),
             content: {
                 text: savedMessage.getContent(),
-                sources: sources.length > 0 ? sources : null,
+                sources: retrievedSources.length > 0 ? retrievedSources : null,
                 mediaContent: null,
             },
         };

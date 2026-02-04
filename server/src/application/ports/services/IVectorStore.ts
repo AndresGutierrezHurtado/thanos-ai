@@ -1,12 +1,10 @@
+import Source from "../../../domain/entities/source";
+import Identifier from "../../../domain/valueObjects/Identifier";
+
 export interface VectorDocument {
     id: string;
     content: string;
     metadata: Record<string, string | number | boolean | undefined>;
-}
-
-export interface RetrieverResult {
-    document: string;
-    metadata: Record<string, string | number | boolean>;
 }
 
 export default interface IVectorStore {
@@ -15,6 +13,7 @@ export default interface IVectorStore {
     query(
         collection: string,
         queryText: string,
-        nResults?: number
-    ): Promise<RetrieverResult[]>;
+        nResults?: number,
+        messageId?: Identifier | null
+    ): Promise<Source[]>;
 }

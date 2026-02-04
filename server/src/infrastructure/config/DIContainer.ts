@@ -13,6 +13,7 @@ import InformationUseCase from "../../application/useCases/informationUseCase";
 import IChatRepository from "../../application/ports/repositories/IChatRepository";
 import IMessageRepository from "../../application/ports/repositories/IMessageRepository";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
+import ISourceRepository from "../../application/ports/repositories/ISourceRepository";
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
 import IDriveProvider from "../../application/ports/provider/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
@@ -24,6 +25,7 @@ import OpenAIEmbeddingProvider from "../providers/OpenAIEmbeddingProvider";
 import ChatRepository from "../persistence/repositories/ChatRepository";
 import MessageRepository from "../persistence/repositories/MessageRepository";
 import DocumentRepository from "../persistence/repositories/DocumentRepository";
+import SourceRepository from "../persistence/repositories/SourceRepository";
 import Database from "../persistence/Database";
 import ChatController from "../http/controllers/chatController";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
@@ -36,9 +38,7 @@ import LoggerAdapter from "../services/LoggerAdapter";
 export default class DIContainer {
     private static instance: DIContainer;
 
-    private constructor(
-        private readonly db: Db
-    ) {}
+    private constructor(private readonly db: Db) {}
 
     static async getInstance(): Promise<DIContainer> {
         if (!this.instance) {
@@ -71,6 +71,7 @@ export default class DIContainer {
         return new MessageUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
+            this.getSourceRepository(),
             this.getLlmProvider()
         );
     }
@@ -89,7 +90,8 @@ export default class DIContainer {
             this.getDocumentRepository(),
             this.getProcessorFactory(),
             this.getChunker(),
-            this.getVectorStore()
+            this.getVectorStore(),
+            this.getLogger()
         );
     }
 
@@ -106,6 +108,10 @@ export default class DIContainer {
         return new DocumentRepository(this.db);
     }
 
+    private getSourceRepository(): ISourceRepository {
+        return new SourceRepository(this.db);
+    }
+
     // Services
     public getLogger(): ILogger {
         return new LoggerAdapter();
@@ -120,7 +126,7 @@ export default class DIContainer {
     }
 
     private getVectorStore(): ChromaVectorStore {
-        return new ChromaVectorStore(this.getEmbeddingProvider());
+        return new ChromaVectorStore(this.getEmbeddingProvider(), this.getDocumentRepository());
     }
 
     private getEmbeddingProvider(): OpenAIEmbeddingProvider {
@@ -128,10 +134,7 @@ export default class DIContainer {
     }
 
     private getLlmProvider(): ILlmProvider {
-        return new LlmProvider(
-            new OpenAiModel(),
-            this.getVectorStore()
-        );
+        return new LlmProvider(new OpenAiModel(), this.getVectorStore(), this.getLogger());
     }
 
     public getDriveProvider(): IDriveProvider {

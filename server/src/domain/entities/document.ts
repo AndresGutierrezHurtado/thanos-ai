@@ -10,7 +10,6 @@ export default class Document {
     private version: string;
     private checksum: string;
     private processedAt: DateTimeValue;
-    private createdAt: DateTimeValue;
 
     constructor(
         id: Identifier | null,
@@ -21,7 +20,6 @@ export default class Document {
         version: string,
         checksum: string,
         processedAt: DateTimeValue,
-        createdAt: DateTimeValue
     ) {
         this.id = id;
         this.driveId = driveId;
@@ -31,7 +29,6 @@ export default class Document {
         this.version = version;
         this.checksum = checksum;
         this.processedAt = processedAt;
-        this.createdAt = createdAt;
     }
 
     // Getters
@@ -67,10 +64,6 @@ export default class Document {
         return this.processedAt;
     }
 
-    public getCreatedAt(): DateTimeValue {
-        return this.createdAt;
-    }
-
     // Setters
     public setId(id: Identifier | null): void {
         this.id = id;
@@ -102,10 +95,6 @@ export default class Document {
 
     public setProcessedAt(processedAt: DateTimeValue): void {
         this.processedAt = processedAt;
-    }
-
-    public setCreatedAt(createdAt: DateTimeValue): void {
-        this.createdAt = createdAt;
     }
 }
 

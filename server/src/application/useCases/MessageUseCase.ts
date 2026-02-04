@@ -1,5 +1,6 @@
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
+import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 
 // DTOs
@@ -17,6 +18,7 @@ export default class MessageUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
+        private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider
     ) {}
 
@@ -122,17 +124,29 @@ export default class MessageUseCase {
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResponseDto[]> {
         const messages = await this.messageRepository.findByChatId(new Identifier(chatId));
-        return messages.map((message) => ({
-            chatId: message.getChatId().getValue(),
-            messageId: message.getId()?.getValue() ?? null,
-            role: message.getRole(),
-            timestamp: message.getTimestamp().getValue(),
-            content: {
-                text: message.getContent(),
-                sources: null,
-                mediaContent: null,
-            },
-        }));
+        
+        const messagesWithSources = await Promise.all(
+            messages.map(async (message) => {
+                const messageId = message.getId();
+                const sources = messageId 
+                    ? await this.sourceRepository.findByMessageId(messageId)
+                    : [];
+
+                return {
+                    chatId: message.getChatId().getValue(),
+                    messageId: messageId?.getValue() ?? null,
+                    role: message.getRole(),
+                    timestamp: message.getTimestamp().getValue(),
+                    content: {
+                        text: message.getContent(),
+                        sources: sources.length > 0 ? sources : null,
+                        mediaContent: null,
+                    },
+                };
+            })
+        );
+
+        return messagesWithSources;
     }
 
     public async speechToText(audio: Buffer): Promise<string> {

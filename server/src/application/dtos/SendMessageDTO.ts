@@ -1,3 +1,4 @@
+import Source from "../../domain/entities/source";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 
 export interface UpdateMessageDto {
@@ -23,11 +24,7 @@ export interface MessageResponseDto {
     timestamp: Date;
     content: {
         text: string;
-        sources: null | Array<{
-            norm: string;
-            section: string;
-            content: string;
-        }>;
+        sources: null | Source[];
         mediaContent: null | {
             type: "image" | "audio" | "video" | "document";
             buffer: Buffer;

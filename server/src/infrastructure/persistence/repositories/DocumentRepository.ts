@@ -2,9 +2,8 @@ import { Db, Collection } from "mongodb";
 import IDocumentRepository, {
     DocumentRecord,
 } from "../../../application/ports/repositories/IDocumentRepository";
-import DocumentMapper, {
-    DocumentMongoDoc,
-} from "../mappers/DocumentMapper";
+import DocumentMapper, { DocumentMongoDoc } from "../mappers/DocumentMapper";
+import Document from "../../../domain/entities/document";
 
 export default class DocumentRepository implements IDocumentRepository {
     private readonly collection: Collection<DocumentMongoDoc>;
@@ -13,10 +12,10 @@ export default class DocumentRepository implements IDocumentRepository {
         this.collection = db.collection<DocumentMongoDoc>("documents");
     }
 
-    async findByDriveId(driveId: string): Promise<DocumentRecord | null> {
+    async findByDriveId(driveId: string): Promise<Document | null> {
         const doc = await this.collection.findOne({ driveId });
         if (!doc) return null;
-        return DocumentMapper.toRecord(doc);
+        return DocumentMapper.toDomain(doc);
     }
 
     async save(record: DocumentRecord): Promise<void> {

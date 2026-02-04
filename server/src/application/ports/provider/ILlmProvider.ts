@@ -1,23 +1,13 @@
 import Message from "../../../domain/entities/message";
 import Chat from "../../../domain/entities/chat";
-
-export interface RetrieveSource {
-    section: string;
-    norm: string;
-    content: string;
-}
-
-export interface GenerateResponseResult {
-    message: Message;
-    sources: RetrieveSource[];
-}
+import Source from "../../../domain/entities/source";
 
 interface ILlmProvider {
     generateResponse(
         chat: Chat,
         messages: Message[],
         onChunk?: (text: string) => void
-    ): Promise<GenerateResponseResult>;
+    ): Promise<{ message: Message, sources: Source[] }>;
     generateChatTitle(content: string): Promise<string>;
     speechToText(audio: Buffer): Promise<string>;
 }
