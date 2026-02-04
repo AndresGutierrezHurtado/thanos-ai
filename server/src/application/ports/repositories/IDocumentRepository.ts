@@ -1,4 +1,5 @@
 import Document from "../../../domain/entities/document";
+import Identifier from "../../../domain/valueObjects/Identifier";
 
 export interface DocumentRecord {
     driveId: string;
@@ -11,5 +12,6 @@ export interface DocumentRecord {
 
 export default interface IDocumentRepository {
     findByDriveId(driveId: string): Promise<Document | null>;
+    findById(id: Identifier): Promise<Document | null>;
     save(record: DocumentRecord): Promise<void>;
 }

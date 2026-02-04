@@ -106,28 +106,37 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                         <Markdown remarkPlugins={[remarkGfm]}>{message.content.text}</Markdown>
                     </div>
                     {!message.streaming && message.content.sources.length > 0 && (
-                        <div className="w-full flex flex-col gap-2">
-                            <span className="font-semibold text-lg scale-y-105">Fuentes:</span>
-                            <div className="w-full grid grid-cols-2 gap-2">
-                                {message.content.sources.map((source) => (
-                                    <div
-                                        key={source.chunkId}
-                                        className="border border-base-content/30 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom"
-                                        data-tip={source.document?.driveId ? "Ver documento" : "Documento no disponible"}
-                                        onClick={() => {
-                                            if (source.document?.driveId) {
-                                                window.open(`https://drive.google.com/file/d/${source.document.driveId}/view`, "_blank");
+                        <div className="collapse collapse-arrow bg-base-100 border-base-300 border">
+                            <input type="checkbox" />
+                            <div className="collapse-title font-semibold">Fuentes:</div>
+                            <div className="collapse-content text-sm">
+                                <div className="w-full grid grid-cols-2 gap-2">
+                                    {message.content.sources.map((source) => (
+                                        <div
+                                            key={source.chunkId}
+                                            className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom"
+                                            data-tip={
+                                                source.document?.driveId
+                                                    ? "Ver documento"
+                                                    : "Documento no disponible"
                                             }
-                                        }}
-                                    >
-                                        <p className="text-sm font-semibold scale-y-105">
-                                            {source.document?.title ?? "Documento no disponible"}
-                                        </p>
-                                        <p className="text-xs line-clamp-2">
-                                            {source.content}
-                                        </p>
-                                    </div>
-                                ))}
+                                            onClick={() => {
+                                                if (source.document?.driveId) {
+                                                    window.open(
+                                                        `https://drive.google.com/file/d/${source.document.driveId}/view`,
+                                                        "_blank"
+                                                    );
+                                                }
+                                            }}
+                                        >
+                                            <p className="text-sm font-semibold scale-y-105">
+                                                {source.document?.title ??
+                                                    "Documento no disponible"}
+                                            </p>
+                                            <p className="text-xs line-clamp-2">{source.content}</p>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}

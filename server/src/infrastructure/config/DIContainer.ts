@@ -73,6 +73,7 @@ export default class DIContainer {
             this.getMessageRepository(),
             this.getSourceRepository(),
             this.getLlmProvider(),
+            this.getDocumentRepository(),
             this.getLogger()
         );
     }

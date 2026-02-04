@@ -3,6 +3,7 @@ import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
+import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import ILogger from "../ports/services/ILogger";
 
 // DTOs and Resources
@@ -12,6 +13,8 @@ import { MessageResource, toMessageResource } from "../ports/resources/MessageRe
 
 // Domain
 import Message from "../../domain/entities/message";
+import Source from "../../domain/entities/source";
+import Document from "../../domain/entities/document";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
@@ -22,6 +25,7 @@ export default class MessageUseCase {
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider,
+        private readonly documentRepository: IDocumentRepository,
         private readonly logger: ILogger
     ) {}
 
@@ -109,12 +113,14 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(new Identifier(chatId));
 
         const messagesList: MessageResource[] = await Promise.all(
-            messages.map(async (message) => {
-                const messageId = message.getId();
-                const sources = messageId
-                    ? await this.sourceRepository.findByMessageId(messageId)
-                    : [];
+            messages.map(async (message: Message) => {
+                const sources = await this.sourceRepository.findByMessageId(message.getId() as Identifier);
 
+                for (const source of sources) {
+                    const document = await this.getSourceDocument(source);
+                    if (!document) continue;
+                    source.setDocument(document);
+                }
                 message.setSources(sources);
 
                 return toMessageResource(message);
@@ -122,6 +128,12 @@ export default class MessageUseCase {
         );
 
         return messagesList;
+    }
+
+    public async getSourceDocument(source: Source): Promise<Document> {
+        const document = await this.documentRepository.findById(source.getDocumentId() as Identifier);
+        this.logger.debug(`Document found`, { document, source });
+        return document as Document;
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
