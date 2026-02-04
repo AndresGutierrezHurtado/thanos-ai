@@ -12,6 +12,7 @@ import {
     XIcon,
 } from "lucide-react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -101,7 +102,9 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
             </div>
             <div className="flex flex-col gap-2 w-full">
                 <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
-                    <Markdown>{message.content.text}</Markdown>
+                    <div className="markdown prose">
+                        <Markdown remarkPlugins={[remarkGfm]}>{message.content.text}</Markdown>
+                    </div>
                     {message.streaming && (
                         <LoaderIcon size={18} className="animate-spin shrink-0 inline-block" />
                     )}

@@ -15,6 +15,7 @@ import IMessageRepository from "../../application/ports/repositories/IMessageRep
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
 import IDriveProvider from "../../application/ports/provider/IDriveProvider";
+import ILogger from "../../application/ports/services/ILogger";
 
 // Infrastructure
 import LlmProvider from "../providers/LlmProvider";
@@ -30,6 +31,7 @@ import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
 import HealthController from "../http/controllers/healthController";
+import LoggerAdapter from "../services/LoggerAdapter";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -105,6 +107,10 @@ export default class DIContainer {
     }
 
     // Services
+    public getLogger(): ILogger {
+        return new LoggerAdapter();
+    }
+
     private getProcessorFactory(): ProcessorFactory {
         return new ProcessorFactory();
     }
