@@ -63,7 +63,7 @@ export default class DIContainer {
     }
 
     public getHealthController(): HealthController {
-        return new HealthController();
+        return new HealthController(this.getLogger());
     }
 
     // Use Cases

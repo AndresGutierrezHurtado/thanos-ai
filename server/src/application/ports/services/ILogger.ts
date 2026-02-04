@@ -19,6 +19,7 @@ export interface LoggerContext {
 }
 
 export default interface ILogger {
+    getLogs(date?: string): Promise<LoggerContext[]>;
     log(level: SyslogSeverity, message: string, context?: LoggerContext): void;
     emergency(message: string, context?: LoggerContext): void;
     alert(message: string, context?: LoggerContext): void;

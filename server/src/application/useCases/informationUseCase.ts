@@ -5,6 +5,7 @@ import IVectorStore from "../ports/services/IVectorStore";
 import IChunker, { ChunkData } from "../ports/services/IChunker";
 import resolveFileType from "../utils/resolveFileType";
 import { DOCUMENTS_COLLECTION } from "../constants/collections";
+import ILogger from "../ports/services/ILogger";
 
 export default class InformationUseCase {
     private readonly CONCURRENT_DOWNLOADS = 10;
@@ -13,7 +14,8 @@ export default class InformationUseCase {
         private readonly documentRepository: IDocumentRepository,
         private readonly processorFactory: ProcessorFactory,
         private readonly chunker: IChunker,
-        private readonly vectorStore: IVectorStore
+        private readonly vectorStore: IVectorStore,
+        private readonly logger: ILogger
     ) {}
 
     public async listFiles(): Promise<DriveFile[]> {
@@ -21,9 +23,9 @@ export default class InformationUseCase {
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
-        console.log("pulling files from drive...");
+        this.logger.debug("pulling files from drive...");
         const files = await this.driveProvider.listFiles();
-        console.log(`pulled ${files.length} files from drive`);
+        this.logger.debug(`pulled ${files.length} files from drive`);
 
         let processed = 0;
         let skipped = 0;
@@ -46,11 +48,11 @@ export default class InformationUseCase {
                 return;
             }
 
-            console.log(`downloading file ${file.name}...`);
+            this.logger.debug(`downloading file ${file.name}...`);
             const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
             const processor = this.processorFactory.get(file.mimeType);
             const extracted = await processor.extract(buffer, file.mimeType);
-            console.log(`information extracted from: ${file.name}`);
+            this.logger.debug(`information extracted from: ${file.name}`);
 
             const sourceType = resolveFileType(file.mimeType);
             const chunks = this.chunker.createChunks(extracted, {
@@ -59,17 +61,17 @@ export default class InformationUseCase {
                 sourceType,
             });
 
-            console.log(`chunks created from: ${file.name} (${chunks.length} chunks)`);
+            this.logger.debug(`chunks created from: ${file.name} (${chunks.length} chunks)`);
 
             if (chunks.length === 0) {
                 skipped++;
                 return;
             }
 
-            console.log(`deleting existing documents from: ${file.name}`);
+            this.logger.debug(`deleting existing documents from: ${file.name}`);
             await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
-            console.log(`saving document to database: ${file.name}`);
+            this.logger.debug(`saving document to database: ${file.name}`);
             await this.documentRepository.save({
                 driveId: file.id,
                 title: file.name,
@@ -78,7 +80,7 @@ export default class InformationUseCase {
                 checksum,
             });
 
-            console.log(`adding documents to vector store: ${file.name}`);
+            this.logger.debug(`adding documents to vector store: ${file.name}`);
             await this.vectorStore.addDocuments(
                 DOCUMENTS_COLLECTION,
                 chunks.map((chunk: ChunkData) => ({
@@ -88,8 +90,8 @@ export default class InformationUseCase {
                 }))
             );
             processed++;
-        } catch (err) {
-            console.error(`[InformationUseCase] Error processing ${file.name} (${file.id}):`, err);
+        } catch (err: unknown) {
+            this.logger.error(`[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`, { error: err as Error });
         }
     }
 }
