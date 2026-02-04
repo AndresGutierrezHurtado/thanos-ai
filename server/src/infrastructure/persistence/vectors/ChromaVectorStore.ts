@@ -9,6 +9,8 @@ export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
     private readonly embeddingProvider: IEmbeddingProvider;
     private readonly documentRepository: IDocumentRepository;
+    private inTransaction = false;
+    private readonly pendingIdsByCollection = new Map<string, string[]>();
 
     constructor(embeddingProvider: IEmbeddingProvider, documentRepository: IDocumentRepository) {
         const url = process.env.CHROMA_URL ?? "http://localhost:8000";
@@ -37,12 +39,17 @@ export default class ChromaVectorStore implements IVectorStore {
             }
             return m;
         });
+        const ids = documents.map((d) => d.id);
         await col.add({
-            ids: documents.map((d) => d.id),
+            ids,
             documents: contents,
             embeddings,
             metadatas,
         });
+        if (this.inTransaction) {
+            const pending = this.pendingIdsByCollection.get(collection) ?? [];
+            this.pendingIdsByCollection.set(collection, [...pending, ...ids]);
+        }
     }
 
     async deleteByDriveId(collection: string, driveId: string): Promise<void> {
@@ -96,5 +103,29 @@ export default class ChromaVectorStore implements IVectorStore {
         );
 
         return sources;
+    }
+
+    async beginTransaction(): Promise<void> {
+        this.inTransaction = true;
+        this.pendingIdsByCollection.clear();
+    }
+
+    async commitTransaction(): Promise<void> {
+        this.inTransaction = false;
+        this.pendingIdsByCollection.clear();
+    }
+
+    async rollback(): Promise<void> {
+        for (const [collectionName, ids] of this.pendingIdsByCollection) {
+            if (ids.length === 0) continue;
+            try {
+                const col = await this.client.getOrCreateCollection({ name: collectionName });
+                await col.delete({ ids });
+            } catch {
+                /* best-effort rollback */
+            }
+        }
+        this.inTransaction = false;
+        this.pendingIdsByCollection.clear();
     }
 }

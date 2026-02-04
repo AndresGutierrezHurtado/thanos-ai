@@ -26,12 +26,12 @@ export default class MessageUseCase {
         private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider,
         private readonly documentRepository: IDocumentRepository,
-        private readonly logger: ILogger
+        private readonly logger: ILogger,
     ) {}
 
     public async sendMessage(
         messageDto: SendMessageDto,
-        onChunk?: (text: string) => void
+        onChunk?: (text: string) => void,
     ): Promise<MessageResource> {
         const { chatId, content, mediaContent } = messageDto;
 
@@ -47,8 +47,8 @@ export default class MessageUseCase {
                 content,
                 null,
                 new DateTimeValue(),
-                null
-            )
+                null,
+            ),
         );
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
@@ -56,7 +56,7 @@ export default class MessageUseCase {
         const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
             chat,
             messages,
-            onChunk
+            onChunk,
         );
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
@@ -71,7 +71,7 @@ export default class MessageUseCase {
 
     public async updateMessage(
         dto: UpdateMessageDto,
-        onChunk?: (text: string) => void
+        onChunk?: (text: string) => void,
     ): Promise<MessageResource> {
         // Get the message to update
         let message = await this.messageRepository.findById(new Identifier(dto.id));
@@ -82,31 +82,31 @@ export default class MessageUseCase {
 
         // Update the message content and timestamp
         message.setContent(dto.content);
-        message.setTimestamp(new DateTimeValue());
         await this.messageRepository.update(message.getId()!, message);
 
         await this.messageRepository.deleteByChatIdAfterTimestamp(
             message.getChatId(),
-            message.getTimestamp().getValue()
+            message.getTimestamp().getValue(),
         );
 
         // Get the latest messages for the LLM
         const messages = await this.messageRepository.findByChatId(message.getChatId());
 
         // Generate the assistant message and save it and its sources
-        let { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
             chat,
             messages,
-            onChunk
+            onChunk,
         );
-        assistantMessage = await this.messageRepository.create(assistantMessage);
+        const savedAssistantMessage = await this.messageRepository.create(assistantMessage);
 
         for (const source of sources) {
-            source.setMessageId(assistantMessage.getId() as Identifier);
-            await this.sourceRepository.create(source);
+            source.setMessageId(savedAssistantMessage.getId() as Identifier);
+            const savedSource = await this.sourceRepository.create(source);
+            savedAssistantMessage.addSource(savedSource);
         }
 
-        return toMessageResource(assistantMessage);
+        return toMessageResource(savedAssistantMessage);
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResource[]> {
@@ -114,7 +114,9 @@ export default class MessageUseCase {
 
         const messagesList: MessageResource[] = await Promise.all(
             messages.map(async (message: Message) => {
-                const sources = await this.sourceRepository.findByMessageId(message.getId() as Identifier);
+                const sources = await this.sourceRepository.findByMessageId(
+                    message.getId() as Identifier,
+                );
 
                 for (const source of sources) {
                     const document = await this.getSourceDocument(source);
@@ -124,14 +126,16 @@ export default class MessageUseCase {
                 message.setSources(sources);
 
                 return toMessageResource(message);
-            })
+            }),
         );
 
         return messagesList;
     }
 
     public async getSourceDocument(source: Source): Promise<Document> {
-        const document = await this.documentRepository.findById(source.getDocumentId() as Identifier);
+        const document = await this.documentRepository.findById(
+            source.getDocumentId() as Identifier,
+        );
         this.logger.debug(`Document found`, { document, source });
         return document as Document;
     }

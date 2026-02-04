@@ -42,6 +42,9 @@ export default function ChatMessageList({
     return (
         <div className="flex flex-col max-w-3xl mx-auto gap-5 pb-4">
             {messages.map((item, index) => {
+                const userMessages = messages.filter((m) => m.role === "user");
+                const prevUserMessage = userMessages[userMessages.length - 1];
+
                 return (
                     <React.Fragment key={index}>
                         {item.role === "assistant" ? (
@@ -52,7 +55,7 @@ export default function ChatMessageList({
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
-                                prevUserMessage={messages[index - 1]}
+                                prevUserMessage={prevUserMessage}
                                 disabled={disabled}
                                 onRegenerateResponse={onRegenerateResponse}
                             />
@@ -105,16 +108,16 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     <div className="markdown prose">
                         <Markdown remarkPlugins={[remarkGfm]}>{message.content.text}</Markdown>
                     </div>
-                    {!message.streaming && message.content.sources.length > 0 && (
+                    {!message.streaming && (message.content.sources ?? []).length > 0 && (
                         <div className="collapse collapse-arrow bg-base-100 border-base-300 border">
                             <input type="checkbox" />
                             <div className="collapse-title font-semibold">Fuentes:</div>
                             <div className="collapse-content text-sm">
                                 <div className="w-full grid grid-cols-2 gap-2">
-                                    {message.content.sources.map((source) => (
+                                    {(message.content.sources ?? []).map((source) => (
                                         <div
                                             key={source.chunkId}
-                                            className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom"
+                                            className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom group"
                                             data-tip={
                                                 source.document?.driveId
                                                     ? "Ver documento"
@@ -124,16 +127,18 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                                                 if (source.document?.driveId) {
                                                     window.open(
                                                         `https://drive.google.com/file/d/${source.document.driveId}/view`,
-                                                        "_blank"
+                                                        "_blank",
                                                     );
                                                 }
                                             }}
                                         >
-                                            <p className="text-sm font-semibold scale-y-105">
+                                            <p className="text-sm font-semibold scale-y-105 group-hover:underline underline-offset-3 line-clamp-1">
                                                 {source.document?.title ??
                                                     "Documento no disponible"}
                                             </p>
-                                            <p className="text-xs line-clamp-2">{source.content}</p>
+                                            <p className="text-xs line-clamp-2 opacity-80">
+                                                {source.content}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
@@ -172,11 +177,11 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     data-tip="Recargar respuesta"
                     disabled={disabled}
                     onClick={() => {
-                        if (prevUserMessage?.role === "user" && onRegenerateResponse) {
-                            const id = prevUserMessage.messageId ?? prevUserMessage.id;
-                            const text = prevUserMessage.content?.text ?? "";
-                            if (id && text) onRegenerateResponse(id, text);
-                        }
+                        if (onRegenerateResponse)
+                            onRegenerateResponse(
+                                prevUserMessage.messageId,
+                                prevUserMessage.content.text,
+                            );
                     }}
                 >
                     <RefreshCcwIcon size={15} />

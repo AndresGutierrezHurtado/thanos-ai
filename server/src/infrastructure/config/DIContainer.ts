@@ -17,6 +17,7 @@ import ISourceRepository from "../../application/ports/repositories/ISourceRepos
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
 import IDriveProvider from "../../application/ports/provider/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
+import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
 
 // Infrastructure
 import LlmProvider from "../providers/LlmProvider";
@@ -34,6 +35,7 @@ import HierarchicalChunker from "../services/HierarchicalChunker";
 import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
 import HealthController from "../http/controllers/healthController";
 import LoggerAdapter from "../services/LoggerAdapter";
+import TransactionRepository from "../persistence/repositories/TransactionRepository";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -74,7 +76,7 @@ export default class DIContainer {
             this.getSourceRepository(),
             this.getLlmProvider(),
             this.getDocumentRepository(),
-            this.getLogger()
+            this.getLogger(),
         );
     }
 
@@ -94,7 +96,7 @@ export default class DIContainer {
             this.getProcessorFactory(),
             this.getChunker(),
             this.getVectorStore(),
-            this.getLogger()
+            this.getLogger(),
         );
     }
 
@@ -116,6 +118,10 @@ export default class DIContainer {
     }
 
     // Services
+    private getTransactionRepository(): ITransactionRepository {
+        return new TransactionRepository(Database.getInstance(), this.getVectorStore());
+    }
+
     public getLogger(): ILogger {
         return new LoggerAdapter();
     }

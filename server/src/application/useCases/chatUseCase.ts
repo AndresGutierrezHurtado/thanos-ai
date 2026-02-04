@@ -40,7 +40,10 @@ export default class ChatUseCase {
         return toChatResource(chat);
     }
 
-    public async createChat(dto: SendMessageDto): Promise<MessageResource> {
+    public async createChat(
+        dto: SendMessageDto,
+        onChunk?: (text: string) => void
+    ): Promise<MessageResource> {
         const { content, mediaContent } = dto;
 
         const chat = await this.chatRepository.create(
@@ -68,7 +71,7 @@ export default class ChatUseCase {
 
         // Generate the assistant message and save it and its sources
         const { message: assistantMessage, sources: retrievedSources } =
-            await this.llmProvider.generateResponse(chat, [userMessage]);
+            await this.llmProvider.generateResponse(chat, [userMessage], onChunk);
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
         for (const source of retrievedSources) {

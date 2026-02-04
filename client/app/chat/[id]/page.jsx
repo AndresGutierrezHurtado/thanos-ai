@@ -3,42 +3,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
+import { streamRequest } from "@/lib/streamRequest";
 import ChatInput from "@/components/ChatInput";
 import ChatMessageList from "@/components/ChatMessageList";
 
 export default function ChatByIdPage() {
+    // Refs
     const containerRef = useRef(null);
     const textareaRef = useRef(null);
 
+    // Params
     const params = useParams();
     const chatId = useMemo(() => {
         const value = params?.id;
-        return Array.isArray(value) ? value[0] : value ?? null;
+        return Array.isArray(value) ? value[0] : (value ?? null);
     }, [params]);
 
+    // States
     const [messages, setMessages] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(true);
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
     const [isSending, setIsSending] = useState(false);
 
-    const loadMessages = useCallback(async () => {
-        if (!chatId) return;
-        try {
-            const response = await useApi("GET", `/chats/${chatId}/messages`);
-            if (!response?.success) {
-                setMessages([]);
-                return;
-            }
-            setMessages(response.data ?? []);
-        } catch (error) {
-            console.error("Failed to load messages", error);
-            setMessages([]);
-        } finally {
-            setMessagesLoading(false);
-        }
-    }, [chatId]);
-
+    // Effects
     useEffect(() => {
         loadMessages();
     }, [chatId]);
@@ -68,9 +56,36 @@ export default function ChatByIdPage() {
         }, 100);
     }, [messages]);
 
+    // callbacks
     const handleFileChange = useCallback((event) => {
         const selected = event.target.files?.[0] ?? null;
         setFile(selected);
+    }, []);
+
+    const addMessage = useCallback((message) => {
+        setMessages((prevMessages) => [...prevMessages, message]);
+    }, []);
+
+    const replaceLastWithFinalMessage = useCallback((data) => {
+        setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant" && data) {
+                next[next.length - 1] = {
+                    ...last,
+                    messageId: data.messageId ?? last.messageId,
+                    timestamp: data.timestamp ?? last.timestamp,
+                    streaming: false,
+                    content: {
+                        text: data.content?.text ?? last.content?.text,
+                        sources: data.content?.sources ?? [],
+                        mediaContent: null,
+                    },
+                };
+            }
+            return next;
+        });
+        setTimeout(() => textareaRef.current?.focus(), 100);
     }, []);
 
     const appendToLastAssistantMessage = useCallback((textToAppend) => {
@@ -90,6 +105,62 @@ export default function ChatByIdPage() {
         });
     }, []);
 
+    const prepareForStreamingAfterUserMessage = useCallback(
+        (messageId, newContent = null) => {
+            setMessages((prev) => {
+                const idx = prev.findIndex((m) => m.messageId === messageId);
+                if (idx < 0) return prev;
+
+                const next = [...prev.slice(0, idx + 1)];
+
+                if (newContent != null) {
+                    next[idx] = {
+                        ...next[idx],
+                        content: {
+                            ...next[idx].content,
+                            text: newContent,
+                        },
+                    };
+                }
+
+                return [
+                    ...next,
+                    {
+                        id: null,
+                        chatId,
+                        role: "assistant",
+                        timestamp: new Date(),
+                        content: {
+                            text: "",
+                            sources: [],
+                            mediaContent: null,
+                        },
+                        streaming: true,
+                    },
+                ];
+            });
+        },
+        [chatId],
+    );
+
+    const loadMessages = useCallback(async () => {
+        if (!chatId) return;
+        try {
+            const response = await useApi("GET", `/chats/${chatId}/messages`);
+            if (!response?.success) {
+                setMessages([]);
+                return;
+            }
+            setMessages(response.data ?? []);
+        } catch (error) {
+            console.error("Failed to load messages", error);
+            setMessages([]);
+        } finally {
+            setMessagesLoading(false);
+        }
+    }, [chatId]);
+
+    // Handlers
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!chatId) return;
@@ -120,56 +191,40 @@ export default function ChatByIdPage() {
             chatId,
             role: "assistant",
             timestamp: new Date(),
-            content: { text: "", sources: null, mediaContent: null },
+            content: { text: "", sources: [], mediaContent: null },
             streaming: true,
         });
 
         try {
-            const response = await useApi("POST", "/messages", {
-                chatId,
-                content: trimmedContent,
-                mediaContent: null,
-            });
-
-            if (!response?.success) {
-                setMessages((prev) => prev.slice(0, -1));
-                return;
-            }
-
-            const fullText = response?.data?.content?.text ?? "";
-            const words = fullText.split(/(\s+)/); // mantiene espacios
-            const delayMs = 25;
-
-            for (let i = 0; i < words.length; i++) {
-                await new Promise((r) => setTimeout(r, delayMs));
-                appendToLastAssistantMessage(words[i]);
-            }
-
-            // Sustituir por el mensaje final (con messageId, sources, etc.)
-            setMessages((prev) => {
-                const next = [...prev];
-                const last = next[next.length - 1];
-                if (last?.role === "assistant" && response?.data) {
-                    next[next.length - 1] = {
-                        ...last,
-                        messageId: response.data.messageId,
-                        timestamp: response.data.timestamp ?? last.timestamp,
-                        streaming: false,
-                        content: {
-                            text: response.data.content?.text ?? last.content?.text,
-                            sources: response.data.content?.sources ?? null,
-                            mediaContent: null,
-                        },
-                    };
-                }
-                return next;
-            });
-
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                }
-            }, 100);
+            await streamRequest(
+                "POST",
+                "/messages",
+                { chatId, content: trimmedContent, mediaContent: null },
+                {
+                    onChunk: appendToLastAssistantMessage,
+                    onFinal: (data) => {
+                        setMessages((prev) => {
+                            const next = [...prev];
+                            const last = next[next.length - 1];
+                            if (last?.role === "assistant" && data) {
+                                next[next.length - 1] = {
+                                    ...last,
+                                    messageId: data.messageId ?? last.messageId,
+                                    timestamp: data.timestamp ?? last.timestamp,
+                                    streaming: false,
+                                    content: {
+                                        text: data.content?.text ?? last.content?.text,
+                                        sources: data.content?.sources ?? [],
+                                        mediaContent: null,
+                                    },
+                                };
+                            }
+                            return next;
+                        });
+                        setTimeout(() => textareaRef.current?.focus(), 100);
+                    },
+                },
+            );
         } catch (error) {
             console.error("Failed to send message", error);
             setMessages((prev) => {
@@ -193,45 +248,51 @@ export default function ChatByIdPage() {
         }
     };
 
-    const addMessage = useCallback((message) => {
-        setMessages((prevMessages) => [...prevMessages, message]);
-    }, []);
-
-    const handleUpdateMessage = useCallback(async (messageId, content) => {
-        if (!messageId) return;
-        setIsSending(true);
-        try {
-            const response = await useApi("PUT", `/messages/${messageId}`, {
-                content,
-            });
-            if (response?.success && response?.data?.messages) {
-                setMessages(response.data.messages);
+    const handleUpdateMessage = useCallback(
+        async (messageId, content) => {
+            if (!messageId || !chatId || !content) return;
+            setIsSending(true);
+            prepareForStreamingAfterUserMessage(messageId, content);
+            try {
+                await streamRequest(
+                    "PUT",
+                    `/messages/${messageId}`,
+                    { content },
+                    {
+                        onChunk: appendToLastAssistantMessage,
+                        onFinal: replaceLastWithFinalMessage,
+                    },
+                );
+            } catch (error) {
+                console.error("Failed to update message", error);
+                setMessages((prev) => {
+                    const next = [...prev];
+                    const last = next[next.length - 1];
+                    if (last?.role === "assistant") {
+                        next[next.length - 1] = {
+                            ...last,
+                            streaming: false,
+                            content: {
+                                ...last.content,
+                                text:
+                                    (last.content?.text ?? "") +
+                                    "\n\n*Error al obtener la respuesta.*",
+                            },
+                        };
+                    }
+                    return next;
+                });
+            } finally {
+                setIsSending(false);
             }
-        } catch (error) {
-            console.error("Failed to update message", error);
-        } finally {
-            setIsSending(false);
-            loadMessages();
-        }
-    }, []);
-
-    const handleRegenerateResponse = useCallback(async (userMessageId, userContent) => {
-        if (!userMessageId) return;
-        setIsSending(true);
-        try {
-            const response = await useApi("PUT", `/messages/${userMessageId}`, {
-                content: userContent,
-            });
-            if (response?.success && response?.data?.messages) {
-                setMessages(response.data.messages);
-            }
-        } catch (error) {
-            console.error("Failed to regenerate response", error);
-        } finally {
-            setIsSending(false);
-            loadMessages();
-        }
-    }, []);
+        },
+        [
+            chatId,
+            prepareForStreamingAfterUserMessage,
+            appendToLastAssistantMessage,
+            replaceLastWithFinalMessage,
+        ],
+    );
 
     return (
         <div className="w-full h-full flex flex-col overflow-hidden">
@@ -241,7 +302,7 @@ export default function ChatByIdPage() {
                     loading={messagesLoading}
                     disabled={isSending}
                     onUpdateMessage={handleUpdateMessage}
-                    onRegenerateResponse={handleRegenerateResponse}
+                    onRegenerateResponse={handleUpdateMessage}
                 />
             </div>
             <div className="w-full p-5 pt-0">

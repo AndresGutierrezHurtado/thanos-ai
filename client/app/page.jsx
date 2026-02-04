@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useApi } from "@/hooks/useApi";
 import ChatInput from "@/components/ChatInput";
 import { toast } from "react-toastify";
+import { streamRequest } from "@/lib/streamRequest";
 
 export default function Page() {
     const router = useRouter();
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [streamingText, setStreamingText] = useState("");
 
     const handleFileChange = (event) => {
         const selected = event.target.files?.[0] ?? null;
@@ -25,21 +26,31 @@ export default function Page() {
         if (!trimmedContent) return toast.error("El contenido no puede estar vacío");
 
         setIsCreating(true);
+        setStreamingText("");
         try {
-            const response = await useApi("POST", "/chats", {
-                content: trimmedContent,
-                mediaContent: null,
-            });
-
-            if (!response.success) return toast.error(response.message);
-            setContent("");
-            setFile(null);
-
-            router.push(`/chat/${response.data.chatId}`);
+            await streamRequest(
+                "POST",
+                "/chats",
+                { content: trimmedContent, mediaContent: null },
+                {
+                    onChunk: (chunk) => setStreamingText((prev) => prev + chunk),
+                    onFinal: (data) => {
+                        setContent("");
+                        setFile(null);
+                        if (data?.chatId) {
+                            router.push(`/chat/${data.chatId}`);
+                        } else {
+                            toast.error("No se recibió el chat");
+                        }
+                    },
+                }
+            );
         } catch (error) {
             console.error("Failed to create chat", error);
+            toast.error("Error al crear el chat");
         } finally {
             setIsCreating(false);
+            setStreamingText("");
         }
     };
 
@@ -118,6 +129,14 @@ export default function Page() {
                         </article>
                     </div>
                 </div>
+                {isCreating && (
+                    <div className="w-full rounded-lg border border-neutral-content/10 bg-neutral-content/5 p-4 min-h-[80px]">
+                        <p className="text-sm opacity-70 mb-2">Generando respuesta…</p>
+                        {streamingText && (
+                            <p className="text-sm whitespace-pre-wrap">{streamingText}</p>
+                        )}
+                    </div>
+                )}
                 <ChatInput
                     value={content}
                     onChange={(event) => setContent(event.target.value)}

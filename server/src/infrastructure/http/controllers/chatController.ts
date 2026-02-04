@@ -43,14 +43,34 @@ export default class ChatController {
         });
     }
 
-    public async createChat(req: Request, res: Response): Promise<Response> {
-        const { content, mediaContent } = req.body;
+    public async createChat(req: Request, res: Response): Promise<Response | void> {
+        const { content, mediaContent, stream: useStream } = req.body;
 
         const dto: SendMessageDto = {
             chatId: null,
             content,
             mediaContent: mediaContent,
         };
+
+        if (useStream) {
+            res.setHeader("Content-Type", "text/event-stream");
+            res.setHeader("Cache-Control", "no-cache");
+            res.setHeader("Connection", "keep-alive");
+            res.flushHeaders?.();
+            const onChunk = (text: string) => {
+                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            };
+            const chat = await this.chatUseCase.createChat(dto, onChunk);
+            res.write(
+                `data: ${JSON.stringify({
+                    success: true,
+                    message: "Chat created successfully",
+                    data: chat,
+                })}\n\n`
+            );
+            res.end();
+            return;
+        }
 
         const chat = await this.chatUseCase.createChat(dto);
         return res.status(200).json({

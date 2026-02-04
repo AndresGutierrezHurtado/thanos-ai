@@ -27,4 +27,8 @@ export default class Database {
         }
         return this.db;
     }
+
+    public getClient(): MongoClient {
+        return this.client;
+    }
 }
