@@ -161,7 +161,12 @@ function UserMessage({ message, disabled, onUpdateMessage }) {
     };
 
     useEffect(() => {
-        if (isEditing) adjustHeight();
+        if (isEditing) {
+            adjustHeight();
+            textareaRef.current.focus();
+            textareaRef.current.selectionStart = textareaRef.current.selectionEnd =
+                textareaRef.current.value.length;
+        }
     }, [isEditing, editedContent]);
 
     const handleSave = () => {
@@ -179,27 +184,31 @@ function UserMessage({ message, disabled, onUpdateMessage }) {
     return (
         <div className="w-full flex gap-2 justify-end group">
             <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
-                <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0"
-                    onClick={() => {
-                        navigator.clipboard.writeText(message.content.text);
-                        toast.success("Respuesta copiada al portapapeles");
-                    }}
-                >
-                    <CopyIcon size={15} />
-                </button>
-                <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0 disabled:opacity-50 disabled:pointer-events-none"
-                    disabled={disabled}
-                    onClick={() => {
-                        if (!disabled) {
-                            setIsEditing(true);
-                            setEditedContent(message.content.text);
-                        }
-                    }}
-                >
-                    <PenIcon size={15} />
-                </button>
+                {!isEditing && (
+                    <>
+                        <button
+                            className="btn btn-ghost w-8 h-8 rounded p-0"
+                            onClick={() => {
+                                navigator.clipboard.writeText(message.content.text);
+                                toast.success("Respuesta copiada al portapapeles");
+                            }}
+                        >
+                            <CopyIcon size={15} />
+                        </button>
+                        <button
+                            className="btn btn-ghost w-8 h-8 rounded p-0 disabled:opacity-50 disabled:pointer-events-none"
+                            disabled={disabled}
+                            onClick={() => {
+                                if (!disabled) {
+                                    setIsEditing(true);
+                                    setEditedContent(message.content.text);
+                                }
+                            }}
+                        >
+                            <PenIcon size={15} />
+                        </button>
+                    </>
+                )}
             </div>
             <div
                 className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis space-y-4"

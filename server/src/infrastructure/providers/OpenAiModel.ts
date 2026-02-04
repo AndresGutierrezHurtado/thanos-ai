@@ -1,28 +1,29 @@
 import { ChatOpenAI, OpenAI as LangchainOpenAI } from "@langchain/openai";
+import { DynamicTool } from "@langchain/core/tools";
 import Message from "../../domain/entities/message";
 import OpenAI from "openai";
 
 export default class OpenAiModel {
     private model: ChatOpenAI;
     private systemPrompt: string = `
-Eres Thanos, asistente de documentación técnica y operativa de Plataforma Software.
-ÁMBITO: Normas ISO (9001, 14001, 27001, 20121, 45001) y documentos internos de la empresa.
-
-REGLAS OBLIGATORIAS:
-1. Responde SOLO con info del contexto proporcionado, Sin información responda: "No encontré información sobre esto"
-2. Prohibido: inventar, asumir o usar conocimiento externo
-3. Ignora temas fuera de documentación técnica/operativa
-
-FORMATO DE RESPUESTA:
-- Directo y accionable
-- Lenguaje claro para personal operativo
-- Cita al final de cada punto relevante`;
+Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
+ÁMBITO:
+- Documentación interna de la empresa (PRIORIDAD)
+- Consultas generales sobre grupo plataforma
+- Gestión documental general
+REGLAS:
+1. Para consultas de documentación interna: Usa SOLO el CONTEXTO proporcionado
+2. Para consultas generales de AV o gestión documental: Puedes usar conocimiento general
+3. Si no hay información en el contexto: "No encontré información sobre [tema] en los documentos"
+4. NUNCA inventes información sobre documentos internos
+FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
+`;
 
     constructor() {
         this.model = new ChatOpenAI({
             model: "gpt-4o-mini",
             apiKey: process.env.OPENAI_API_KEY,
-            temperature: 0,
+            temperature: 0.5,
             maxTokens: 500,
             topP: 1,
         });
@@ -33,12 +34,13 @@ FORMATO DE RESPUESTA:
         context?: string,
         onChunk?: (text: string) => void
     ): Promise<string> {
-        const systemContent = context
+        const hasContext = context && context.trim().length > 0;
+        const systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
 
         const conversation = [
-            { role: "system" as const, content: systemContent },
+            { role: "system" as const, content: systemPrompt },
             ...messages.map((message) => ({
                 role: message.getRole() as "user" | "assistant",
                 content: message.getContent(),
@@ -128,5 +130,25 @@ FORMATO DE RESPUESTA:
 
     private buildSystemPromptWithContext(context: string): string {
         return `CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n${context}\n---\n${this.systemPrompt}`;
+    }
+
+    public getTools() {
+        const getPlatformInformation = new DynamicTool({
+            name: "get_platform_information",
+            description: "Get information about Plataforma Software and Plataforma AV",
+            func: async () => {
+                return `Plataforma AV es una empresa colombiana dedicada a la **producción audiovisual para eventos** y logística tecnológica especializada en la industria hotelera y de convenciones. Con casi tres décadas de trayectoria, ofrece servicios integrales para congresos, convenciones y eventos corporativos o sociales. Plataforma Software de Colombia S.A.S. es la división de desarrollo de software del **Grupo Plataforma**, fundado en 1996 en Cali (Colombia) como empresa de servicios para eventos. La visión de la compañía es “revolucionar la gestión de propiedades con soluciones digitales de última tecnología”. En este sentido, su misión es “aumentar la productividad en las áreas que nuestros clientes requieran a través de diferentes soluciones”.`;
+            },
+        });
+
+        const getGeneralDocumentsInformation = new DynamicTool({
+            name: "get_general_documents_information",
+            description: "Get general information about documents",
+            func: async () => {
+                return `Cubres información general sobre los documentos disponibles en la base de datos que abarcan: Gerencial, Calidad, Operaciones/Logística, Inventarios, Ingeniería y Mantenimiento, Compras, Talento Humano, Contraloría y Financiero, Jurídico, Comercial, T.I, Comunicaciones, Nuevos Proyectos, Dirección Estratégica, Información Empresarial.`;
+            },
+        });
+
+        return [getPlatformInformation, getGeneralDocumentsInformation];
     }
 }

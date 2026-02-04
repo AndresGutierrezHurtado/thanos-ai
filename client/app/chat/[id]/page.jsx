@@ -8,6 +8,7 @@ import ChatMessageList from "@/components/ChatMessageList";
 
 export default function ChatByIdPage() {
     const containerRef = useRef(null);
+    const textareaRef = useRef(null);
 
     const params = useParams();
     const chatId = useMemo(() => {
@@ -163,6 +164,12 @@ export default function ChatByIdPage() {
                 }
                 return next;
             });
+
+            setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                }
+            }, 100);
         } catch (error) {
             console.error("Failed to send message", error);
             setMessages((prev) => {
@@ -227,8 +234,8 @@ export default function ChatByIdPage() {
     }, []);
 
     return (
-        <div className="w-full h-full flex flex-col">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-5" ref={containerRef}>
+        <div className="w-full h-full flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden pt-5" ref={containerRef}>
                 <ChatMessageList
                     messages={messages}
                     loading={messagesLoading}
@@ -239,6 +246,7 @@ export default function ChatByIdPage() {
             </div>
             <div className="w-full p-5 pt-0">
                 <ChatInput
+                    inputRef={textareaRef}
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
                     onSubmit={handleSubmit}

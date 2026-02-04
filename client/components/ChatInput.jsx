@@ -166,7 +166,6 @@ export default function ChatInput({
                             height: "auto",
                         }}
                         rows={1}
-                        disabled={disabled}
                     />
                 </div>
 

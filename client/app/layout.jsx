@@ -89,7 +89,7 @@ export default function RootLayout({ children }) {
                     <input id="app-drawer" type="checkbox" className="drawer-toggle" />
 
                     {/* CONTENIDO PRINCIPAL */}
-                    <div className="drawer-content flex flex-col bg-base-100 text-base-content min-h-screen">
+                    <div className="drawer-content flex flex-col bg-base-100 text-base-content h-screen overflow-hidden">
                         {/* Navbar superior (mobile) */}
                         <div className="navbar bg-base-300 border-b border-neutral-content/10 lg:hidden">
                             <div className="flex-none">
@@ -124,11 +124,7 @@ export default function RootLayout({ children }) {
                         </div>
 
                         {/* Contenido de la página */}
-                        <main className="flex-1 overflow-hidden">
-                            <section className="w-full h-full overflow-hidden">
-                                {children}
-                            </section>
-                        </main>
+                        <main className="flex-1 overflow-hidden">{children}</main>
                     </div>
 
                     {/* SIDEBAR (menú lateral) */}
