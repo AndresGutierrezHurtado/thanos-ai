@@ -17,9 +17,15 @@ export default class MessageRepository implements IMessageRepository {
         this.collection = db.collection<MessageDocument>("messages");
     }
 
+    public async findById(id: Identifier): Promise<Message | null> {
+        const doc = await this.collection.findOne({ id: id.getValue() });
+        return doc ? MessageMapper.toDomain(doc) : null;
+    }
+
     public async findByChatId(chatId: Identifier): Promise<Message[]> {
         const messages = await this.collection
             .find({ chatId: chatId.getValue() })
+            .sort({ timestamp: 1 })
             .toArray();
 
         return messages.map((message) => MessageMapper.toDomain(message));
@@ -46,6 +52,16 @@ export default class MessageRepository implements IMessageRepository {
 
     public async delete(messageId: Identifier): Promise<void> {
         await this.collection.deleteOne({ id: messageId.getValue() });
+    }
+
+    public async deleteByChatIdAfterTimestamp(
+        chatId: Identifier,
+        afterTimestamp: Date
+    ): Promise<void> {
+        await this.collection.deleteMany({
+            chatId: chatId.getValue(),
+            timestamp: { $gt: afterTimestamp },
+        });
     }
 }
 

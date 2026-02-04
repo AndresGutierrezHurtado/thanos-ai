@@ -15,7 +15,12 @@ import Markdown from "react-markdown";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
-export default function ChatMessageList({ messages = [], loading = false }) {
+export default function ChatMessageList({
+    messages = [],
+    loading = false,
+    onUpdateMessage,
+    onRegenerateResponse,
+}) {
     if (loading) {
         return (
             <div className="h-full flex items-center justify-center text-center text-sm opacity-70">
@@ -45,6 +50,8 @@ export default function ChatMessageList({ messages = [], loading = false }) {
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
+                                prevUserMessage={messages[index - 1]}
+                                onRegenerateResponse={onRegenerateResponse}
                             />
                         ) : (
                             <UserMessage
@@ -54,6 +61,7 @@ export default function ChatMessageList({ messages = [], loading = false }) {
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
+                                onUpdateMessage={onUpdateMessage}
                             />
                         )}
                     </React.Fragment>
@@ -63,7 +71,7 @@ export default function ChatMessageList({ messages = [], loading = false }) {
     );
 }
 
-function AssistantMessage({ message }) {
+function AssistantMessage({ message, prevUserMessage, onRegenerateResponse }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     const handlePlayStop = () => {
@@ -122,7 +130,11 @@ function AssistantMessage({ message }) {
                     className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
                     data-tip="Recargar respuesta"
                     onClick={() => {
-                        // TODO: Recargar respuesta
+                        if (prevUserMessage?.role === "user" && onRegenerateResponse) {
+                            const id = prevUserMessage.messageId ?? prevUserMessage.id;
+                            const text = prevUserMessage.content?.text ?? "";
+                            if (id && text) onRegenerateResponse(id, text);
+                        }
                     }}
                 >
                     <RefreshCcwIcon size={15} />
@@ -132,7 +144,7 @@ function AssistantMessage({ message }) {
     );
 }
 
-function UserMessage({ message }) {
+function UserMessage({ message, onUpdateMessage }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(message.content.text);
     const textareaRef = useRef(null);
@@ -148,8 +160,16 @@ function UserMessage({ message }) {
         if (isEditing) adjustHeight();
     }, [isEditing, editedContent]);
 
-    const handleUpdateMessage = () => {
-        setIsEditing(false);
+    const handleSave = () => {
+        const id = message.messageId ?? message.id;
+        const newContent = editedContent.trim();
+        if (id && newContent && onUpdateMessage) {
+            onUpdateMessage(id, newContent);
+            setIsEditing(false);
+        } else {
+            setIsEditing(false);
+            setEditedContent(message.content.text);
+        }
     };
 
     return (
@@ -201,7 +221,7 @@ function UserMessage({ message }) {
                             </button>
                             <button
                                 className="btn btn-ghost btn-sm rounded"
-                                onClick={handleUpdateMessage}
+                                onClick={handleSave}
                             >
                                 Guardar
                             </button>

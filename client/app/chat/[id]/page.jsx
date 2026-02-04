@@ -189,10 +189,55 @@ export default function ChatByIdPage() {
         setMessages((prevMessages) => [...prevMessages, message]);
     }, []);
 
+    const handleUpdateMessage = useCallback(
+        async (messageId, content) => {
+            if (!messageId) return;
+            setIsSending(true);
+            try {
+                const response = await useApi("PUT", `/messages/${messageId}`, {
+                    content,
+                });
+                if (response?.success && response?.data?.messages) {
+                    setMessages(response.data.messages);
+                }
+            } catch (error) {
+                console.error("Failed to update message", error);
+            } finally {
+                setIsSending(false);
+            }
+        },
+        []
+    );
+
+    const handleRegenerateResponse = useCallback(
+        async (userMessageId, userContent) => {
+            if (!userMessageId) return;
+            setIsSending(true);
+            try {
+                const response = await useApi("PUT", `/messages/${userMessageId}`, {
+                    content: userContent,
+                });
+            if (response?.success && response?.data?.messages) {
+                    setMessages(response.data.messages);
+                }
+            } catch (error) {
+                console.error("Failed to regenerate response", error);
+            } finally {
+                setIsSending(false);
+            }
+        },
+        []
+    );
+
     return (
         <div className="w-full h-full flex flex-col">
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-5" ref={containerRef}>
-                <ChatMessageList messages={messages} loading={messagesLoading} />
+                <ChatMessageList
+                    messages={messages}
+                    loading={messagesLoading}
+                    onUpdateMessage={handleUpdateMessage}
+                    onRegenerateResponse={handleRegenerateResponse}
+                />
             </div>
             <div className="w-full p-5 pt-0">
                 <ChatInput

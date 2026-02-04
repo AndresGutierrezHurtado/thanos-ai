@@ -22,7 +22,7 @@ FORMATO DE RESPUESTA:
             model: "gpt-4o-mini",
             apiKey: process.env.OPENAI_API_KEY,
             temperature: 0,
-            maxTokens: 400,
+            maxTokens: 500,
             topP: 1,
         });
     }

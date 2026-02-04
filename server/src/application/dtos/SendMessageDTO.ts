@@ -1,5 +1,10 @@
 import MessageRole from "../../domain/valueObjects/MessageRole";
 
+export interface UpdateMessageDto {
+    id: string;
+    content: string;
+}
+
 export interface SendMessageDto {
     chatId: string | null; // Opcional: si no existe, se crea nuevo chat
     content: string;

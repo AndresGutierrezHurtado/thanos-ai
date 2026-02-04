@@ -3,7 +3,11 @@ import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 
 // DTOs
-import { SendMessageDto, MessageResponseDto } from "../dtos/SendMessageDTO";
+import {
+    SendMessageDto,
+    MessageResponseDto,
+    UpdateMessageDto,
+} from "../dtos/SendMessageDTO";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import Message from "../../domain/entities/message";
@@ -42,8 +46,11 @@ export default class MessageUseCase {
         );
         const messagesForLlm = [...previousMessages];
 
-        const { message: assistantMessage, sources } =
-            await this.llmProvider.generateResponse(chat, messagesForLlm, onChunk);
+        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+            chat,
+            messagesForLlm,
+            onChunk
+        );
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
         return {
@@ -57,6 +64,60 @@ export default class MessageUseCase {
                 mediaContent: null,
             },
         };
+    }
+
+    public async updateMessage(
+        dto: UpdateMessageDto,
+        onChunk?: (text: string) => void
+    ): Promise<{ updatedMessage: MessageResponseDto; messages: MessageResponseDto[] }> {
+        const message = await this.messageRepository.findById(
+            new Identifier(dto.id)
+        );
+        if (!message) throw new Error("Message not found");
+
+        const chat = await this.chatRepository.findById(message.getChatId());
+        if (!chat) throw new Error("Chat not found");
+
+        message.setContent(dto.content);
+        await this.messageRepository.update(message.getId()!, message);
+
+        await this.messageRepository.deleteByChatIdAfterTimestamp(
+            message.getChatId(),
+            message.getTimestamp().getValue()
+        );
+
+        const previousMessages = await this.messageRepository.findByChatId(
+            message.getChatId()
+        );
+        const messagesForLlm = [...previousMessages];
+
+        const { message: assistantMessage, sources } =
+            await this.llmProvider.generateResponse(
+                chat,
+                messagesForLlm,
+                onChunk
+            );
+        const savedMessage = await this.messageRepository.create(
+            assistantMessage
+        );
+
+        const messages = await this.getMessagesByChatId(
+            message.getChatId().getValue()
+        );
+
+        const updatedMessage: MessageResponseDto = {
+            chatId: message.getChatId().getValue(),
+            messageId: message.getId()?.getValue() ?? null,
+            role: message.getRole(),
+            timestamp: message.getTimestamp().getValue(),
+            content: {
+                text: message.getContent(),
+                sources: null,
+                mediaContent: null,
+            },
+        };
+
+        return { updatedMessage, messages };
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResponseDto[]> {
