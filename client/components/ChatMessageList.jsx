@@ -1,6 +1,16 @@
 "use client";
 
+import {
+    CopyIcon,
+    PenIcon,
+    RefreshCcw,
+    RefreshCcwIcon,
+    Sparkles,
+    Volume2Icon,
+    VolumeIcon,
+} from "lucide-react";
 import Markdown from "react-markdown";
+import React from "react";
 
 export default function ChatMessageList({ messages = [], loading = false }) {
     if (loading) {
@@ -20,45 +30,83 @@ export default function ChatMessageList({ messages = [], loading = false }) {
     }
 
     return (
-        <div className="flex flex-col gap-4 pb-4">
+        <div className="flex flex-col max-w-3xl mx-auto gap-5 pb-4">
             {messages.map((item, index) => {
                 return (
-                    <ChatMessageItem
-                        key={item.messageId ?? item.id ?? `${item.role}-${item.timestamp}-${index}`}
-                        message={item}
-                    />
+                    <React.Fragment key={index}>
+                        {item.role === "assistant" ? (
+                            <AssistantMessage
+                                key={
+                                    item.messageId ??
+                                    item.id ??
+                                    `${item.role}-${item.timestamp}-${index}`
+                                }
+                                message={item}
+                            />
+                        ) : (
+                            <UserMessage
+                                key={
+                                    item.messageId ??
+                                    item.id ??
+                                    `${item.role}-${item.timestamp}-${index}`
+                                }
+                                message={item}
+                            />
+                        )}
+                    </React.Fragment>
                 );
             })}
         </div>
     );
 }
 
-function ChatMessageItem({ message }) {
-    const role = message.role ?? "assistant";
-    const isUser = role === "user";
-
+function AssistantMessage({ message }) {
     return (
-        <div className={`chat ${isUser ? "chat-end" : "chat-start"}`}>
-            <div className="chat-image avatar">
-                <div className="w-10 rounded-full">
-                    <img
-                        alt={`Imagen del ${isUser ? "usuario" : "asistente"}`}
-                        src={isUser ? "/user.jpg" : "/assistant.png"}
-                    />
-                </div>
+        <div className="w-full flex flex-col gap-5 relative">
+            <div className="flex items-center gap-2 text-primary">
+                <Sparkles size={20} />
+                <p className="text-sm scale-y-105 font-semibold">Thanos AI</p>
             </div>
-            <div className="chat-header flex items-center gap-2">
-                <span className="text-base">{isUser ? "Tú" : "Asistente"}</span>
-                <time className="text-xs opacity-50">
-                    {new Date(message.timestamp).toLocaleString()}
-                </time>
+            <div className="w-fit rounded-2xl overflow-x-clip text-ellipsis">
+                <Markdown>{message.content.text}</Markdown>
             </div>
-            <div
-                className={`chat-bubble ${
-                    isUser ? "bg-primary text-primary-content" : "bg-base-300 text-base-content"
-                }`}
-            >
-                {isUser ? <>{message.content.text}</> : <Markdown>{message.content.text}</Markdown>}
+            <div className="flex gap-2">
+                <button
+                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
+                    data-tip="Copiar respuesta"
+                >
+                    <CopyIcon size={15} />
+                </button>
+                <button
+                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
+                    data-tip="Reproducir audio"
+                >
+                    <Volume2Icon size={15} />
+                </button>
+                <button
+                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
+                    data-tip="Recargar respuesta"
+                >
+                    <RefreshCcwIcon size={15} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function UserMessage({ message }) {
+    return (
+        <div className="w-full flex gap-2 justify-end group">
+            <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
+                <button className="btn btn-ghost w-8 h-8 rounded p-0">
+                    <CopyIcon size={15} />
+                </button>
+                <button className="btn btn-ghost w-8 h-8 rounded p-0">
+                    <PenIcon size={15} />
+                </button>
+            </div>
+            <div className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis">
+                {message.content.text}
             </div>
         </div>
     );
