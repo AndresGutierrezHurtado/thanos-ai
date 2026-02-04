@@ -5,7 +5,7 @@ import ChatUseCase from "../../../application/useCases/chatUseCase";
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
 
 // DTOs
-import SendMessageDto from "../../../application/dtos/SendMessageDTO";
+import SendMessageDto from "../../../application/ports/dtos/SendMessageDTO";
 
 export default class ChatController {
     constructor(

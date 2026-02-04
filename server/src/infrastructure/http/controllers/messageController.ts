@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
-import { UpdateMessageDto } from "../../../application/dtos/SendMessageDTO";
+import { UpdateMessageDto } from "../../../application/ports/dtos/SendMessageDTO";
 
 export default class MessageController {
     constructor(private readonly messageUseCase: MessageUseCase) {}

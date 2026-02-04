@@ -6,9 +6,9 @@ import ILlmProvider from "../ports/provider/ILlmProvider";
 import ILogger from "../ports/services/ILogger";
 
 // DTOs and Resources
-import SendMessageDto from "../dtos/SendMessageDTO";
-import UpdateMessageDto from "../dtos/updateMessageDTO";
-import { MessageResource, toMessageResource } from "../resources/MessageResource";
+import SendMessageDto from "../ports/dtos/SendMessageDTO";
+import UpdateMessageDto from "../ports/dtos/updateMessageDTO";
+import { MessageResource, toMessageResource } from "../ports/resources/MessageResource";
 
 // Domain
 import Message from "../../domain/entities/message";

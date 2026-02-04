@@ -1,4 +1,4 @@
-import Chat from "../../domain/entities/chat";
+import Chat from "../../../domain/entities/chat";
 
 export interface ChatResource {
     id: string;

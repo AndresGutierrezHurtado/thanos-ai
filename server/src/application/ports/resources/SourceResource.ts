@@ -1,5 +1,5 @@
-import Source from "../../domain/entities/source";
-import Document from "../../domain/entities/document";
+import Source from "../../../domain/entities/source";
+import Document from "../../../domain/entities/document";
 
 import { DocumentResource, toDocumentResource } from "./DocumentResource";
 

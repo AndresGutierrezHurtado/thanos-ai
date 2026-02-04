@@ -1,4 +1,4 @@
-import Document from "../../domain/entities/document";
+import Document from "../../../domain/entities/document";
 
 export interface DocumentResource {
     id: string;

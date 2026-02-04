@@ -1,6 +1,6 @@
 // Domain
-import Message from "../../domain/entities/message";
-import MessageRole from "../../domain/valueObjects/MessageRole";
+import Message from "../../../domain/entities/message";
+import MessageRole from "../../../domain/valueObjects/MessageRole";
 
 // Application
 import { SourceResource, toSourceResourceArray } from "./SourceResource";

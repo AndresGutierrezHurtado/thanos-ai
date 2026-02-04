@@ -6,9 +6,9 @@ import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 
 // DTOs and Resources
-import SendMessageDto from "../dtos/SendMessageDTO";
-import { MessageResource, toMessageResource } from "../resources/MessageResource";
-import { ChatResource, toChatResource, toChatResourceArray } from "../resources/ChatResource";
+import SendMessageDto from "../ports/dtos/SendMessageDTO";
+import { MessageResource, toMessageResource } from "../ports/resources/MessageResource";
+import { ChatResource, toChatResource, toChatResourceArray } from "../ports/resources/ChatResource";
 
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
