@@ -174,7 +174,8 @@ export default function ChatByIdPage() {
                         streaming: false,
                         content: {
                             ...last.content,
-                            text: (last.content?.text ?? "") + "\n\n*Error al obtener la respuesta.*",
+                            text:
+                                (last.content?.text ?? "") + "\n\n*Error al obtener la respuesta.*",
                         },
                     };
                 }
@@ -189,45 +190,41 @@ export default function ChatByIdPage() {
         setMessages((prevMessages) => [...prevMessages, message]);
     }, []);
 
-    const handleUpdateMessage = useCallback(
-        async (messageId, content) => {
-            if (!messageId) return;
-            setIsSending(true);
-            try {
-                const response = await useApi("PUT", `/messages/${messageId}`, {
-                    content,
-                });
-                if (response?.success && response?.data?.messages) {
-                    setMessages(response.data.messages);
-                }
-            } catch (error) {
-                console.error("Failed to update message", error);
-            } finally {
-                setIsSending(false);
-            }
-        },
-        []
-    );
-
-    const handleRegenerateResponse = useCallback(
-        async (userMessageId, userContent) => {
-            if (!userMessageId) return;
-            setIsSending(true);
-            try {
-                const response = await useApi("PUT", `/messages/${userMessageId}`, {
-                    content: userContent,
-                });
+    const handleUpdateMessage = useCallback(async (messageId, content) => {
+        if (!messageId) return;
+        setIsSending(true);
+        try {
+            const response = await useApi("PUT", `/messages/${messageId}`, {
+                content,
+            });
             if (response?.success && response?.data?.messages) {
-                    setMessages(response.data.messages);
-                }
-            } catch (error) {
-                console.error("Failed to regenerate response", error);
-            } finally {
-                setIsSending(false);
+                setMessages(response.data.messages);
             }
-        },
-        []
-    );
+        } catch (error) {
+            console.error("Failed to update message", error);
+        } finally {
+            setIsSending(false);
+            loadMessages();
+        }
+    }, []);
+
+    const handleRegenerateResponse = useCallback(async (userMessageId, userContent) => {
+        if (!userMessageId) return;
+        setIsSending(true);
+        try {
+            const response = await useApi("PUT", `/messages/${userMessageId}`, {
+                content: userContent,
+            });
+            if (response?.success && response?.data?.messages) {
+                setMessages(response.data.messages);
+            }
+        } catch (error) {
+            console.error("Failed to regenerate response", error);
+        } finally {
+            setIsSending(false);
+            loadMessages();
+        }
+    }, []);
 
     return (
         <div className="w-full h-full flex flex-col">
@@ -235,6 +232,7 @@ export default function ChatByIdPage() {
                 <ChatMessageList
                     messages={messages}
                     loading={messagesLoading}
+                    disabled={isSending}
                     onUpdateMessage={handleUpdateMessage}
                     onRegenerateResponse={handleRegenerateResponse}
                 />

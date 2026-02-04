@@ -86,7 +86,7 @@ export default function RootLayout({ children }) {
             </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <main className="min-h-screen flex bg-base-100 text-base-content">
-                    <aside className="w-72 border-r border-neutral-content/10 bg-neutral text-neutral-content flex flex-col overflow-x-visible">
+                    <aside className="w-72 border-r border-neutral-content/10 bg-neutral text-neutral-content flex flex-col">
                         <Link
                             href="/"
                             className="p-4 border-b border-neutral-content/10 tooltip tooltip-right"
@@ -98,7 +98,7 @@ export default function RootLayout({ children }) {
                             <p className="text-sm opacity-70">Gestor de documentos</p>
                         </Link>
 
-                        <div className="flex-1 overflow-y-auto overflow-x-visible">
+                        <div className="flex-1 overflow-y-auto">
                             {loadingChats && (
                                 <div className="p-4 text-sm opacity-70">
                                     Cargando conversaciones…
@@ -112,7 +112,7 @@ export default function RootLayout({ children }) {
                             )}
 
                             {!loadingChats && chats.length > 0 && (
-                                <ul className="menu w-full p-2 gap-1 overflow-x-visible">
+                                <ul className="menu w-full p-2 gap-1">
                                     {chats.map((chat) => (
                                         <li key={chat.id} className="w-full">
                                             <Link

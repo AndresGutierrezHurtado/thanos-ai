@@ -18,6 +18,7 @@ import { toast } from "react-toastify";
 export default function ChatMessageList({
     messages = [],
     loading = false,
+    disabled = false,
     onUpdateMessage,
     onRegenerateResponse,
 }) {
@@ -51,6 +52,7 @@ export default function ChatMessageList({
                                 }
                                 message={item}
                                 prevUserMessage={messages[index - 1]}
+                                disabled={disabled}
                                 onRegenerateResponse={onRegenerateResponse}
                             />
                         ) : (
@@ -61,6 +63,7 @@ export default function ChatMessageList({
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
+                                disabled={disabled}
                                 onUpdateMessage={onUpdateMessage}
                             />
                         )}
@@ -71,7 +74,7 @@ export default function ChatMessageList({
     );
 }
 
-function AssistantMessage({ message, prevUserMessage, onRegenerateResponse }) {
+function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     const handlePlayStop = () => {
@@ -127,8 +130,9 @@ function AssistantMessage({ message, prevUserMessage, onRegenerateResponse }) {
                     )}
                 </button>
                 <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
+                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom disabled:opacity-50 disabled:pointer-events-none"
                     data-tip="Recargar respuesta"
+                    disabled={disabled}
                     onClick={() => {
                         if (prevUserMessage?.role === "user" && onRegenerateResponse) {
                             const id = prevUserMessage.messageId ?? prevUserMessage.id;
@@ -144,7 +148,7 @@ function AssistantMessage({ message, prevUserMessage, onRegenerateResponse }) {
     );
 }
 
-function UserMessage({ message, onUpdateMessage }) {
+function UserMessage({ message, disabled, onUpdateMessage }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState(message.content.text);
     const textareaRef = useRef(null);
@@ -185,10 +189,13 @@ function UserMessage({ message, onUpdateMessage }) {
                     <CopyIcon size={15} />
                 </button>
                 <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0"
+                    className="btn btn-ghost w-8 h-8 rounded p-0 disabled:opacity-50 disabled:pointer-events-none"
+                    disabled={disabled}
                     onClick={() => {
-                        setIsEditing(true);
-                        setEditedContent(message.content.text);
+                        if (!disabled) {
+                            setIsEditing(true);
+                            setEditedContent(message.content.text);
+                        }
                     }}
                 >
                     <PenIcon size={15} />
@@ -220,7 +227,8 @@ function UserMessage({ message, onUpdateMessage }) {
                                 Cancelar
                             </button>
                             <button
-                                className="btn btn-ghost btn-sm rounded"
+                                className="btn btn-ghost btn-sm rounded disabled:opacity-50 disabled:pointer-events-none"
+                                disabled={disabled}
                                 onClick={handleSave}
                             >
                                 Guardar

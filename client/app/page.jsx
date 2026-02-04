@@ -49,9 +49,83 @@ export default function Page() {
                     <h1 className="text-4xl font-semibold tracking-tight scale-y-105">
                         ¡Bienvenido a Thanos AI!
                     </h1>
-                    <p className="text-xl opacity-70 scale-y-105 font-light">
+                    <p className="text-xl opacity-70 scale-y-105 font-light pb-4">
                         Aquí podrás solicitar información de tus documentos.
                     </p>
+                    <div className="w-full grid grid-cols-2 gap-4">
+                        <article
+                            className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
+                            onClick={() => {
+                                setContent("Comparteme la informacion de TI");
+                                handleSubmit({
+                                    preventDefault: () => {},
+                                });
+                            }}
+                        >
+                            <div className="w-full flex gap-2 items-center justify-center">
+                                <div className="flex flex-col text-center">
+                                    <p className="text-sm font-semibold">Informacion de TI</p>
+                                    <p className="text-xs opacity-70">
+                                        Obtener información del departamento de TI
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                        <article
+                            className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
+                            onClick={() => {
+                                setContent("Comparteme la informacion de Calidad");
+                                handleSubmit({
+                                    preventDefault: () => {},
+                                });
+                            }}
+                        >
+                            <div className="w-full flex gap-2 items-center justify-center">
+                                <div className="flex flex-col text-center">
+                                    <p className="text-sm font-semibold">Informacion de Calidad</p>
+                                    <p className="text-xs opacity-70">
+                                        Obtener información del departamento de Calidad
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                        <article
+                            className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
+                            onClick={() => {
+                                setContent("Comparteme la informacion gerencial");
+                                handleSubmit({
+                                    preventDefault: () => {},
+                                });
+                            }}
+                        >
+                            <div className="w-full flex gap-2 items-center justify-center">
+                                <div className="flex flex-col text-center">
+                                    <p className="text-sm font-semibold">Informacion gerencial</p>
+                                    <p className="text-xs opacity-70">
+                                        Obtener información del departamento de Gerencia
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                        <article
+                            className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
+                            onClick={() => {
+                                setContent("Comparteme la informacion de seguridad");
+                                handleSubmit({
+                                    preventDefault: () => {},
+                                });
+                            }}
+                        >
+                            <div className="w-full flex gap-2 items-center justify-center">
+                                <div className="flex flex-col text-center">
+                                    <p className="text-sm font-semibold">Informacion de Dir Estratégica</p>
+                                    <p className="text-xs opacity-70">
+                                        Obtener información del departamento de Dir Estratégica
+                                    </p>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
                 </div>
                 <ChatInput
                     value={content}
