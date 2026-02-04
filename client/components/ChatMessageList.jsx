@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    CheckIcon,
     CopyIcon,
     LoaderIcon,
     PenIcon,
@@ -8,9 +9,10 @@ import {
     Sparkles,
     Square,
     Volume2Icon,
+    XIcon,
 } from "lucide-react";
 import Markdown from "react-markdown";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 export default function ChatMessageList({ messages = [], loading = false }) {
@@ -131,18 +133,83 @@ function AssistantMessage({ message }) {
 }
 
 function UserMessage({ message }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedContent, setEditedContent] = useState(message.content.text);
+    const textareaRef = useRef(null);
+
+    const adjustHeight = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${el.scrollHeight}px`;
+    };
+
+    useEffect(() => {
+        if (isEditing) adjustHeight();
+    }, [isEditing, editedContent]);
+
+    const handleUpdateMessage = () => {
+        setIsEditing(false);
+    };
+
     return (
         <div className="w-full flex gap-2 justify-end group">
             <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
-                <button className="btn btn-ghost w-8 h-8 rounded p-0">
+                <button
+                    className="btn btn-ghost w-8 h-8 rounded p-0"
+                    onClick={() => {
+                        navigator.clipboard.writeText(message.content.text);
+                        toast.success("Respuesta copiada al portapapeles");
+                    }}
+                >
                     <CopyIcon size={15} />
                 </button>
-                <button className="btn btn-ghost w-8 h-8 rounded p-0">
+                <button
+                    className="btn btn-ghost w-8 h-8 rounded p-0"
+                    onClick={() => {
+                        setIsEditing(true);
+                        setEditedContent(message.content.text);
+                    }}
+                >
                     <PenIcon size={15} />
                 </button>
             </div>
-            <div className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis">
-                {message.content.text}
+            <div
+                className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis space-y-4"
+                style={{
+                    width: isEditing ? "100%" : "fit-content",
+                }}
+            >
+                {isEditing ? (
+                    <>
+                        <textarea
+                            ref={textareaRef}
+                            className="w-full min-w-0 max-w-full outline-none resize-none border border-base-content/30 rounded-md bg-base-content/10 p-1"
+                            rows={1}
+                            value={editedContent}
+                            onChange={(e) => setEditedContent(e.target.value)}
+                        />
+                        <div className="flex items-center w-full justify-end gap-2">
+                            <button
+                                className="btn btn-ghost btn-sm rounded"
+                                onClick={() => {
+                                    setIsEditing(false);
+                                    setEditedContent(message.content.text);
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                className="btn btn-ghost btn-sm rounded"
+                                onClick={handleUpdateMessage}
+                            >
+                                Guardar
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>{message.content.text}</>
+                )}
             </div>
         </div>
     );
