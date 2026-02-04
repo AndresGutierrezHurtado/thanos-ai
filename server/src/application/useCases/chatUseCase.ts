@@ -5,9 +5,10 @@ import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 
-// DTOs
-import { MessageResponseDto, SendMessageDto } from "../dtos/SendMessageDTO";
-import { ChatResponseDTO } from "../dtos/ChatResponseDTO";
+// DTOs and Resources
+import SendMessageDto from "../dtos/SendMessageDTO";
+import { MessageResource, toMessageResource } from "../resources/MessageResource";
+import { ChatResource, toChatResource } from "../resources/ChatResource";
 
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
@@ -23,7 +24,7 @@ export default class ChatUseCase {
         private readonly llmProvider: ILlmProvider
     ) {}
 
-    public async getChats(): Promise<ChatResponseDTO[]> {
+    public async getChats(): Promise<ChatResource[]> {
         const chats = await this.chatRepository.findAll();
 
         return chats.map((chat) => ({
@@ -35,23 +36,17 @@ export default class ChatUseCase {
         }));
     }
 
-    public async getChatById(id: string): Promise<ChatResponseDTO | null> {
+    public async getChatById(id: string): Promise<ChatResource | null> {
         const chat = await this.chatRepository.findById(new Identifier(id));
 
         if (!chat) {
             throw new Error("Chat not found");
         }
 
-        return {
-            id: chat.getId()?.getValue() ?? "",
-            userId: chat.getUserId()?.getValue() ?? "",
-            title: chat.getTitle() ?? "",
-            createdAt: chat.getCreatedAt().getValue(),
-            updatedAt: chat.getUpdatedAt().getValue(),
-        } as ChatResponseDTO;
+        return toChatResource(chat);
     }
 
-    public async createChat(dto: SendMessageDto): Promise<MessageResponseDto> {
+    public async createChat(dto: SendMessageDto): Promise<MessageResource> {
         const { content, mediaContent } = dto;
 
         const chat = await this.chatRepository.create(
@@ -77,28 +72,17 @@ export default class ChatUseCase {
             )
         );
 
-        // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
-        const { message: assistantMessage, sources: retrievedSources } =
+        // Generate the assistant message and save it and its sources
+        let { message: assistantMessage, sources: retrievedSources } =
             await this.llmProvider.generateResponse(chat, [userMessage]);
+        assistantMessage = await this.messageRepository.create(assistantMessage);
 
         for (const source of retrievedSources) {
-            source.setMessageId(userMessage.getId() as Identifier);
+            source.setMessageId(assistantMessage.getId() as Identifier);
             await this.sourceRepository.create(source);
         }
 
-        const savedMessage = await this.messageRepository.create(assistantMessage);
-
-        return {
-            chatId: chat.getId()?.getValue() ?? null,
-            messageId: userMessage.getId()?.getValue() ?? null,
-            role: MessageRole.ASSISTANT,
-            timestamp: savedMessage.getTimestamp().getValue(),
-            content: {
-                text: savedMessage.getContent(),
-                sources: retrievedSources,
-                mediaContent: null,
-            },
-        };
+        return toMessageResource(assistantMessage, retrievedSources);
     }
 
     public async deleteChat(id: string): Promise<void> {

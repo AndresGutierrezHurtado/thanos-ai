@@ -2,11 +2,16 @@ import { Request, Response } from "express";
 
 // Use Cases
 import ChatUseCase from "../../../application/useCases/chatUseCase";
-import { SendMessageDto } from "../../../application/dtos/SendMessageDTO";
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
 
+// DTOs
+import SendMessageDto from "../../../application/dtos/SendMessageDTO";
+
 export default class ChatController {
-    constructor(private readonly chatUseCase: ChatUseCase, private readonly messageUseCase: MessageUseCase) {}
+    constructor(
+        private readonly chatUseCase: ChatUseCase,
+        private readonly messageUseCase: MessageUseCase
+    ) {}
 
     public async getChats(req: Request, res: Response): Promise<Response> {
         const chats = await this.chatUseCase.getChats();
@@ -40,10 +45,11 @@ export default class ChatController {
 
     public async createChat(req: Request, res: Response): Promise<Response> {
         const { content, mediaContent } = req.body;
+
         const dto: SendMessageDto = {
             chatId: null,
             content,
-            mediaContent: null,
+            mediaContent: mediaContent,
         };
 
         const chat = await this.chatUseCase.createChat(dto);

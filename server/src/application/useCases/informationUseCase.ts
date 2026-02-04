@@ -43,7 +43,7 @@ export default class InformationUseCase {
             const exists = await this.documentRepository.findByDriveId(file.id);
             const checksum = file.md5Checksum ?? file.modifiedTime;
 
-            if (exists && exists.checksum === checksum) {
+            if (exists && exists.getChecksum() === checksum as string) {
                 skipped++;
                 return;
             }
@@ -77,7 +77,8 @@ export default class InformationUseCase {
                 title: file.name,
                 mimeType: file.mimeType,
                 version: file.modifiedTime,
-                checksum,
+                checksum: checksum as string,
+                normCode: null,
             });
 
             this.logger.debug(`adding documents to vector store: ${file.name}`);
