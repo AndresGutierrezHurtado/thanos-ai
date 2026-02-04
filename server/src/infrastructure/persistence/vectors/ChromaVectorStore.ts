@@ -89,6 +89,8 @@ export default class ChromaVectorStore implements IVectorStore {
                     metadata.section as string,
                     doc as string
                 );
+
+                source.setDocument(document as Document);
                 return source;
             })
         );
