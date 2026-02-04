@@ -2,6 +2,7 @@ import { Db } from "mongodb";
 
 // Presentation
 import MessageController from "../http/controllers/messageController";
+import DriveController from "../http/controllers/driveController";
 
 // Application
 import MessageUseCase from "../../application/useCases/MessageUseCase";
@@ -28,6 +29,7 @@ import GoogleDriveProvider from "../drive/googleDriveProvider";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
+import HealthController from "../http/controllers/healthController";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -38,6 +40,7 @@ export default class DIContainer {
 
     static async getInstance(): Promise<DIContainer> {
         if (!this.instance) {
+            process.loadEnvFile();
             const db = await Database.getInstance().getDb();
             this.instance = new DIContainer(db);
         }
@@ -51,6 +54,14 @@ export default class DIContainer {
 
     public getChatController(): ChatController {
         return new ChatController(this.getChatUseCase(), this.getMessageUseCase());
+    }
+
+    public getDriveController(): DriveController {
+        return new DriveController(this.getInformationUseCase());
+    }
+
+    public getHealthController(): HealthController {
+        return new HealthController();
     }
 
     // Use Cases
@@ -110,15 +121,11 @@ export default class DIContainer {
         return new OpenAIEmbeddingProvider();
     }
 
-    private getLlmProvider(): LlmProvider {
+    private getLlmProvider(): ILlmProvider {
         return new LlmProvider(
-            this.getOpenAiModel(),
+            new OpenAiModel(),
             this.getVectorStore()
         );
-    }
-
-    private getOpenAiModel(): OpenAiModel {
-        return new OpenAiModel();
     }
 
     public getDriveProvider(): IDriveProvider {

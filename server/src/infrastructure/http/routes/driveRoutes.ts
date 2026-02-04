@@ -1,30 +1,15 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 
 // DI Container
 import diContainer from "../../config/DIContainer";
 
+const container = await diContainer.getInstance();
+const driveController = container.getDriveController();
+
 const routes = Router();
 
-routes.get("/drive/files", async (req: Request, res: Response) => {
-    const container = await diContainer.getInstance();
-    const driveProvider = container.getDriveProvider();
-    const files = await driveProvider.listFiles();
-    return res.status(200).json({
-        success: true,
-        message: "Files fetched successfully",
-        data: files,
-    });
-});
+routes.get("/drive/files", driveController.listFiles.bind(driveController));
 
-routes.post("/drive/sync", async (req: Request, res: Response) => {
-    const container = await diContainer.getInstance();
-    const informationUseCase = container.getInformationUseCase();
-    const result = await informationUseCase.syncDocuments();
-    return res.status(200).json({
-        success: true,
-        message: "Sync completed",
-        data: result,
-    });
-});
+routes.post("/drive/sync", driveController.syncDocuments.bind(driveController));
 
 export default routes;

@@ -12,8 +12,10 @@ import chatRoutes from "./infrastructure/http/routes/chatRoutes";
 import driveRoutes from "./infrastructure/http/routes/driveRoutes";
 
 // App Config
-process.loadEnvFile();
 const app = express();
+
+// The first thing we do is load the environment variables
+process.loadEnvFile();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -22,7 +24,7 @@ app.use(cors({
     credentials: true,
 }));
 
-// Rate limiting general para todas las rutas API
+// Rate limiting for all API endpoints
 app.use("/api/v1", generalRateLimiter);
 
 // API Routes
@@ -31,12 +33,11 @@ app.use("/api/v1", chatRoutes);
 app.use("/api/v1", messageRoutes);
 app.use("/api/v1", driveRoutes);
 
-// Error handling middleware (debe ir después de las rutas)
+// Error handling middleware and 404 handler
 app.use(errorHandlerMiddleware);
-
-// 404 handler (debe ir al final)
 app.use(notFoundMiddleware);
 
+// Start the server
 app.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);
 });

@@ -1,8 +1,11 @@
 import { Router } from "express";
-import HealthController from "../controllers/healthController";
+import DIContainer from "../../config/DIContainer";
+
+const diContainer = await DIContainer.getInstance();
+const healthController = diContainer.getHealthController();
 
 const routes = Router();
 
-routes.get("/health", HealthController.getHealth);
+routes.get("/health", healthController.getHealthStatus.bind(healthController));
 
 export default routes;

@@ -1,4 +1,4 @@
-import IDriveProvider from "../ports/provider/IDriveProvider";
+import IDriveProvider, { DriveFile } from "../ports/provider/IDriveProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IVectorStore from "../ports/services/IVectorStore";
@@ -14,6 +14,10 @@ export default class InformationUseCase {
         private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore
     ) {}
+
+    public async listFiles(): Promise<DriveFile[]> {
+        return await this.driveProvider.listFiles();
+    }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
         const files = await this.driveProvider.listFiles();

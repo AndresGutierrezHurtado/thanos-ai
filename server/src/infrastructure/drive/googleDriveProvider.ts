@@ -7,6 +7,10 @@ export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;
 
     constructor() {
+        if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
+            throw new Error("GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are required");
+        }
+
         const auth = new google.auth.GoogleAuth({
             credentials: {
                 client_email: process.env.GOOGLE_CLIENT_EMAIL,
