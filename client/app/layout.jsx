@@ -81,7 +81,7 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <head>
-                <title>THANOS AI | Gestor de documentos</title>
+                <title>Thanos AI | Gestor de documentos</title>
                 <link rel="icon" href="/assistant.png" />
             </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
@@ -98,7 +98,7 @@ export default function RootLayout({ children }) {
                             <p className="text-sm opacity-70">Gestor de documentos</p>
                         </Link>
 
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden">
                             {loadingChats && (
                                 <div className="p-4 text-sm opacity-70">
                                     Cargando conversaciones…
@@ -118,8 +118,11 @@ export default function RootLayout({ children }) {
                                             <Link
                                                 href={`/chat/${chat.id}`}
                                                 className="w-full rounded-lg flex items-center justify-between group"
+                                                style={{
+                                                    backgroundColor: chat.id === pathname.split("/")[2] ? "var(--color-base-200)" : "transparent",
+                                                }}
                                             >
-                                                <span className="font-medium">
+                                                <span className="font-medium w-full line-clamp-2">
                                                     {chat.title ?? "Chat sin título"}
                                                 </span>
                                                 <button
