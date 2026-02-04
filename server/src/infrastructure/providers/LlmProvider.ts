@@ -90,4 +90,9 @@ export default class LlmProvider implements ILlmProvider {
 
         return { context, sources };
     }
+
+    // FUNCION FOR CONVERTING AUDIO TO TEXT
+    public async speechToText(audio: Buffer): Promise<string> {
+        return await this.openAiModel.speechToText(audio);
+    }
 }

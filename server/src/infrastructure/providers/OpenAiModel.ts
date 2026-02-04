@@ -1,8 +1,10 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenAI, OpenAI as LangchainOpenAI } from "@langchain/openai";
 import Message from "../../domain/entities/message";
+import OpenAI from "openai";
 
 export default class OpenAiModel {
     private model: ChatOpenAI;
+    private whisperModel: any;
     private systemPrompt: string = `
 Eres Thanos, asistente de documentación técnica y operativa de Plataforma Software.
 ÁMBITO: Normas ISO (9001, 14001, 27001, 20121, 45001) y documentos internos de la empresa.
@@ -71,6 +73,24 @@ FORMATO DE RESPUESTA:
             { role: "user" as const, content: content },
         ]);
         return response.content.toString();
+    }
+
+    public async speechToText(audio: Buffer): Promise<string> {
+        const client = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+
+        const mimeType = "audio/webm";
+        const audioBlob = new Blob([new Uint8Array(audio.buffer as ArrayBuffer)], { type: mimeType });
+        const audioFile = new File([audioBlob], "audio.webm", { type: mimeType });
+
+        const response = await client.audio.transcriptions.create({
+            file: audioFile as unknown as File,
+            model: "whisper-1",
+            language: "es",
+        })
+
+        return response.text;
     }
 
     private buildSystemPromptWithContext(context: string): string {

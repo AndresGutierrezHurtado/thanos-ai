@@ -1,6 +1,7 @@
 "use client";
-import { FileIcon, Loader2Icon, SendIcon, XIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { FileIcon, Loader2Icon, MicIcon, SendIcon, Square, XIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useApi } from "@/hooks/useApi";
 
 export default function ChatInput({
     value,
@@ -13,6 +14,10 @@ export default function ChatInput({
 }) {
     const internalRef = useRef(null);
     const textareaRef = inputRef || internalRef;
+    const [isRecording, setIsRecording] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const chunksRef = useRef([]);
 
     // Auto-resize function
     const adjustHeight = () => {
@@ -49,6 +54,64 @@ export default function ChatInput({
             onSubmit(e);
         }
     };
+
+    const startRecording = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            chunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunksRef.current.push(e.data);
+            };
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach((track) => track.stop());
+            };
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Error al acceder al micrófono:", err);
+        }
+    }, []);
+
+    const stopRecording = useCallback(async () => {
+        const mediaRecorder = mediaRecorderRef.current;
+        if (!mediaRecorder || mediaRecorder.state === "inactive") {
+            setIsRecording(false);
+            return;
+        }
+        const previousOnStop = mediaRecorder.onstop;
+        mediaRecorder.onstop = async () => {
+            if (previousOnStop) previousOnStop();
+            const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+            if (blob.size === 0) return;
+            setIsTranscribing(true);
+            try {
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result?.split(",")?.[1] ?? "");
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                const response = await useApi("POST", "/speech-to-text", { audio: base64 });
+                if (response?.success && response?.data) {
+                    onChange({ target: { value: value ? `${value} ${response.data}` : response.data } });
+                }
+            } catch (err) {
+                console.error("Error en speech-to-text:", err);
+            } finally {
+                setIsTranscribing(false);
+            }
+        };
+        mediaRecorder.stop();
+        setIsRecording(false);
+    }, [onChange, value]);
+
+    const handleMicClick = useCallback(() => {
+        if (isRecording) stopRecording();
+        else startRecording();
+    }, [isRecording, startRecording, stopRecording]);
 
     return (
         <form
@@ -109,6 +172,23 @@ export default function ChatInput({
 
                 <button
                     tabIndex={3}
+                    type="button"
+                    onClick={handleMicClick}
+                    className={`btn w-10 h-10 focus:outline-offset-3 rounded-lg p-0 self-end mb-0.5 mr-2 ${isRecording ? "btn-error" : "btn-primary focus:btn-primary/80"}`}
+                    disabled={disabled || isTranscribing}
+                    title={isRecording ? "Detener grabación" : "Grabar voz"}
+                >
+                    {isTranscribing ? (
+                        <Loader2Icon size={20} className="animate-spin" />
+                    ) : isRecording ? (
+                        <Square size={20} fill="currentColor" />
+                    ) : (
+                        <MicIcon size={20} />
+                    )}
+                </button>
+
+                <button
+                    tabIndex={4}
                     type="submit"
                     className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
                     disabled={disabled}

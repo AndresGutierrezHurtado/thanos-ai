@@ -41,10 +41,7 @@ export default class MessageController {
         });
     }
 
-    public async updateMessage(
-        req: Request,
-        res: Response
-    ): Promise<Response | void> {
+    public async updateMessage(req: Request, res: Response): Promise<Response | void> {
         const idRaw = req.params.id;
         const id = Array.isArray(idRaw) ? idRaw[0] : idRaw ?? "";
         const { content, stream: useStream } = req.body;
@@ -74,6 +71,16 @@ export default class MessageController {
         return res.status(200).json({
             success: true,
             message: "Message updated successfully",
+            data: result,
+        });
+    }
+
+    public async speechToText(req: Request, res: Response): Promise<Response | void> {
+        const { audio } = req.body as { audio: string };
+        const result = await this.messageUseCase.speechToText(Buffer.from(audio, "base64"));
+        return res.status(200).json({
+            success: true,
+            message: "Speech to text completed successfully",
             data: result,
         });
     }

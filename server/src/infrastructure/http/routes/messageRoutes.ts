@@ -11,4 +11,6 @@ const routes = Router();
 routes.post("/messages", messageController.sendMessage.bind(messageController));
 routes.put("/messages/:id", messageController.updateMessage.bind(messageController));
 
+routes.post("/speech-to-text", messageController.speechToText.bind(messageController));
+
 export default routes;

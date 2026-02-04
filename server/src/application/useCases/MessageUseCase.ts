@@ -134,4 +134,8 @@ export default class MessageUseCase {
             },
         }));
     }
+
+    public async speechToText(audio: Buffer): Promise<string> {
+        return await this.llmProvider.speechToText(audio);
+    }
 }

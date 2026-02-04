@@ -19,6 +19,7 @@ interface ILlmProvider {
         onChunk?: (text: string) => void
     ): Promise<GenerateResponseResult>;
     generateChatTitle(content: string): Promise<string>;
+    speechToText(audio: Buffer): Promise<string>;
 }
 
 export default ILlmProvider;
