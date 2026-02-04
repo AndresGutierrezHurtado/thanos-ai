@@ -7,6 +7,7 @@ import resolveFileType from "../utils/resolveFileType";
 import { DOCUMENTS_COLLECTION } from "../constants/collections";
 
 export default class InformationUseCase {
+    private readonly CONCURRENT_DOWNLOADS = 10;
     constructor(
         private readonly driveProvider: IDriveProvider,
         private readonly documentRepository: IDocumentRepository,
@@ -27,66 +28,68 @@ export default class InformationUseCase {
         let processed = 0;
         let skipped = 0;
 
-        for (const file of files) {
-            try {
-                const exists = await this.documentRepository.findByDriveId(file.id);
-                const checksum = file.md5Checksum ?? file.modifiedTime;
-
-                if (exists && exists.checksum === checksum) {
-                    skipped++;
-                    continue;
-                }
-
-                console.log(`downloading file ${file.name}...`);
-                const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
-                const processor = this.processorFactory.get(file.mimeType);
-                const extracted = await processor.extract(buffer, file.mimeType);
-                console.log(`information extracted from: ${file.name}`);
-
-                const sourceType = resolveFileType(file.mimeType);
-                const chunks = this.chunker.createChunks(extracted, {
-                    driveId: file.id,
-                    version: file.modifiedTime,
-                    sourceType,
-                });
-
-                console.log(`chunks created from: ${file.name} (${chunks.length} chunks)`);
-
-                if (chunks.length === 0) {
-                    skipped++;
-                    continue;
-                }
-
-                console.log(`deleting existing documents from: ${file.name}`);
-                await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
-
-                console.log(`saving document to database: ${file.name}`);
-                await this.documentRepository.save({
-                    driveId: file.id,
-                    title: file.name,
-                    mimeType: file.mimeType,
-                    version: file.modifiedTime,
-                    checksum,
-                });
-
-                console.log(`adding documents to vector store: ${file.name}`);
-                await this.vectorStore.addDocuments(
-                    DOCUMENTS_COLLECTION,
-                    chunks.map((chunk: ChunkData) => ({
-                        id: chunk.id,
-                        content: chunk.content,
-                        metadata: chunk.metadata,
-                    }))
-                );
-                processed++;
-            } catch (err) {
-                console.error(
-                    `[InformationUseCase] Error processing ${file.name} (${file.id}):`,
-                    err
-                );
-            }
+        for (let i = 0; i < files.length; i += this.CONCURRENT_DOWNLOADS) {
+            const batch = files.slice(i, i + this.CONCURRENT_DOWNLOADS);
+            await Promise.all(batch.map((file) => this.processFile(file, processed, skipped)));
         }
 
         return { processed, skipped };
+    }
+
+    public async processFile(file: DriveFile, processed: number, skipped: number): Promise<void> {
+        try {
+            const exists = await this.documentRepository.findByDriveId(file.id);
+            const checksum = file.md5Checksum ?? file.modifiedTime;
+
+            if (exists && exists.checksum === checksum) {
+                skipped++;
+                return;
+            }
+
+            console.log(`downloading file ${file.name}...`);
+            const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
+            const processor = this.processorFactory.get(file.mimeType);
+            const extracted = await processor.extract(buffer, file.mimeType);
+            console.log(`information extracted from: ${file.name}`);
+
+            const sourceType = resolveFileType(file.mimeType);
+            const chunks = this.chunker.createChunks(extracted, {
+                driveId: file.id,
+                version: file.modifiedTime,
+                sourceType,
+            });
+
+            console.log(`chunks created from: ${file.name} (${chunks.length} chunks)`);
+
+            if (chunks.length === 0) {
+                skipped++;
+                return;
+            }
+
+            console.log(`deleting existing documents from: ${file.name}`);
+            await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
+
+            console.log(`saving document to database: ${file.name}`);
+            await this.documentRepository.save({
+                driveId: file.id,
+                title: file.name,
+                mimeType: file.mimeType,
+                version: file.modifiedTime,
+                checksum,
+            });
+
+            console.log(`adding documents to vector store: ${file.name}`);
+            await this.vectorStore.addDocuments(
+                DOCUMENTS_COLLECTION,
+                chunks.map((chunk: ChunkData) => ({
+                    id: chunk.id,
+                    content: chunk.content,
+                    metadata: chunk.metadata,
+                }))
+            );
+            processed++;
+        } catch (err) {
+            console.error(`[InformationUseCase] Error processing ${file.name} (${file.id}):`, err);
+        }
     }
 }

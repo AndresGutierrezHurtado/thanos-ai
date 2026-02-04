@@ -29,7 +29,9 @@ export default class GoogleDriveProvider implements IDriveProvider {
     async listFiles(folderId: string | null = null, files: DriveFile[] = []): Promise<DriveFile[]> {
         // Get folders
         const response = await this.drive.files.list({
-            q: `'${folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed=false`,
+            q: `'${
+                folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID
+            }' in parents and trashed=false and mimeType != 'image/*'`,
             fields: "files(id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink)",
             pageSize: 1000,
         });

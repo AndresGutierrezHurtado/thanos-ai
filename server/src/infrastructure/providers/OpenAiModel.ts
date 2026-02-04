@@ -4,7 +4,6 @@ import OpenAI from "openai";
 
 export default class OpenAiModel {
     private model: ChatOpenAI;
-    private whisperModel: any;
     private systemPrompt: string = `
 Eres Thanos, asistente de documentación técnica y operativa de Plataforma Software.
 ÁMBITO: Normas ISO (9001, 14001, 27001, 20121, 45001) y documentos internos de la empresa.

@@ -17,10 +17,11 @@ export default function Page() {
         setFile(selected);
     };
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
+    const handleSubmit = async (e, text) => {
+        e?.preventDefault();
 
-        const trimmedContent = content.trim();
+        const trimmedContent = text ?? content.trim();
+
         if (!trimmedContent) return toast.error("El contenido no puede estar vacío");
 
         setIsCreating(true);
@@ -43,7 +44,7 @@ export default function Page() {
     };
 
     return (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center px-5">
             <div className="w-full max-w-3xl space-y-10">
                 <div className="space-y-2">
                     <h1 className="text-4xl font-semibold tracking-tight scale-y-105">
@@ -52,14 +53,11 @@ export default function Page() {
                     <p className="text-xl opacity-70 scale-y-105 font-light pb-4">
                         Aquí podrás solicitar información de tus documentos.
                     </p>
-                    <div className="w-full grid grid-cols-2 gap-4">
+                    <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                setContent("Comparteme la informacion de TI");
-                                handleSubmit({
-                                    preventDefault: () => {},
-                                });
+                                    handleSubmit(null, "Comparteme la informacion de TI");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">
@@ -74,10 +72,7 @@ export default function Page() {
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                setContent("Comparteme la informacion de Calidad");
-                                handleSubmit({
-                                    preventDefault: () => {},
-                                });
+                                handleSubmit(null, "Comparteme la informacion de Calidad");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">
@@ -92,10 +87,7 @@ export default function Page() {
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                setContent("Comparteme la informacion gerencial");
-                                handleSubmit({
-                                    preventDefault: () => {},
-                                });
+                                handleSubmit(null, "Comparteme la informacion gerencial");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">
@@ -110,15 +102,14 @@ export default function Page() {
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                setContent("Comparteme la informacion de seguridad");
-                                handleSubmit({
-                                    preventDefault: () => {},
-                                });
+                                handleSubmit(null, "Comparteme la informacion de seguridad");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">
                                 <div className="flex flex-col text-center">
-                                    <p className="text-sm font-semibold">Informacion de Dir Estratégica</p>
+                                    <p className="text-sm font-semibold">
+                                        Informacion de Dir Estratégica
+                                    </p>
                                     <p className="text-xs opacity-70">
                                         Obtener información del departamento de Dir Estratégica
                                     </p>
