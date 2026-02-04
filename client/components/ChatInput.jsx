@@ -1,5 +1,5 @@
 "use client";
-import { FileIcon, Loader2Icon, SendIcon } from "lucide-react";
+import { FileIcon, Loader2Icon, SendIcon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 export default function ChatInput({
@@ -21,7 +21,7 @@ export default function ChatInput({
 
         // Reset height to auto to get the correct scrollHeight
         textarea.style.height = "auto";
-        
+
         // Set new height based on scrollHeight
         const newHeight = Math.min(textarea.scrollHeight, 200); // Max 200px
         textarea.style.height = `${newHeight}px`;
@@ -54,56 +54,72 @@ export default function ChatInput({
         <form
             onSubmit={onSubmit}
             encType="multipart/form-data"
-            className="mt-6 rounded-xl bg-base-200 border border-base-300 p-2 flex items-center gap-0.5 shadow-sm max-w-3xl mx-auto"
+            className="mt-6 rounded-xl bg-base-200 border border-base-300 p-2 shadow-sm max-w-3xl mx-auto flex flex-col gap-2"
         >
-            <label tabIndex={2} className="btn btn-ghost w-10 h-10 rounded-lg p-0 self-end mb-0.5">
-                <FileIcon size={20} />
-                <input
-                    name="mediaContent"
-                    type="file"
-                    className="hidden"
-                    onChange={onChangeFile}
-                    disabled={disabled}
-                />
-            </label>
-            
-            <div className="flex-1 min-w-0">
-                <textarea
-                    ref={textareaRef}
-                    tabIndex={1}
-                    name="content"
-                    placeholder="Escribe tu mensaje..."
-                    value={value}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    className="input input-ghost w-full text-base focus:outline-none bg-transparent resize-none max-w-full overflow-hidden leading-6"
-                    style={{ 
-                        minHeight: "24px",
-                        maxHeight: "200px",
-                        height: "auto",
-                    }}
-                    rows={1}
-                    disabled={disabled}
-                />
-                {file && (
-                    <p className="mt-1 text-xs opacity-70 truncate">
-                        📎 {file.name}
-                    </p>
-                )}
-            </div>
+            {file && (
+                <article className="w-30 aspect-square bg-base-300 border border-base-content/20 rounded-lg p-2 text-sm group relative flex flex-col">
+                    <button
+                        type="button"
+                        className="btn bg-base-300 w-7 h-7 border border-base-content/20 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip tooltip-bottom"
+                        data-tip="Eliminar archivo"
+                    >
+                        <XIcon size={15} />
+                    </button>
+                    <div className="flex-1">
+                        <p className="text-sm font-medium leading-tight">{file.name}</p>
+                    </div>
+                    <div className="badge badge-sm text-sm rounded badge-outline">PDF</div>
+                </article>
+            )}
 
-            <button
-                tabIndex={3}
-                type="submit"
-                className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
-                disabled={disabled}
-            >
-                {disabled ? (
-                    <Loader2Icon size={20} className="animate-spin" />
-                ) : (
-                    <SendIcon size={20} />
-                )}
-            </button>
+            <div className="flex items-center gap-0.5">
+                <label
+                    tabIndex={2}
+                    className="btn btn-ghost w-10 h-10 rounded-lg p-0 self-end mb-0.5"
+                >
+                    <FileIcon size={20} />
+                    <input
+                        name="mediaContent"
+                        type="file"
+                        className="hidden"
+                        onChange={onChangeFile}
+                        disabled={disabled}
+                    />
+                </label>
+
+                <div className="flex-1 min-w-0">
+                    <textarea
+                        ref={textareaRef}
+                        tabIndex={1}
+                        name="content"
+                        placeholder="Escribe tu mensaje..."
+                        value={value}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
+                        className="input input-ghost w-full text-base focus:outline-none bg-transparent resize-none max-w-full overflow-hidden leading-6"
+                        style={{
+                            minHeight: "24px",
+                            maxHeight: "200px",
+                            height: "auto",
+                        }}
+                        rows={1}
+                        disabled={disabled}
+                    />
+                </div>
+
+                <button
+                    tabIndex={3}
+                    type="submit"
+                    className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
+                    disabled={disabled}
+                >
+                    {disabled ? (
+                        <Loader2Icon size={20} className="animate-spin" />
+                    ) : (
+                        <SendIcon size={20} />
+                    )}
+                </button>
+            </div>
         </form>
     );
 }
