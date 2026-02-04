@@ -1,5 +1,8 @@
 import Identifier from "../valueObjects/Identifier";
 
+// Entities
+import Document from "./document";
+
 export default class Source {
     private chunkId: string;
     private documentId: Identifier | null;
@@ -8,6 +11,8 @@ export default class Source {
     private sourceType: "pdf" | "docx" | string;
     private section: string;
     private content: string;
+
+    private document: Document | null = null;
 
     constructor(
         chunkId: string,
@@ -56,6 +61,10 @@ export default class Source {
         return this.content;
     }
 
+    public getDocument(): Document | null {
+        return this.document;
+    }
+
     // Setters
     public setChunkId(chunkId: string): void {
         this.chunkId = chunkId;
@@ -83,5 +92,9 @@ export default class Source {
 
     public setContent(content: string): void {
         this.content = content;
+    }
+
+    public setDocument(document: Document): void {
+        this.document = document;
     }
 }

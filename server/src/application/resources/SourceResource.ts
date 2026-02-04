@@ -1,8 +1,11 @@
 import Source from "../../domain/entities/source";
+import Document from "../../domain/entities/document";
+
+import { DocumentResource, toDocumentResource } from "./DocumentResource";
 
 export interface SourceResource {
     chunkId: string;
-    documentId: string | null;
+    document: DocumentResource | null;
     messageId: string | null;
     documentVersion: string;
     sourceType: "pdf" | "docx" | string;
@@ -13,7 +16,7 @@ export interface SourceResource {
 export function toSourceResource(source: Source): SourceResource {
     return {
         chunkId: source.getChunkId(),
-        documentId: source.getDocumentId()?.getValue() ?? null,
+        document: source.getDocument() ? toDocumentResource(source.getDocument() as Document) : null,
         messageId: source.getMessageId()?.getValue() ?? null,
         documentVersion: source.getDocumentVersion(),
         sourceType: source.getSourceType(),

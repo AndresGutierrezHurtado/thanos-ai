@@ -1,6 +1,5 @@
 // Domain
 import Message from "../../domain/entities/message";
-import Source from "../../domain/entities/source";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 
 // Application
@@ -24,7 +23,7 @@ export interface MessageResource {
     };
 }
 
-export function toMessageResource(message: Message, sources: Source[] = []): MessageResource {
+export function toMessageResource(message: Message): MessageResource {
     return {
         chatId: message.getChatId().getValue(),
         messageId: message.getId()?.getValue() ?? null,
@@ -32,15 +31,12 @@ export function toMessageResource(message: Message, sources: Source[] = []): Mes
         timestamp: message.getTimestamp().getValue(),
         content: {
             text: message.getContent(),
-            sources: toSourceResourceArray(sources),
+            sources: toSourceResourceArray(message.getSources()),
             mediaContent: null,
         },
     };
 }
 
-export function toMessageResourceArray(
-    messages: Message[],
-    sources: Source[] = []
-): MessageResource[] {
-    return messages.map((message) => toMessageResource(message, sources));
+export function toMessageResourceArray(messages: Message[]): MessageResource[] {
+    return messages.map((message) => toMessageResource(message));
 }

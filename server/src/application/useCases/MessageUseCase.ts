@@ -8,10 +8,7 @@ import ILogger from "../ports/services/ILogger";
 // DTOs and Resources
 import SendMessageDto from "../dtos/SendMessageDTO";
 import UpdateMessageDto from "../dtos/updateMessageDTO";
-import {
-    MessageResource,
-    toMessageResource,
-} from "../resources/MessageResource";
+import { MessageResource, toMessageResource } from "../resources/MessageResource";
 
 // Domain
 import Message from "../../domain/entities/message";
@@ -52,19 +49,20 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
         // Generate the assistant message and save it and its sources
-        let { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
             chat,
             messages,
             onChunk
         );
-        assistantMessage = await this.messageRepository.create(assistantMessage);
+        const savedMessage = await this.messageRepository.create(assistantMessage);
 
         for (const source of sources) {
-            source.setMessageId(assistantMessage.getId() as Identifier);
-            await this.sourceRepository.create(source);
+            source.setMessageId(savedMessage.getId() as Identifier);
+            const savedSource = await this.sourceRepository.create(source);
+            savedMessage.addSource(savedSource);
         }
 
-        return toMessageResource(assistantMessage, sources);
+        return toMessageResource(savedMessage);
     }
 
     public async updateMessage(
@@ -104,7 +102,7 @@ export default class MessageUseCase {
             await this.sourceRepository.create(source);
         }
 
-        return toMessageResource(assistantMessage, sources);
+        return toMessageResource(assistantMessage);
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResource[]> {
@@ -117,7 +115,9 @@ export default class MessageUseCase {
                     ? await this.sourceRepository.findByMessageId(messageId)
                     : [];
 
-                return toMessageResource(message, sources);
+                message.setSources(sources);
+
+                return toMessageResource(message);
             })
         );
 

@@ -1,12 +1,17 @@
 import Identifier from "../valueObjects/Identifier";
 import DateTimeValue from "../valueObjects/DateTimeValue";
 
+// Entities
+import Message from "./message";
+
 export default class Chat {
     private id: Identifier | null;
     private userId: Identifier | null;
     private title: string;
     private createdAt: DateTimeValue;
     private updatedAt: DateTimeValue;
+
+    private messages: Message[] = [];
 
     constructor(id: Identifier | null, userId: Identifier | null, title: string, createdAt: DateTimeValue, updatedAt: DateTimeValue) {
         this.id = id;
@@ -19,6 +24,10 @@ export default class Chat {
     // Getters
     public getId(): Identifier | null {
         return this.id;
+    }
+
+    public getMessages(): Message[] {
+        return this.messages;
     }
 
     public getUserId(): Identifier | null {
@@ -56,5 +65,13 @@ export default class Chat {
 
     public setUpdatedAt(updatedAt: DateTimeValue): void {
         this.updatedAt = updatedAt;
+    }
+
+    public setMessages(messages: Message[]): void {
+        this.messages = messages;
+    }
+
+    public addMessage(message: Message): void {
+        this.messages.push(message);
     }
 }

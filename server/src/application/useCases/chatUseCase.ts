@@ -8,7 +8,7 @@ import MessageRole from "../../domain/valueObjects/MessageRole";
 // DTOs and Resources
 import SendMessageDto from "../dtos/SendMessageDTO";
 import { MessageResource, toMessageResource } from "../resources/MessageResource";
-import { ChatResource, toChatResource } from "../resources/ChatResource";
+import { ChatResource, toChatResource, toChatResourceArray } from "../resources/ChatResource";
 
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
@@ -27,13 +27,7 @@ export default class ChatUseCase {
     public async getChats(): Promise<ChatResource[]> {
         const chats = await this.chatRepository.findAll();
 
-        return chats.map((chat) => ({
-            id: chat.getId()?.getValue() ?? "",
-            userId: chat.getUserId()?.getValue() ?? "",
-            title: chat.getTitle(),
-            createdAt: chat.getCreatedAt().getValue(),
-            updatedAt: chat.getUpdatedAt().getValue(),
-        }));
+        return toChatResourceArray(chats);
     }
 
     public async getChatById(id: string): Promise<ChatResource | null> {
@@ -73,16 +67,17 @@ export default class ChatUseCase {
         );
 
         // Generate the assistant message and save it and its sources
-        let { message: assistantMessage, sources: retrievedSources } =
+        const { message: assistantMessage, sources: retrievedSources } =
             await this.llmProvider.generateResponse(chat, [userMessage]);
-        assistantMessage = await this.messageRepository.create(assistantMessage);
+        const savedMessage = await this.messageRepository.create(assistantMessage);
 
         for (const source of retrievedSources) {
-            source.setMessageId(assistantMessage.getId() as Identifier);
-            await this.sourceRepository.create(source);
+            source.setMessageId(savedMessage.getId() as Identifier);
+            const createdSource = await this.sourceRepository.create(source);
+            savedMessage.addSource(createdSource);
         }
 
-        return toMessageResource(assistantMessage, retrievedSources);
+        return toMessageResource(savedMessage);
     }
 
     public async deleteChat(id: string): Promise<void> {

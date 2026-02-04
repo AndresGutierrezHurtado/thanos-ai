@@ -2,6 +2,10 @@ import Identifier from "../valueObjects/Identifier";
 import DateTimeValue from "../valueObjects/DateTimeValue";
 import MessageRole from "../valueObjects/MessageRole";
 
+// Entities
+import Source from "./source";
+import MediaContent from "./mediaContent";
+
 export default class Message {
     private id: Identifier | null;
     private chatId: Identifier;
@@ -10,6 +14,9 @@ export default class Message {
     private mediaContentId: Identifier | null;
     private timestamp: DateTimeValue;
     private metadata: Record<string, unknown> | null;
+
+    private mediaContent: MediaContent | null = null;
+    private sources: Source[] = [];
 
     constructor(
         id: Identifier | null,
@@ -58,6 +65,14 @@ export default class Message {
         return this.metadata;
     }
 
+    public getMediaContent(): MediaContent | null {
+        return this.mediaContent;
+    }
+
+    public getSources(): Source[] {
+        return this.sources;
+    }
+
     // Setters
     public setId(id: Identifier | null): void {
         this.id = id;
@@ -85,6 +100,18 @@ export default class Message {
 
     public setMetadata(metadata: Record<string, unknown> | null): void {
         this.metadata = metadata;
+    }
+
+    public setMediaContent(mediaContent: MediaContent): void {
+        this.mediaContent = mediaContent;
+    }
+
+    public setSources(sources: Source[]): void {
+        this.sources = sources;
+    }
+
+    public addSource(source: Source): void {
+        this.sources.push(source);
     }
 }
 
