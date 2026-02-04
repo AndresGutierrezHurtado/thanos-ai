@@ -105,6 +105,13 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     <div className="markdown prose">
                         <Markdown remarkPlugins={[remarkGfm]}>{message.content.text}</Markdown>
                     </div>
+                    {!message.streaming && (
+                        <div className="flex items-center gap-2">
+                            {message.content.sources.map((source) => (
+                                <div key={source.chunkId}>{source.content}</div>
+                            ))}
+                        </div>
+                    )}
                     {message.streaming && (
                         <LoaderIcon size={18} className="animate-spin shrink-0 inline-block" />
                     )}

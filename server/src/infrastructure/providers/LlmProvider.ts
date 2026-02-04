@@ -81,7 +81,7 @@ export default class LlmProvider implements ILlmProvider {
             return { context: "", sources: [] };
         }
 
-        const results: Source[] = await this.vectorStore.query(DOCUMENTS_COLLECTION, message.getContent(), 10, message.getId());
+        const results: Source[] = await this.vectorStore.query(DOCUMENTS_COLLECTION, message.getContent(), 10);
 
         const context = results
             .map((r) => r.getContent())

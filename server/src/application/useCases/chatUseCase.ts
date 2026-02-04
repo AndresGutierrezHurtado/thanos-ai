@@ -13,11 +13,13 @@ import { ChatResponseDTO } from "../dtos/ChatResponseDTO";
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
+import ISourceRepository from "../ports/repositories/ISourceRepository";
 
 export default class ChatUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
+        private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider
     ) {}
 
@@ -50,7 +52,7 @@ export default class ChatUseCase {
     }
 
     public async createChat(dto: SendMessageDto): Promise<MessageResponseDto> {
-        const { chatId, content, mediaContent } = dto;
+        const { content, mediaContent } = dto;
 
         const chat = await this.chatRepository.create(
             new Chat(
@@ -76,10 +78,14 @@ export default class ChatUseCase {
         );
 
         // Generate the assistant message and save it (RAG: retrieval from Chroma + LLM)
-        const { message: assistantMessage, sources: retrievedSources } = await this.llmProvider.generateResponse(
-            chat,
-            [userMessage]
-        );
+        const { message: assistantMessage, sources: retrievedSources } =
+            await this.llmProvider.generateResponse(chat, [userMessage]);
+
+        for (const source of retrievedSources) {
+            source.setMessageId(userMessage.getId() as Identifier);
+            await this.sourceRepository.create(source);
+        }
+
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
         return {
@@ -89,7 +95,7 @@ export default class ChatUseCase {
             timestamp: savedMessage.getTimestamp().getValue(),
             content: {
                 text: savedMessage.getContent(),
-                sources: retrievedSources.length > 0 ? retrievedSources : null,
+                sources: retrievedSources,
                 mediaContent: null,
             },
         };

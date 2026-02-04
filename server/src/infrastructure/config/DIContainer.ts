@@ -72,7 +72,8 @@ export default class DIContainer {
             this.getChatRepository(),
             this.getMessageRepository(),
             this.getSourceRepository(),
-            this.getLlmProvider()
+            this.getLlmProvider(),
+            this.getLogger()
         );
     }
 
@@ -80,7 +81,8 @@ export default class DIContainer {
         return new ChatUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
-            this.getLlmProvider()
+            this.getSourceRepository(),
+            this.getLlmProvider(),
         );
     }
 

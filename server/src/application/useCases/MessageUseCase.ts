@@ -4,22 +4,20 @@ import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 
 // DTOs
-import {
-    SendMessageDto,
-    MessageResponseDto,
-    UpdateMessageDto,
-} from "../dtos/SendMessageDTO";
+import { SendMessageDto, MessageResponseDto, UpdateMessageDto } from "../dtos/SendMessageDTO";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import Message from "../../domain/entities/message";
 import MessageRole from "../../domain/valueObjects/MessageRole";
+import ILogger from "../ports/services/ILogger";
 
 export default class MessageUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
-        private readonly llmProvider: ILlmProvider
+        private readonly llmProvider: ILlmProvider,
+        private readonly logger: ILogger
     ) {}
 
     public async sendMessage(
@@ -55,6 +53,11 @@ export default class MessageUseCase {
         );
         const savedMessage = await this.messageRepository.create(assistantMessage);
 
+        for (const source of sources) {
+            source.setMessageId(savedMessage.getId() as Identifier);
+            await this.sourceRepository.create(source);
+        }
+
         return {
             chatId: chat.getId()?.getValue() ?? null,
             messageId: userMessage.getId()?.getValue() ?? null,
@@ -62,7 +65,7 @@ export default class MessageUseCase {
             timestamp: savedMessage.getTimestamp().getValue(),
             content: {
                 text: savedMessage.getContent(),
-                sources: sources.length > 0 ? sources : null,
+                sources: sources,
                 mediaContent: null,
             },
         };
@@ -71,10 +74,8 @@ export default class MessageUseCase {
     public async updateMessage(
         dto: UpdateMessageDto,
         onChunk?: (text: string) => void
-    ): Promise<{ updatedMessage: MessageResponseDto; messages: MessageResponseDto[] }> {
-        const message = await this.messageRepository.findById(
-            new Identifier(dto.id)
-        );
+    ): Promise<MessageResponseDto> {
+        let message = await this.messageRepository.findById(new Identifier(dto.id));
         if (!message) throw new Error("Message not found");
 
         const chat = await this.chatRepository.findById(message.getChatId());
@@ -88,24 +89,22 @@ export default class MessageUseCase {
             message.getTimestamp().getValue()
         );
 
-        const previousMessages = await this.messageRepository.findByChatId(
-            message.getChatId()
-        );
+        const previousMessages = await this.messageRepository.findByChatId(message.getChatId());
         const messagesForLlm = [...previousMessages];
 
-        const { message: assistantMessage, sources } =
-            await this.llmProvider.generateResponse(
-                chat,
-                messagesForLlm,
-                onChunk
-            );
-        const savedMessage = await this.messageRepository.create(
-            assistantMessage
+        // Generate the assistant message and save it
+        let { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+            chat,
+            messagesForLlm,
+            onChunk
         );
+        assistantMessage = await this.messageRepository.create(assistantMessage);
 
-        const messages = await this.getMessagesByChatId(
-            message.getChatId().getValue()
-        );
+        // Save the sources
+        for (const source of sources) {
+            source.setMessageId(assistantMessage.getId() as Identifier);
+            await this.sourceRepository.create(source);
+        }
 
         const updatedMessage: MessageResponseDto = {
             chatId: message.getChatId().getValue(),
@@ -114,24 +113,25 @@ export default class MessageUseCase {
             timestamp: message.getTimestamp().getValue(),
             content: {
                 text: message.getContent(),
-                sources: null,
+                sources: sources,
                 mediaContent: null,
             },
         };
 
-        return { updatedMessage, messages };
+        return updatedMessage;
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResponseDto[]> {
         const messages = await this.messageRepository.findByChatId(new Identifier(chatId));
-        
+
         const messagesWithSources = await Promise.all(
             messages.map(async (message) => {
                 const messageId = message.getId();
-                const sources = messageId 
+                const sources = messageId
                     ? await this.sourceRepository.findByMessageId(messageId)
                     : [];
 
+                this.logger.debug("sources", { sources });
                 return {
                     chatId: message.getChatId().getValue(),
                     messageId: messageId?.getValue() ?? null,
@@ -139,7 +139,7 @@ export default class MessageUseCase {
                     timestamp: message.getTimestamp().getValue(),
                     content: {
                         text: message.getContent(),
-                        sources: sources.length > 0 ? sources : null,
+                        sources: sources,
                         mediaContent: null,
                     },
                 };

@@ -1,5 +1,4 @@
 import Source from "../../../domain/entities/source";
-import Identifier from "../../../domain/valueObjects/Identifier";
 
 export interface VectorDocument {
     id: string;
@@ -14,6 +13,5 @@ export default interface IVectorStore {
         collection: string,
         queryText: string,
         nResults?: number,
-        messageId?: Identifier | null
     ): Promise<Source[]>;
 }
