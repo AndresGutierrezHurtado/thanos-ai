@@ -81,16 +81,50 @@ FORMATO DE RESPUESTA:
         });
 
         const mimeType = "audio/webm";
-        const audioBlob = new Blob([new Uint8Array(audio.buffer as ArrayBuffer)], { type: mimeType });
+        const audioBlob = new Blob([new Uint8Array(audio.buffer as ArrayBuffer)], {
+            type: mimeType,
+        });
         const audioFile = new File([audioBlob], "audio.webm", { type: mimeType });
 
         const response = await client.audio.transcriptions.create({
             file: audioFile as unknown as File,
             model: "whisper-1",
             language: "es",
-        })
+        });
 
         return response.text;
+    }
+
+    public async imageToText(image: Buffer, mimeType: string): Promise<string> {
+        const base64Image = image.toString("base64");
+        const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+        const client = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+
+        const response = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Extrae todo el texto visible en esta imagen. Devuelve solo el texto extraído, sin comentarios adicionales. Si la imagen contiene tablas, preserva su estructura.",
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: dataUrl,
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+
+        return response.choices[0]?.message?.content ?? "";
     }
 
     private buildSystemPromptWithContext(context: string): string {

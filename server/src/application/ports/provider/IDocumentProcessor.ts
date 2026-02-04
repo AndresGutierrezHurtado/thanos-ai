@@ -11,5 +11,5 @@ export interface ExtractedDocument {
 
 export default interface IDocumentProcessor {
     supports(mimeType: string): boolean;
-    extract(buffer: Buffer): Promise<ExtractedDocument>;
+    extract(buffer: Buffer, mimeType?: string): Promise<ExtractedDocument>;
 }

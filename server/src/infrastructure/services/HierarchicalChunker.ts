@@ -23,18 +23,9 @@ export default class HierarchicalChunker implements IChunker {
                 : [{ title: "Content", content: extracted.text }];
 
         for (const section of sections) {
-            const sectionChunks = this.chunkBySize(
-                section.content,
-                CHUNK_SIZE,
-                CHUNK_OVERLAP
-            );
+            const sectionChunks = this.chunkBySize(section.content, CHUNK_SIZE, CHUNK_OVERLAP);
             for (let i = 0; i < sectionChunks.length; i++) {
-                const chunkId = this.buildChunkId(
-                    driveId,
-                    section.title,
-                    i,
-                    version
-                );
+                const chunkId = this.buildChunkId(driveId, section.title, i, version);
                 chunks.push({
                     id: chunkId,
                     content: sectionChunks[i],
@@ -51,11 +42,7 @@ export default class HierarchicalChunker implements IChunker {
         return chunks;
     }
 
-    private chunkBySize(
-        text: string,
-        maxTokens: number,
-        overlapRatio: number
-    ): string[] {
+    private chunkBySize(text: string, maxTokens: number, overlapRatio: number): string[] {
         const words = text.split(/\s+/).filter(Boolean);
         if (words.length === 0) return [];
         const overlap = Math.floor(maxTokens * overlapRatio);
@@ -73,10 +60,9 @@ export default class HierarchicalChunker implements IChunker {
         chunkIndex: number,
         version: string
     ): string {
-        const safeSection = section
-            .replace(/[^a-zA-Z0-9-_]/g, "_")
-            .slice(0, 50);
+        const safeSection = section.replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 50);
         const safeVersion = version.replace(/[^a-zA-Z0-9-_.]/g, "_");
-        return `${driveId}_${safeSection}_${chunkIndex}_${safeVersion}`;
+        const uniqueId = Math.random().toString(36).substring(2, 15);
+        return `${driveId}_${safeSection}_${chunkIndex}_${safeVersion}_${uniqueId}`;
     }
 }

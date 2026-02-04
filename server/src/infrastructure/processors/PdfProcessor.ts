@@ -1,7 +1,7 @@
 import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/provider/IDocumentProcessor";
-import { PDFParse } from "pdf-parse";
+import { LoadParameters, PDFParse, VerbosityLevel } from "pdf-parse";
 
 export default class PdfProcessor implements IDocumentProcessor {
     supports(mimeType: string): boolean {
@@ -9,7 +9,12 @@ export default class PdfProcessor implements IDocumentProcessor {
     }
 
     async extract(buffer: Buffer): Promise<ExtractedDocument> {
-        const parser = new PDFParse(new Uint8Array(buffer));
+        const loadParams: LoadParameters = {
+            data: new Uint8Array(buffer),
+            verbosity: 0,
+        };
+
+        const parser = new PDFParse(loadParams);
         const result = await parser.getText();
 
         const text = result.text;

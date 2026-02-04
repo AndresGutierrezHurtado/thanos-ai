@@ -20,15 +20,16 @@ export default class InformationUseCase {
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
+        console.log("pulling files from drive...");
         const files = await this.driveProvider.listFiles();
+        console.log(`pulled ${files.length} files from drive`);
+
         let processed = 0;
         let skipped = 0;
 
         for (const file of files) {
             try {
-                const exists = await this.documentRepository.findByDriveId(
-                    file.id
-                );
+                const exists = await this.documentRepository.findByDriveId(file.id);
                 const checksum = file.md5Checksum ?? file.modifiedTime;
 
                 if (exists && exists.checksum === checksum) {
@@ -36,9 +37,11 @@ export default class InformationUseCase {
                     continue;
                 }
 
-                const buffer = await this.driveProvider.downloadFile(file.id);
+                console.log(`downloading file ${file.name}...`);
+                const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
                 const processor = this.processorFactory.get(file.mimeType);
-                const extracted = await processor.extract(buffer);
+                const extracted = await processor.extract(buffer, file.mimeType);
+                console.log(`information extracted from: ${file.name}`);
 
                 const sourceType = resolveFileType(file.mimeType);
                 const chunks = this.chunker.createChunks(extracted, {
@@ -47,16 +50,17 @@ export default class InformationUseCase {
                     sourceType,
                 });
 
+                console.log(`chunks created from: ${file.name} (${chunks.length} chunks)`);
+
                 if (chunks.length === 0) {
                     skipped++;
                     continue;
                 }
 
-                await this.vectorStore.deleteByDriveId(
-                    DOCUMENTS_COLLECTION,
-                    file.id
-                );
+                console.log(`deleting existing documents from: ${file.name}`);
+                await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
+                console.log(`saving document to database: ${file.name}`);
                 await this.documentRepository.save({
                     driveId: file.id,
                     title: file.name,
@@ -65,12 +69,13 @@ export default class InformationUseCase {
                     checksum,
                 });
 
+                console.log(`adding documents to vector store: ${file.name}`);
                 await this.vectorStore.addDocuments(
                     DOCUMENTS_COLLECTION,
-                    chunks.map((c: ChunkData) => ({
-                        id: c.id,
-                        content: c.content,
-                        metadata: c.metadata,
+                    chunks.map((chunk: ChunkData) => ({
+                        id: chunk.id,
+                        content: chunk.content,
+                        metadata: chunk.metadata,
                     }))
                 );
                 processed++;

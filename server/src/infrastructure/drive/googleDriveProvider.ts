@@ -26,7 +26,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
     }
 
     // Listar archivos de una carpeta
-    async listFiles(folderId: string | null = null): Promise<DriveFile[]> {
+    async listFiles(folderId: string | null = null, files: DriveFile[] = []): Promise<DriveFile[]> {
         // Get folders
         const response = await this.drive.files.list({
             q: `'${folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed=false`,
@@ -34,17 +34,15 @@ export default class GoogleDriveProvider implements IDriveProvider {
             pageSize: 1000,
         });
 
-        const files: DriveFile[] = [];
-
         // Extract files in the subfolders
         for (const file of response.data.files || []) {
             if (file.mimeType === "application/vnd.google-apps.folder") {
-                const subFiles = await this.listFiles(file.id);
-                files.push(...subFiles);
-                continue;
+                await this.listFiles(file.id, files);
             } else {
-                console.log(file.name + " - " + file.mimeType);
                 files.push(file as DriveFile);
+                if (files.length % 10 === 0) {
+                    console.log(`pulled ${files.length} files from drive`);
+                }
             }
         }
 
@@ -52,7 +50,26 @@ export default class GoogleDriveProvider implements IDriveProvider {
     }
 
     // Descargar archivo
-    async downloadFile(fileId: string): Promise<Buffer> {
+    async downloadFile(fileId: string, mimeType: string): Promise<Buffer> {
+        const googleNativeTypes = {
+            "application/vnd.google-apps.document": "application/pdf",
+            "application/vnd.google-apps.spreadsheet": "application/pdf",
+            "application/vnd.google-apps.presentation": "application/pdf",
+        };
+
+        if (googleNativeTypes[mimeType as keyof typeof googleNativeTypes]) {
+            const response = await this.drive.files.export(
+                {
+                    fileId,
+                    mimeType: googleNativeTypes[mimeType as keyof typeof googleNativeTypes],
+                },
+                {
+                    responseType: "arraybuffer",
+                }
+            );
+            return Buffer.from(response.data as ArrayBuffer);
+        }
+
         const response = await this.drive.files.get(
             { fileId, alt: "media" },
             { responseType: "arraybuffer" }

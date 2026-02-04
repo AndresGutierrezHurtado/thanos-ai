@@ -10,5 +10,5 @@ export interface DriveFile {
 
 export default interface IDriveProvider {
     listFiles(): Promise<DriveFile[]>;
-    downloadFile(fileId: string): Promise<Buffer>;
+    downloadFile(fileId: string, mimeType: string): Promise<Buffer>;
 }
