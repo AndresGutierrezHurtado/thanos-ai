@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import LoggerAdapter from "../../services/LoggerAdapter";
+import { SyslogSeverity } from "../../../application/ports/services/ILogger";
 
 // Singleton logger for use in middlewares
 let loggerInstance: LoggerAdapter | null = null;
@@ -20,7 +21,7 @@ export default function errorHandlerMiddleware(
     const logger = getLogger();
 
     // Log the error with complete context following RFC 5424
-    logger.error("Request error occurred", {
+    logger.log(SyslogSeverity.ERROR, "Request error occurred", {
         error,
         msgId: "HTTP_ERROR",
         structuredData: {

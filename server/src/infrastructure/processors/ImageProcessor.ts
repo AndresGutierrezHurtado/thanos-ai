@@ -19,6 +19,7 @@ export default class ImageProcessor implements IDocumentProcessor {
     }
 
     supports(mimeType: string): boolean {
+        throw new Error("Not implemented");
         return this.supportedMimeTypes.includes(mimeType.toLowerCase());
     }
 

@@ -1,12 +1,13 @@
 import { google, drive_v3 } from "googleapis";
 
-// Application
+// Ports
+import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
 import IDriveProvider, { type DriveFile } from "../../application/ports/provider/IDriveProvider";
 
 export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;
 
-    constructor() {
+    constructor(private readonly logger: ILogger) {
         if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
             throw new Error("GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are required");
         }
@@ -43,7 +44,10 @@ export default class GoogleDriveProvider implements IDriveProvider {
             } else {
                 files.push(file as DriveFile);
                 if (files.length % 10 === 0) {
-                    console.log(`pulled ${files.length} files from drive`);
+                    this.logger.log(
+                        SyslogSeverity.DEBUG,
+                        `pulled ${files.length} files from drive`
+                    );
                 }
             }
         }

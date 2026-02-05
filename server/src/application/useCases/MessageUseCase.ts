@@ -4,7 +4,7 @@ import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
-import ILogger from "../ports/services/ILogger";
+import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
 // DTOs and Resources
 import SendMessageDto from "../ports/dtos/SendMessageDTO";
@@ -136,7 +136,6 @@ export default class MessageUseCase {
         const document = await this.documentRepository.findById(
             source.getDocumentId() as Identifier,
         );
-        this.logger.debug(`Document found`, { document, source });
         return document as Document;
     }
 

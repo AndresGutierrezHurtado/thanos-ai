@@ -12,7 +12,7 @@ import Source from "../../domain/entities/source";
 
 // Ports
 import IVectorStore from "../../application/ports/services/IVectorStore";
-import ILogger from "../../application/ports/services/ILogger";
+import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 // Providers
 import OpenAiModel from "./OpenAiModel";
@@ -40,7 +40,7 @@ export default class LlmProvider implements ILlmProvider {
         const lastUserMessage = this.getLastUserMessage(messages);
         const { context, sources } = await this.retrieveContext(lastUserMessage);
 
-        this.logger.debug(`context`, { context, sources });
+        this.logger.log(SyslogSeverity.DEBUG, `context`, { context, sources });
 
         const responseContent =
             context.length > 0

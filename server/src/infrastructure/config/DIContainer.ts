@@ -96,6 +96,7 @@ export default class DIContainer {
             this.getProcessorFactory(),
             this.getChunker(),
             this.getVectorStore(),
+            this.getTransactionRepository(),
             this.getLogger(),
         );
     }
@@ -127,7 +128,7 @@ export default class DIContainer {
     }
 
     private getProcessorFactory(): ProcessorFactory {
-        return new ProcessorFactory();
+        return new ProcessorFactory(this.getLogger());
     }
 
     private getChunker(): HierarchicalChunker {
@@ -147,6 +148,6 @@ export default class DIContainer {
     }
 
     public getDriveProvider(): IDriveProvider {
-        return new GoogleDriveProvider();
+        return new GoogleDriveProvider(this.getLogger());
     }
 }

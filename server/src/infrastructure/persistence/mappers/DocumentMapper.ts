@@ -4,7 +4,7 @@ import DateTimeValue from "../../../domain/valueObjects/DateTimeValue";
 import Document from "../../../domain/entities/document";
 
 export interface DocumentMongoDoc {
-    _id: string | null;
+    _id?: string;
     driveId: string;
     title: string;
     mimeType: string;
@@ -31,7 +31,6 @@ export default class DocumentMapper {
 
     public static toPersistence(record: DocumentRecord): DocumentMongoDoc {
         return {
-            _id: null,
             driveId: record.driveId,
             title: record.title,
             mimeType: record.mimeType,

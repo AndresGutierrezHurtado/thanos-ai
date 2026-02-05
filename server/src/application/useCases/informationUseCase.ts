@@ -5,7 +5,8 @@ import IVectorStore from "../ports/services/IVectorStore";
 import IChunker, { ChunkData } from "../ports/services/IChunker";
 import resolveFileType from "../utils/resolveFileType";
 import { DOCUMENTS_COLLECTION } from "../constants/collections";
-import ILogger from "../ports/services/ILogger";
+import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
+import ITransactionRepository from "../ports/repositories/ITransactionRepository";
 
 export default class InformationUseCase {
     private readonly CONCURRENT_DOWNLOADS = 10;
@@ -15,6 +16,7 @@ export default class InformationUseCase {
         private readonly processorFactory: ProcessorFactory,
         private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore,
+        private readonly transactionRepository: ITransactionRepository,
         private readonly logger: ILogger
     ) {}
 
@@ -23,9 +25,9 @@ export default class InformationUseCase {
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
-        this.logger.debug("pulling files from drive...");
+        this.logger.log(SyslogSeverity.DEBUG, "pulling files from drive...");
         const files = await this.driveProvider.listFiles();
-        this.logger.debug(`pulled ${files.length} files from drive`);
+        this.logger.log(SyslogSeverity.DEBUG, `pulled ${files.length} files from drive`);
 
         let processed = 0;
         let skipped = 0;
@@ -39,6 +41,7 @@ export default class InformationUseCase {
     }
 
     public async processFile(file: DriveFile, processed: number, skipped: number): Promise<void> {
+        await this.transactionRepository.begin();
         try {
             const exists = await this.documentRepository.findByDriveId(file.id);
             const checksum = file.md5Checksum ?? file.modifiedTime;
@@ -48,11 +51,11 @@ export default class InformationUseCase {
                 return;
             }
 
-            this.logger.debug(`downloading file ${file.name}...`);
+            this.logger.log(SyslogSeverity.DEBUG, `downloading file ${file.name}...`);
             const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
             const processor = this.processorFactory.get(file.mimeType);
             const extracted = await processor.extract(buffer, file.mimeType);
-            this.logger.debug(`information extracted from: ${file.name}`);
+            this.logger.log(SyslogSeverity.DEBUG, `information extracted from: ${file.name}`);
 
             const sourceType = resolveFileType(file.mimeType);
             const chunks = this.chunker.createChunks(extracted, {
@@ -61,17 +64,17 @@ export default class InformationUseCase {
                 sourceType,
             });
 
-            this.logger.debug(`chunks created from: ${file.name} (${chunks.length} chunks)`);
+            this.logger.log(SyslogSeverity.DEBUG, `chunks created from: ${file.name} (${chunks.length} chunks)`);
 
             if (chunks.length === 0) {
                 skipped++;
                 return;
             }
 
-            this.logger.debug(`deleting existing documents from: ${file.name}`);
+            this.logger.log(SyslogSeverity.DEBUG, `deleting existing documents from: ${file.name}`);
             await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
-            this.logger.debug(`saving document to database: ${file.name}`);
+            this.logger.log(SyslogSeverity.DEBUG, `saving document to database: ${file.name}`);
             await this.documentRepository.save({
                 driveId: file.id,
                 title: file.name,
@@ -81,7 +84,7 @@ export default class InformationUseCase {
                 normCode: null,
             });
 
-            this.logger.debug(`adding documents to vector store: ${file.name}`);
+            this.logger.log(SyslogSeverity.DEBUG, `adding documents to vector store: ${file.name}`);
             await this.vectorStore.addDocuments(
                 DOCUMENTS_COLLECTION,
                 chunks.map((chunk: ChunkData) => ({
@@ -91,8 +94,10 @@ export default class InformationUseCase {
                 }))
             );
             processed++;
+            await this.transactionRepository.commit();
         } catch (err: unknown) {
-            this.logger.error(`[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`, { error: err as Error });
+            await this.transactionRepository.rollback();
+            this.logger.log(SyslogSeverity.ERROR, `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`, { error: err as Error });
         }
     }
 }

@@ -9,25 +9,19 @@ export enum SyslogSeverity {
     DEBUG = 7,
 }
 
-export interface LoggerContext {
-    appName?: string;
-    procId?: string;
-    msgId?: string;
-    structuredData?: Record<string, unknown>;
-    error?: Error;
-    [key: string]: unknown;
+export interface LoggerEntry {
+    timestamp: string;
+    hostname: string;
+    appName: string;
+    procId: string;
+    msgId: string;
+    severity: string;
+    severityCode: number;
+    message: string;
+    context?: Record<string, unknown>;
 }
 
 export default interface ILogger {
-    getLogs(date?: string): Promise<LoggerContext[]>;
-    log(level: SyslogSeverity, message: string, context?: LoggerContext): void;
-    emergency(message: string, context?: LoggerContext): void;
-    alert(message: string, context?: LoggerContext): void;
-    critical(message: string, context?: LoggerContext): void;
-    error(message: string, context?: LoggerContext): void;
-    warning(message: string, context?: LoggerContext): void;
-    notice(message: string, context?: LoggerContext): void;
-    info(message: string, context?: LoggerContext): void;
-    debug(message: string, context?: LoggerContext): void;
+    getLogs(date?: string): Promise<LoggerEntry[]>;
+    log(level: SyslogSeverity, message: string, context?: Record<string, unknown>): void;
 }
-
