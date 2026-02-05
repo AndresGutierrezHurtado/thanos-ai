@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 
 // Hooks
 import { useApi } from "../hooks/useApi";
+import { PeerProvider } from "@/components/Peer";
 
 // Styles
 import "./globals.css";
@@ -129,7 +130,9 @@ export default function RootLayout({ children }) {
                         </div>
 
                         {/* Contenido de la página */}
-                        <main className="flex-1 overflow-hidden">{children}</main>
+                        <main className="flex-1 overflow-hidden">
+                            <PeerProvider>{children}</PeerProvider>
+                        </main>
                     </div>
 
                     {/* SIDEBAR (menú lateral) */}

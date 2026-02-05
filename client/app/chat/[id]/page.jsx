@@ -318,6 +318,8 @@ export default function ChatByIdPage() {
             </div>
             <div className="w-full p-5 pt-0">
                 <ChatInput
+                    withVoice={true}
+                    chatId={chatId}
                     inputRef={textareaRef}
                     value={content}
                     onChange={(event) => setContent(event.target.value)}

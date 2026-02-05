@@ -1,17 +1,21 @@
 "use client";
-import { FileIcon, Loader2Icon, MicIcon, SendIcon, Square, XIcon } from "lucide-react";
+import { FileIcon, Loader2Icon, MicIcon, PhoneIcon, SendIcon, Square, XIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { useRouter } from "next/navigation";
 
 export default function ChatInput({
     value,
     onChange,
     onSubmit,
     disabled = false,
+    withVoice = false,
+    chatId = null,
     file = null,
     onChangeFile,
     inputRef = null,
 }) {
+    const router = useRouter();
     const internalRef = useRef(null);
     const textareaRef = inputRef || internalRef;
     const [isRecording, setIsRecording] = useState(false);
@@ -96,7 +100,9 @@ export default function ChatInput({
                 });
                 const response = await useApi("POST", "/speech-to-text", { audio: base64 });
                 if (response?.success && response?.data) {
-                    onChange({ target: { value: value ? `${value} ${response.data}` : response.data } });
+                    onChange({
+                        target: { value: value ? `${value} ${response.data}` : response.data },
+                    });
                 }
             } catch (err) {
                 console.error("Error en speech-to-text:", err);
@@ -132,14 +138,18 @@ export default function ChatInput({
                         type="button"
                         className="btn bg-base-300 w-7 h-7 border border-base-content/20 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip tooltip-bottom"
                         data-tip="Eliminar archivo"
-                        onClick={() => onChangeFile({target: {files: []}})}
+                        onClick={() => onChangeFile({ target: { files: [] } })}
                     >
                         <XIcon size={15} />
                     </button>
                     <div className="flex-1">
-                        <p className="text-sm font-medium leading-tight line-clamp-3">{file.name}</p>
+                        <p className="text-sm font-medium leading-tight line-clamp-3">
+                            {file.name}
+                        </p>
                     </div>
-                    <div className="badge badge-sm text-sm rounded badge-outline">{getFileType(file.type)}</div>
+                    <div className="badge badge-sm text-sm rounded badge-outline">
+                        {getFileType(file.type)}
+                    </div>
                 </article>
             )}
 
@@ -179,35 +189,49 @@ export default function ChatInput({
                     />
                 </div>
 
-                <button
-                    tabIndex={3}
-                    type="button"
-                    onClick={handleMicClick}
-                    className={`btn w-10 h-10 focus:outline-offset-3 rounded-lg p-0 self-end mb-0.5 mr-2 ${isRecording ? "btn-error" : "btn-primary focus:btn-primary/80"}`}
-                    disabled={disabled || isTranscribing}
-                    title={isRecording ? "Detener grabación" : "Grabar voz"}
-                >
-                    {isTranscribing ? (
-                        <Loader2Icon size={20} className="animate-spin" />
-                    ) : isRecording ? (
-                        <Square size={20} fill="currentColor" />
-                    ) : (
-                        <MicIcon size={20} />
-                    )}
-                </button>
+                <div className="flex gap-2 items-center">
+                    <button
+                        tabIndex={3}
+                        type="button"
+                        onClick={handleMicClick}
+                        className={`btn w-10 h-10 focus:outline-offset-3 rounded-lg p-0 self-end mb-0.5 ${isRecording ? "btn-error" : "btn-primary focus:btn-primary/80"}`}
+                        disabled={disabled || isTranscribing}
+                        title={isRecording ? "Detener grabación" : "Grabar voz"}
+                    >
+                        {isTranscribing ? (
+                            <Loader2Icon size={20} className="animate-spin" />
+                        ) : isRecording ? (
+                            <Square size={20} fill="currentColor" />
+                        ) : (
+                            <MicIcon size={20} />
+                        )}
+                    </button>
 
-                <button
-                    tabIndex={4}
-                    type="submit"
-                    className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
-                    disabled={disabled}
-                >
-                    {disabled ? (
-                        <Loader2Icon size={20} className="animate-spin" />
-                    ) : (
-                        <SendIcon size={20} />
+                    {withVoice && (
+                        <button
+                            tabIndex={4}
+                            type="button"
+                            onClick={() => router.push(`/chat/${chatId}/call`)}
+                            className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
+                            disabled={disabled || isTranscribing}
+                        >
+                            <PhoneIcon size={20} />
+                        </button>
                     )}
-                </button>
+
+                    <button
+                        tabIndex={4}
+                        type="submit"
+                        className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
+                        disabled={disabled}
+                    >
+                        {disabled ? (
+                            <Loader2Icon size={20} className="animate-spin" />
+                        ) : (
+                            <SendIcon size={20} />
+                        )}
+                    </button>
+                </div>
             </div>
         </form>
     );
