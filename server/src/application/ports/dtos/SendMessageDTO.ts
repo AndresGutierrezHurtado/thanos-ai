@@ -6,5 +6,6 @@ export default interface SendMessageDto {
         buffer: Buffer;
         filename: string;
         mimeType: string;
+        size: number;
     };
 }

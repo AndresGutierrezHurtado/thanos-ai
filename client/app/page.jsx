@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ChatInput from "@/components/ChatInput";
 import { toast } from "react-toastify";
 import { streamRequest } from "@/lib/streamRequest";
+import toBase64 from "@/lib/toBase64";
 
 export default function Page() {
     const router = useRouter();
@@ -13,8 +14,8 @@ export default function Page() {
     const [isCreating, setIsCreating] = useState(false);
     const [streamingText, setStreamingText] = useState("");
 
-    const handleFileChange = (event) => {
-        const selected = event.target.files?.[0] ?? null;
+    const handleFileChange = (e) => {
+        const selected = e?.target?.files?.[0] ?? null;
         setFile(selected);
     };
 
@@ -22,6 +23,16 @@ export default function Page() {
         e?.preventDefault();
 
         const trimmedContent = text ?? content.trim();
+        const mediaContent =
+            file && file.size > 0
+                ? {
+                      type: "document",
+                      buffer: await toBase64(file),
+                      filename: file.name,
+                      mimeType: file.type,
+                      size: file.size,
+                  }
+                : null;
 
         if (!trimmedContent) return toast.error("El contenido no puede estar vacío");
 
@@ -31,7 +42,7 @@ export default function Page() {
             await streamRequest(
                 "POST",
                 "/chats",
-                { content: trimmedContent, mediaContent: null },
+                { content: trimmedContent, mediaContent },
                 {
                     onChunk: (chunk) => setStreamingText((prev) => prev + chunk),
                     onFinal: (data) => {
@@ -68,7 +79,7 @@ export default function Page() {
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                    handleSubmit(null, "Comparteme la informacion de TI");
+                                handleSubmit(null, "Comparteme la informacion de TI");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">

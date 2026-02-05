@@ -15,12 +15,16 @@ import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
+import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
+import MediaContent from "../../domain/entities/mediaContent";
+import MediaContentType from "../../domain/valueObjects/MediaContentType";
 
 export default class ChatUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
+        private readonly mediaContentRepository: IMediaContentRepository,
         private readonly llmProvider: ILlmProvider
     ) {}
 
@@ -56,18 +60,32 @@ export default class ChatUseCase {
             )
         );
 
-        // Save the user message
+        // Save the user message and its file if it exists
         const userMessage = await this.messageRepository.create(
             new Message(
                 null,
                 chat.getId() as Identifier,
                 MessageRole.USER,
                 content,
-                null,
                 new DateTimeValue(),
                 null
             )
         );
+
+        if (mediaContent) {
+            const mediaContentEntity = new MediaContent(
+                null,
+                userMessage.getId() as Identifier,
+                mediaContent.type as MediaContentType,
+                "",
+                mediaContent.filename,
+                mediaContent.mimeType,
+                mediaContent.size
+            );
+
+            await this.mediaContentRepository.create(mediaContentEntity, mediaContent.buffer);
+            userMessage.setMediaContent(mediaContentEntity);
+        }
 
         // Generate the assistant message and save it and its sources
         const { message: assistantMessage, sources: retrievedSources } =

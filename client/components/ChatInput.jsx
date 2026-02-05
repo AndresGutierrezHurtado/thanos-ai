@@ -113,6 +113,13 @@ export default function ChatInput({
         else startRecording();
     }, [isRecording, startRecording, stopRecording]);
 
+    const getFileType = (mimeType) => {
+        if (mimeType.includes("pdf")) return "PDF";
+        if (mimeType.includes("docx")) return "DOCX";
+        if (mimeType.includes("doc")) return "DOC";
+        if (mimeType.includes("xlsx")) return "XLSX";
+        return mimeType;
+    };
     return (
         <form
             onSubmit={onSubmit}
@@ -125,13 +132,14 @@ export default function ChatInput({
                         type="button"
                         className="btn bg-base-300 w-7 h-7 border border-base-content/20 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip tooltip-bottom"
                         data-tip="Eliminar archivo"
+                        onClick={() => onChangeFile({target: {files: []}})}
                     >
                         <XIcon size={15} />
                     </button>
                     <div className="flex-1">
-                        <p className="text-sm font-medium leading-tight">{file.name}</p>
+                        <p className="text-sm font-medium leading-tight line-clamp-3">{file.name}</p>
                     </div>
-                    <div className="badge badge-sm text-sm rounded badge-outline">PDF</div>
+                    <div className="badge badge-sm text-sm rounded badge-outline">{getFileType(file.type)}</div>
                 </article>
             )}
 
@@ -145,6 +153,8 @@ export default function ChatInput({
                         name="mediaContent"
                         type="file"
                         className="hidden"
+                        multiple={false}
+                        accept="application/pdf,document/docx,document/doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/html"
                         onChange={onChangeFile}
                         disabled={disabled}
                     />

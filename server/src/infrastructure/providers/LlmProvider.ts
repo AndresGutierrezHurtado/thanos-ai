@@ -1,3 +1,6 @@
+import path from "path";
+import fs from "fs";
+
 // Application
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
 import { DOCUMENTS_COLLECTION } from "../../application/constants/collections";
@@ -13,6 +16,7 @@ import Source from "../../domain/entities/source";
 // Ports
 import IVectorStore from "../../application/ports/services/IVectorStore";
 import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
+import ProcessorFactory from "../services/ProcessorFactory";
 
 // Providers
 import OpenAiModel from "./OpenAiModel";
@@ -23,6 +27,7 @@ export default class LlmProvider implements ILlmProvider {
     constructor(
         private readonly openAiModel: OpenAiModel,
         private readonly vectorStore: IVectorStore,
+        private readonly processorFactory: ProcessorFactory,
         private readonly logger: ILogger
     ) {}
 
@@ -38,13 +43,13 @@ export default class LlmProvider implements ILlmProvider {
         onChunk?: (text: string) => void
     ): Promise<{ message: Message; sources: Source[] }> {
         const lastUserMessage = this.getLastUserMessage(messages);
-        const { context, sources } = await this.retrieveContext(lastUserMessage);
+        const documentText = await this.getDocumentFromMessage(lastUserMessage);
 
-        this.logger.log(SyslogSeverity.DEBUG, `context`, { context, sources });
+        const { context, sources } = await this.retrieveContext(lastUserMessage);
 
         const responseContent =
             context.length > 0
-                ? await this.openAiModel.generateResponse(messages, context, onChunk)
+                ? await this.openAiModel.generateResponse(messages, context, documentText, onChunk)
                 : NO_CONTEXT_RESPONSE;
 
         // Save the response
@@ -53,7 +58,6 @@ export default class LlmProvider implements ILlmProvider {
             chat.getId() as Identifier,
             MessageRole.ASSISTANT,
             responseContent,
-            null,
             new DateTimeValue(),
             null
         );
@@ -72,6 +76,22 @@ export default class LlmProvider implements ILlmProvider {
         return userMessages[userMessages.length - 1];
     }
 
+    // FUNCTION FOR GETTING THE DOCUMENT FROM THE MESSAGE
+    private async getDocumentFromMessage(message: Message): Promise<string | null> {
+        const mediaContent = message.getMediaContent();
+        if (!mediaContent || !mediaContent.getUrl() || !mediaContent.getMimeType()) {
+            return null;
+        }
+        const publicDir = path.join(process.cwd(), "public");
+        const filePath = path.resolve(publicDir, mediaContent.getUrl());
+
+        const buffer = fs.readFileSync(filePath);
+
+        const processor = this.processorFactory.get(mediaContent.getMimeType());
+        const extracted = await processor.extract(buffer);
+        return extracted.text;
+    }
+
     // FUNCION FOR RETRIEVING THE CONTEXT OF THE DOCUMENTS
     private async retrieveContext(message: Message): Promise<{
         context: string;
@@ -81,7 +101,11 @@ export default class LlmProvider implements ILlmProvider {
             return { context: "", sources: [] };
         }
 
-        const results: Source[] = await this.vectorStore.query(DOCUMENTS_COLLECTION, message.getContent(), 10);
+        const results: Source[] = await this.vectorStore.query(
+            DOCUMENTS_COLLECTION,
+            message.getContent(),
+            10
+        );
 
         const context = results
             .map((r) => r.getContent())

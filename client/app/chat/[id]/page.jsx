@@ -16,7 +16,7 @@ export default function ChatByIdPage() {
     const params = useParams();
     const chatId = useMemo(() => {
         const value = params?.id;
-        return Array.isArray(value) ? value[0] : (value ?? null);
+        return Array.isArray(value) ? value[0] : value ?? null;
     }, [params]);
 
     // States
@@ -57,8 +57,8 @@ export default function ChatByIdPage() {
     }, [messages]);
 
     // callbacks
-    const handleFileChange = useCallback((event) => {
-        const selected = event.target.files?.[0] ?? null;
+    const handleFileChange = useCallback((e) => {
+        const selected = e?.target?.files?.[0] ?? null;
         setFile(selected);
     }, []);
 
@@ -140,7 +140,7 @@ export default function ChatByIdPage() {
                 ];
             });
         },
-        [chatId],
+        [chatId]
     );
 
     const loadMessages = useCallback(async () => {
@@ -166,7 +166,18 @@ export default function ChatByIdPage() {
         if (!chatId) return;
 
         const trimmedContent = content.trim();
-        if (!trimmedContent && !file) return;
+        const mediaContent =
+            file && file.size > 0
+                ? {
+                      type: "document",
+                      buffer: await toBase64(file),
+                      filename: file.name,
+                      mimeType: file.type,
+                      size: file.size,
+                  }
+                : null;
+
+        if (!trimmedContent) return;
 
         const userMessage = {
             id: null,
@@ -176,7 +187,7 @@ export default function ChatByIdPage() {
             content: {
                 text: trimmedContent,
                 sources: null,
-                mediaContent: null,
+                mediaContent,
             },
         };
 
@@ -199,7 +210,7 @@ export default function ChatByIdPage() {
             await streamRequest(
                 "POST",
                 "/messages",
-                { chatId, content: trimmedContent, mediaContent: null },
+                { chatId, content: trimmedContent, mediaContent },
                 {
                     onChunk: appendToLastAssistantMessage,
                     onFinal: (data) => {
@@ -223,7 +234,7 @@ export default function ChatByIdPage() {
                         });
                         setTimeout(() => textareaRef.current?.focus(), 100);
                     },
-                },
+                }
             );
         } catch (error) {
             console.error("Failed to send message", error);
@@ -261,7 +272,7 @@ export default function ChatByIdPage() {
                     {
                         onChunk: appendToLastAssistantMessage,
                         onFinal: replaceLastWithFinalMessage,
-                    },
+                    }
                 );
             } catch (error) {
                 console.error("Failed to update message", error);
@@ -291,7 +302,7 @@ export default function ChatByIdPage() {
             prepareForStreamingAfterUserMessage,
             appendToLastAssistantMessage,
             replaceLastWithFinalMessage,
-        ],
+        ]
     );
 
     return (

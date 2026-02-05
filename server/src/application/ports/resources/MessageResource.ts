@@ -1,6 +1,8 @@
 // Domain
 import Message from "../../../domain/entities/message";
 import MessageRole from "../../../domain/valueObjects/MessageRole";
+import MediaContent from "../../../domain/entities/mediaContent";
+import { MediaContentResource, toMediaContentResource } from "./MediaContentResource";
 
 // Application
 import { SourceResource, toSourceResourceArray } from "./SourceResource";
@@ -14,12 +16,7 @@ export interface MessageResource {
     content: {
         text: string;
         sources: null | SourceResource[];
-        mediaContent: null | {
-            type: "image" | "audio" | "video" | "document";
-            buffer: Buffer;
-            filename: string;
-            mimeType: string;
-        };
+        mediaContent: null | MediaContentResource;
     };
 }
 
@@ -32,7 +29,7 @@ export function toMessageResource(message: Message): MessageResource {
         content: {
             text: message.getContent(),
             sources: toSourceResourceArray(message.getSources()),
-            mediaContent: null,
+            mediaContent: message.getMediaContent() ? toMediaContentResource(message.getMediaContent() as MediaContent) : null,
         },
     };
 }

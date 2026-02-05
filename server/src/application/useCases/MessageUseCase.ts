@@ -4,7 +4,7 @@ import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
-import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
+import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
 
 // DTOs and Resources
 import SendMessageDto from "../ports/dtos/SendMessageDTO";
@@ -18,6 +18,9 @@ import Document from "../../domain/entities/document";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
+import MediaContent from "../../domain/entities/mediaContent";
+import LoggerAdapter from "../../infrastructure/services/LoggerAdapter";
+import { SyslogSeverity } from "../ports/services/ILogger";
 
 export default class MessageUseCase {
     constructor(
@@ -26,7 +29,7 @@ export default class MessageUseCase {
         private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider,
         private readonly documentRepository: IDocumentRepository,
-        private readonly logger: ILogger,
+        private readonly mediaContentRepository: IMediaContentRepository,
     ) {}
 
     public async sendMessage(
@@ -45,7 +48,6 @@ export default class MessageUseCase {
                 chat.getId() as Identifier,
                 MessageRole.USER,
                 content,
-                null,
                 new DateTimeValue(),
                 null,
             ),
@@ -117,13 +119,14 @@ export default class MessageUseCase {
                 const sources = await this.sourceRepository.findByMessageId(
                     message.getId() as Identifier,
                 );
-
+                const mediaContent = await this.getMediaContent(message.getId() as Identifier);
                 for (const source of sources) {
                     const document = await this.getSourceDocument(source);
                     if (!document) continue;
                     source.setDocument(document);
                 }
                 message.setSources(sources);
+                message.setMediaContent(mediaContent as MediaContent);
 
                 return toMessageResource(message);
             }),
@@ -137,6 +140,13 @@ export default class MessageUseCase {
             source.getDocumentId() as Identifier,
         );
         return document as Document;
+    }
+
+    public async getMediaContent(messageId: Identifier): Promise<MediaContent | null> {
+        const mediaContent = await this.mediaContentRepository.findByMessageId(messageId);
+        const logger = new LoggerAdapter();
+        logger.log(SyslogSeverity.DEBUG, `Media content found`, { mediaContent });
+        return mediaContent as MediaContent;
     }
 
     public async speechToText(audio: Buffer): Promise<string> {

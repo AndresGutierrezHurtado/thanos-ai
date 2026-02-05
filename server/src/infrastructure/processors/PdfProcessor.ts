@@ -9,22 +9,30 @@ export default class PdfProcessor implements IDocumentProcessor {
     }
 
     async extract(buffer: Buffer): Promise<ExtractedDocument> {
-        const loadParams: LoadParameters = {
-            data: new Uint8Array(buffer),
-            verbosity: 0,
-        };
+        try {
+            const loadParams: LoadParameters = {
+                data: new Uint8Array(buffer),
+                verbosity: 0,
+            };
 
-        const parser = new PDFParse(loadParams);
-        const result = await parser.getText();
+            const parser = new PDFParse(loadParams);
+            const result = await parser.getText();
 
-        const text = result.text;
-        const sections = this.splitIntoSections(text);
+            const text = result.text;
+            const sections = this.splitIntoSections(text);
 
-        return {
-            text,
-            sections: sections.length > 0 ? sections : undefined,
-            metadata: { sourceType: "pdf" },
-        };
+            return {
+                text,
+                sections: sections.length > 0 ? sections : undefined,
+                metadata: { sourceType: "pdf" },
+            };
+        } catch (error) {
+            return {
+                text: "",
+                sections: undefined,
+                metadata: { sourceType: "pdf" },
+            };
+        }
     }
 
     private splitIntoSections(text: string): { title: string; content: string }[] {

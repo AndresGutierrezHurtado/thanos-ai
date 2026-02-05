@@ -32,12 +32,17 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
     public async generateResponse(
         messages: Message[],
         context?: string,
+        documentText?: string | null,
         onChunk?: (text: string) => void
     ): Promise<string> {
         const hasContext = context && context.trim().length > 0;
-        const systemPrompt = hasContext
+        let systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
+
+        if (documentText) {
+            systemPrompt += `\n\nDOCUMENTO CARGADO POR EL USUARIO:\n${documentText}`;
+        }
 
         const conversation = [
             { role: "system" as const, content: systemPrompt },

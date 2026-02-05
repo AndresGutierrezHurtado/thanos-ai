@@ -8,6 +8,8 @@ import MessageUseCase from "../../../application/useCases/MessageUseCase";
 import SendMessageDto from "../../../application/ports/dtos/SendMessageDTO";
 
 export default class ChatController {
+    private readonly MAX_MEDIA_CONTENT_SIZE = 7 * 1024 * 1024; // 7MB
+
     constructor(
         private readonly chatUseCase: ChatUseCase,
         private readonly messageUseCase: MessageUseCase
@@ -45,6 +47,10 @@ export default class ChatController {
 
     public async createChat(req: Request, res: Response): Promise<Response | void> {
         const { content, mediaContent, stream: useStream } = req.body;
+
+        if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
+            throw new Error(`Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`);
+        }
 
         const dto: SendMessageDto = {
             chatId: null,

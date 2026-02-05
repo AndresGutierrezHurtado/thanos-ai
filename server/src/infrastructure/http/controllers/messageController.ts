@@ -2,13 +2,19 @@ import { Request, Response } from "express";
 
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
-import { UpdateMessageDto } from "../../../application/ports/dtos/SendMessageDTO";
+import UpdateMessageDto from "../../../application/ports/dtos/updateMessageDTO";
 
 export default class MessageController {
+    private readonly MAX_MEDIA_CONTENT_SIZE = 7 * 1024 * 1024; // 7MB
+
     constructor(private readonly messageUseCase: MessageUseCase) {}
 
     public async sendMessage(req: Request, res: Response): Promise<Response | void> {
         const { chatId, content, mediaContent, stream: useStream } = req.body;
+
+        if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
+            throw new Error(`Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`);
+        }
 
         if (useStream) {
             res.setHeader("Content-Type", "text/event-stream");

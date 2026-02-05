@@ -8,7 +8,6 @@ export interface MessageDocument {
     chatId: string;
     role: MessageRole;
     content: string;
-    mediaContentId: string | null;
     timestamp: Date;
     metadata: Record<string, unknown> | null;
 }
@@ -17,14 +16,12 @@ export default class MessageMapper {
     public static toDomain(doc: MessageDocument): Message {
         const id = doc.id ? new Identifier(doc.id) : null;
         const chatId = new Identifier(doc.chatId);
-        const mediaContentId = doc.mediaContentId ? new Identifier(doc.mediaContentId) : null;
 
         return new Message(
             id,
             chatId,
             doc.role,
             doc.content,
-            mediaContentId,
             new DateTimeValue(doc.timestamp),
             doc.metadata
         );
@@ -32,7 +29,6 @@ export default class MessageMapper {
 
     public static toPersistence(entity: Message): MessageDocument {
         const id = entity.getId();
-        const mediaContentId = entity.getMediaContentId();
 
         if (!id) {
             throw new Error("Message id is required to persist");
@@ -43,7 +39,6 @@ export default class MessageMapper {
             chatId: entity.getChatId().getValue(),
             role: entity.getRole(),
             content: entity.getContent(),
-            mediaContentId: mediaContentId ? mediaContentId.getValue() : null,
             timestamp: entity.getTimestamp().getValue(),
             metadata: entity.getMetadata(),
         };

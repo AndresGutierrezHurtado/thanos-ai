@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastContainer } from "react-toastify";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 
@@ -29,6 +29,7 @@ export default function RootLayout({ children }) {
     const [loadingChats, setLoadingChats] = useState(true);
 
     const pathname = usePathname();
+    const router = useRouter();
 
     const fetchChats = useCallback(async () => {
         try {
@@ -74,6 +75,10 @@ export default function RootLayout({ children }) {
         const response = await useApi("DELETE", `/chats/${chat.id}`, null, true);
 
         if (!response?.success) return;
+
+        if (pathname.includes(`/chat/${chat.id}`)) {
+            router.push("/");
+        }
 
         fetchChats();
     };

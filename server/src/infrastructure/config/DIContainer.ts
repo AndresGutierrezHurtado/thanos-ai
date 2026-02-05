@@ -3,6 +3,8 @@ import { Db } from "mongodb";
 // Presentation
 import MessageController from "../http/controllers/messageController";
 import DriveController from "../http/controllers/driveController";
+import ChatController from "../http/controllers/chatController";
+import HealthController from "../http/controllers/healthController";
 
 // Application
 import MessageUseCase from "../../application/useCases/MessageUseCase";
@@ -14,28 +16,28 @@ import IChatRepository from "../../application/ports/repositories/IChatRepositor
 import IMessageRepository from "../../application/ports/repositories/IMessageRepository";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import ISourceRepository from "../../application/ports/repositories/ISourceRepository";
+import IMediaContentRepository from "../../application/ports/repositories/IMediaContentRepository";
+import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
 import IDriveProvider from "../../application/ports/provider/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
-import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
 
 // Infrastructure
-import LlmProvider from "../providers/LlmProvider";
-import OpenAiModel from "../providers/OpenAiModel";
-import OpenAIEmbeddingProvider from "../providers/OpenAIEmbeddingProvider";
 import ChatRepository from "../persistence/repositories/ChatRepository";
 import MessageRepository from "../persistence/repositories/MessageRepository";
 import DocumentRepository from "../persistence/repositories/DocumentRepository";
 import SourceRepository from "../persistence/repositories/SourceRepository";
+import TransactionRepository from "../persistence/repositories/TransactionRepository";
+import MediaContentRepository from "../persistence/repositories/MediaContentRepository";
 import Database from "../persistence/Database";
-import ChatController from "../http/controllers/chatController";
-import GoogleDriveProvider from "../drive/googleDriveProvider";
+import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
-import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
-import HealthController from "../http/controllers/healthController";
 import LoggerAdapter from "../services/LoggerAdapter";
-import TransactionRepository from "../persistence/repositories/TransactionRepository";
+import OpenAIEmbeddingProvider from "../providers/OpenAIEmbeddingProvider";
+import LlmProvider from "../providers/LlmProvider";
+import OpenAiModel from "../providers/OpenAiModel";
+import GoogleDriveProvider from "../drive/googleDriveProvider";
 
 export default class DIContainer {
     private static instance: DIContainer;
@@ -76,7 +78,7 @@ export default class DIContainer {
             this.getSourceRepository(),
             this.getLlmProvider(),
             this.getDocumentRepository(),
-            this.getLogger(),
+            this.getMediaContentRepository(),
         );
     }
 
@@ -85,6 +87,7 @@ export default class DIContainer {
             this.getChatRepository(),
             this.getMessageRepository(),
             this.getSourceRepository(),
+            this.getMediaContentRepository(),
             this.getLlmProvider(),
         );
     }
@@ -118,6 +121,10 @@ export default class DIContainer {
         return new SourceRepository(this.db);
     }
 
+    private getMediaContentRepository(): IMediaContentRepository {
+        return new MediaContentRepository(this.db);
+    }
+
     // Services
     private getTransactionRepository(): ITransactionRepository {
         return new TransactionRepository(Database.getInstance(), this.getVectorStore());
@@ -144,7 +151,7 @@ export default class DIContainer {
     }
 
     private getLlmProvider(): ILlmProvider {
-        return new LlmProvider(new OpenAiModel(), this.getVectorStore(), this.getLogger());
+        return new LlmProvider(new OpenAiModel(), this.getVectorStore(), this.getProcessorFactory(), this.getLogger());
     }
 
     public getDriveProvider(): IDriveProvider {

@@ -11,7 +11,6 @@ export default class Message {
     private chatId: Identifier;
     private role: MessageRole;
     private content: string;
-    private mediaContentId: Identifier | null;
     private timestamp: DateTimeValue;
     private metadata: Record<string, unknown> | null;
 
@@ -23,7 +22,6 @@ export default class Message {
         chatId: Identifier,
         role: MessageRole,
         content: string,
-        mediaContentId: Identifier | null,
         timestamp: DateTimeValue,
         metadata: Record<string, unknown> | null
     ) {
@@ -31,7 +29,6 @@ export default class Message {
         this.chatId = chatId;
         this.role = role;
         this.content = content;
-        this.mediaContentId = mediaContentId;
         this.timestamp = timestamp;
         this.metadata = metadata;
     }
@@ -51,10 +48,6 @@ export default class Message {
 
     public getContent(): string {
         return this.content;
-    }
-
-    public getMediaContentId(): Identifier | null {
-        return this.mediaContentId;
     }
 
     public getTimestamp(): DateTimeValue {
@@ -88,10 +81,6 @@ export default class Message {
 
     public setContent(content: string): void {
         this.content = content;
-    }
-
-    public setMediaContentId(mediaContentId: Identifier | null): void {
-        this.mediaContentId = mediaContentId;
     }
 
     public setTimestamp(timestamp: DateTimeValue): void {
