@@ -2,6 +2,8 @@ import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/provider/IDocumentProcessor";
 import { LoadParameters, PDFParse, VerbosityLevel } from "pdf-parse";
+import LoggerAdapter from "../services/LoggerAdapter";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 export default class PdfProcessor implements IDocumentProcessor {
     supports(mimeType: string): boolean {
@@ -27,6 +29,8 @@ export default class PdfProcessor implements IDocumentProcessor {
                 metadata: { sourceType: "pdf" },
             };
         } catch (error) {
+            const logger = new LoggerAdapter();
+            logger.log(SyslogSeverity.ERROR, "Error extracting PDF", { error: error });
             return {
                 text: "",
                 sections: undefined,

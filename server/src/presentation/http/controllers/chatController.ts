@@ -12,7 +12,7 @@ export default class ChatController {
 
     constructor(
         private readonly chatUseCase: ChatUseCase,
-        private readonly messageUseCase: MessageUseCase
+        private readonly messageUseCase: MessageUseCase,
     ) {}
 
     public async getChats(req: Request, res: Response): Promise<Response> {
@@ -49,7 +49,13 @@ export default class ChatController {
         const { content, mediaContent, stream: useStream } = req.body;
 
         if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
-            throw new Error(`Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`);
+            throw new Error(
+                `Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`,
+            );
+        }
+
+        if (mediaContent && mediaContent.buffer && mediaContent.buffer.length > 0) {
+            mediaContent.buffer = Buffer.from(mediaContent.buffer, "base64");
         }
 
         const dto: SendMessageDto = {
@@ -72,7 +78,7 @@ export default class ChatController {
                     success: true,
                     message: "Chat created successfully",
                     data: chat,
-                })}\n\n`
+                })}\n\n`,
             );
             res.end();
             return;

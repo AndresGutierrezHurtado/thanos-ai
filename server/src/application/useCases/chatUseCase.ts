@@ -25,7 +25,7 @@ export default class ChatUseCase {
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
         private readonly mediaContentRepository: IMediaContentRepository,
-        private readonly llmProvider: ILlmProvider
+        private readonly llmProvider: ILlmProvider,
     ) {}
 
     public async getChats(): Promise<ChatResource[]> {
@@ -46,7 +46,7 @@ export default class ChatUseCase {
 
     public async createChat(
         dto: SendMessageDto,
-        onChunk?: (text: string) => void
+        onChunk?: (text: string) => void,
     ): Promise<MessageResource> {
         const { content, mediaContent } = dto;
 
@@ -56,8 +56,8 @@ export default class ChatUseCase {
                 null,
                 await this.llmProvider.generateChatTitle(content),
                 new DateTimeValue(),
-                new DateTimeValue()
-            )
+                new DateTimeValue(),
+            ),
         );
 
         // Save the user message and its file if it exists
@@ -68,11 +68,12 @@ export default class ChatUseCase {
                 MessageRole.USER,
                 content,
                 new DateTimeValue(),
-                null
-            )
+                null,
+            ),
         );
 
         if (mediaContent) {
+            // it loads on base64 format
             const mediaContentEntity = new MediaContent(
                 null,
                 userMessage.getId() as Identifier,
@@ -80,7 +81,7 @@ export default class ChatUseCase {
                 "",
                 mediaContent.filename,
                 mediaContent.mimeType,
-                mediaContent.size
+                mediaContent.size,
             );
 
             await this.mediaContentRepository.create(mediaContentEntity, mediaContent.buffer);

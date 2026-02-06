@@ -20,11 +20,14 @@ export default class ProcessorFactory {
     constructor(private readonly logger: ILogger) {}
 
     get(mimeType: string): IDocumentProcessor {
+        this.logger.log(SyslogSeverity.DEBUG, `Getting processor for mimeType: ${mimeType}`);
         const processor = this.processors.find((p) => p.supports(mimeType));
         if (!processor) {
             this.logger.log(SyslogSeverity.WARNING, `No processor found for mimeType: ${mimeType}`);
             return this.processors.find((p) => p instanceof TextProcessor)!;
         }
+        // ver clase del processor
+        this.logger.log(SyslogSeverity.DEBUG, `Processor class: ${processor.constructor.name}`);
         return processor;
     }
 }

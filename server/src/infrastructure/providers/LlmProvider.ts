@@ -72,7 +72,10 @@ export default class LlmProvider implements ILlmProvider {
         const lastUserMessage = this.getLastUserMessage(messages);
         const { context, sources } = await this.retrieveContext(lastUserMessage, 4);
 
-        const responseContent = await this.openAiModel.generateSimpleResponse(messages.slice(-5), context);
+        const responseContent = await this.openAiModel.generateSimpleResponse(
+            messages.slice(-5),
+            context,
+        );
 
         const message = new Message(
             null,
@@ -104,16 +107,28 @@ export default class LlmProvider implements ILlmProvider {
     // FUNCTION FOR GETTING THE DOCUMENT FROM THE MESSAGE
     private async getDocumentFromMessage(message: Message): Promise<string | null> {
         const mediaContent = message.getMediaContent();
+
         if (!mediaContent || !mediaContent.getUrl() || !mediaContent.getMimeType()) {
             return null;
         }
         const publicDir = path.join(process.cwd(), "public");
-        const filePath = path.resolve(publicDir, mediaContent.getUrl());
+        const mediaRelativePath = mediaContent.getUrl().replace(/^\/+/, "");
+        const filePath = path.resolve(publicDir, mediaRelativePath);
 
-        const buffer = fs.readFileSync(filePath);
+        let buffer: Buffer;
+
+        try {
+            buffer = fs.readFileSync(filePath);
+        } catch (error) {
+            this.logger.log(SyslogSeverity.ERROR, "Error reading file", { error: error });
+            return null;
+        }
 
         const processor = this.processorFactory.get(mediaContent.getMimeType());
         const extracted = await processor.extract(buffer);
+
+        this.logger.log(SyslogSeverity.DEBUG, "Document extracted", { extracted });
+
         return extracted.text;
     }
 
@@ -137,7 +152,12 @@ export default class LlmProvider implements ILlmProvider {
 
         let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
         for (const result of results) {
-            context += "- `PATHNAME`: '" + result.getDocument()?.getPath() + "' - `CONTENT`: " + result.getContent() + "\n";
+            context +=
+                "- `PATHNAME`: '" +
+                result.getDocument()?.getPath() +
+                "' - `CONTENT`: " +
+                result.getContent() +
+                "\n";
         }
 
         return { context, sources: results };

@@ -21,6 +21,7 @@ import MessageRole from "../../domain/valueObjects/MessageRole";
 import MediaContent from "../../domain/entities/mediaContent";
 import LoggerAdapter from "../../infrastructure/services/LoggerAdapter";
 import { SyslogSeverity } from "../ports/services/ILogger";
+import { MediaContentType } from "../../domain/valueObjects/MediaContentType";
 
 export default class MessageUseCase {
     constructor(
@@ -42,7 +43,7 @@ export default class MessageUseCase {
         if (!chat) throw new Error("Chat not found");
 
         // Save the user message
-        await this.messageRepository.create(
+        const userMessage = await this.messageRepository.create(
             new Message(
                 null,
                 chat.getId() as Identifier,
@@ -52,6 +53,21 @@ export default class MessageUseCase {
                 null,
             ),
         );
+
+        if (mediaContent) {
+            const mediaContentEntity = new MediaContent(
+                null,
+                userMessage.getId() as Identifier,
+                mediaContent.type as MediaContentType,
+                "",
+                mediaContent.filename,
+                mediaContent.mimeType,
+                mediaContent.size,
+            );
+            await this.mediaContentRepository.create(mediaContentEntity, mediaContent.buffer);
+            userMessage.setMediaContent(mediaContentEntity);
+        }
+
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
         // Generate the assistant message and save it and its sources

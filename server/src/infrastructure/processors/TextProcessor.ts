@@ -1,6 +1,8 @@
 import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/provider/IDocumentProcessor";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
+import LoggerAdapter from "../services/LoggerAdapter";
 
 export default class TextProcessor implements IDocumentProcessor {
     supports(mimeType: string): boolean {
@@ -12,7 +14,13 @@ export default class TextProcessor implements IDocumentProcessor {
     }
 
     async extract(buffer: Buffer): Promise<ExtractedDocument> {
-        const text = buffer.toString("utf-8");
-        return { text, metadata: { sourceType: "text" } };
+        try {
+            const text = buffer.toString("utf-8");
+            return { text, metadata: { sourceType: "text" } };
+        } catch (error) {
+            const logger = new LoggerAdapter();
+            logger.log(SyslogSeverity.ERROR, "Error extracting TEXT", { error: error });
+            return { text: "", metadata: { sourceType: "text" } };
+        }
     }
 }

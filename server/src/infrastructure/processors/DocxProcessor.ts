@@ -2,6 +2,8 @@ import mammoth from "mammoth";
 import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/provider/IDocumentProcessor";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
+import LoggerAdapter from "../services/LoggerAdapter";
 
 export default class DocxProcessor implements IDocumentProcessor {
     supports(mimeType: string): boolean {
@@ -12,14 +14,24 @@ export default class DocxProcessor implements IDocumentProcessor {
     }
 
     async extract(buffer: Buffer): Promise<ExtractedDocument> {
-        const result = await mammoth.extractRawText({ buffer });
-        const text = result.value ?? "";
-        const sections = this.splitIntoSections(text);
-        return {
-            text,
-            sections: sections.length > 0 ? sections : undefined,
-            metadata: { sourceType: "docx" },
-        };
+        try {
+            const result = await mammoth.extractRawText({ buffer });
+            const text = result.value ?? "";
+            const sections = this.splitIntoSections(text);
+            return {
+                text,
+                sections: sections.length > 0 ? sections : undefined,
+                metadata: { sourceType: "docx" },
+            };
+        } catch (error) {
+            const logger = new LoggerAdapter();
+            logger.log(SyslogSeverity.ERROR, "Error extracting DOCX", { error: error });
+            return {
+                text: "",
+                sections: undefined,
+                metadata: { sourceType: "docx" },
+            };
+        }
     }
 
     private splitIntoSections(text: string): { title: string; content: string }[] {

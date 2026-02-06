@@ -16,6 +16,10 @@ export default class MessageController {
             throw new Error(`Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`);
         }
 
+        if (mediaContent && mediaContent.buffer && mediaContent.buffer.length > 0) {
+            mediaContent.buffer = Buffer.from(mediaContent.buffer, "base64");
+        }
+
         if (useStream) {
             res.setHeader("Content-Type", "text/event-stream");
             res.setHeader("Cache-Control", "no-cache");
