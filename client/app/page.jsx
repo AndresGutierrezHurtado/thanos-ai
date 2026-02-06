@@ -124,7 +124,7 @@ export default function Page() {
                         <article
                             className="w-full border border-neutral-content/10 rounded-lg p-4 cursor-pointer hover:bg-neutral-content/10 transition-colors duration-300"
                             onClick={() => {
-                                handleSubmit(null, "Comparteme la informacion del area de seguridad");
+                                handleSubmit(null, "Comparteme la informacion del area de dirección estratégica");
                             }}
                         >
                             <div className="w-full flex gap-2 items-center justify-center">

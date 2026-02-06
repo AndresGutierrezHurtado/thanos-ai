@@ -70,7 +70,7 @@ export default class ChromaVectorStore implements IVectorStore {
         collection: string,
         queryText: string,
         nResults = 5,
-        maxDistance = 0.25,
+        maxDistance = 0.3,
     ): Promise<Source[]> {
         const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
 
@@ -89,6 +89,9 @@ export default class ChromaVectorStore implements IVectorStore {
         const ids = result.ids?.[0] ?? [];
 
         const sources: Source[] = [];
+
+        const logger = new LoggerAdapter();
+        logger.log(SyslogSeverity.DEBUG, "Query result", { result });
 
         for (let i = 0; i < documents.length; i++) {
             const id = ids[i] ?? "";

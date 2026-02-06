@@ -135,7 +135,7 @@ export default class LlmProvider implements ILlmProvider {
             maxResults,
         );
 
-        let context = "DOCUMENTOS RELEVANTES:\n";
+        let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
         for (const result of results) {
             context += "- `PATHNAME`: '" + result.getDocument()?.getPath() + "' - `CONTENT`: " + result.getContent() + "\n";
         }

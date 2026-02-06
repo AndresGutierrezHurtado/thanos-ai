@@ -10,7 +10,7 @@ export default class OpenAiModel {
     private simpleModel: ChatOpenAI;
     private model: ChatOpenAI;
     private systemPrompt: string = `
-Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
+ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
 ÁMBITO:
 - Documentación interna de la empresa (PRIORIDAD)
 - Consultas generales sobre grupo plataforma
@@ -48,7 +48,8 @@ REGLAS:
         let systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
-        systemPrompt += "Se breve y directo, puedes usar listas cuando ayude a la claridad.";
+        systemPrompt +=
+            "\nFORMATO SALIDA: Se breve y directo, puedes usar listas cuando ayude a la claridad.";
 
         if (documentText) {
             systemPrompt += `\n\nDOCUMENTO CARGADO POR EL USUARIO:\n${documentText}`;
@@ -86,7 +87,7 @@ REGLAS:
     }
 
     private buildSystemPromptWithContext(context: string): string {
-        return `CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n${context}\n---\n${this.systemPrompt}`;
+        return `\n${context}\n---\n${this.systemPrompt}`;
     }
 
     public async generateSimpleResponse(messages: Message[], context?: string): Promise<string> {
@@ -95,11 +96,7 @@ REGLAS:
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
 
-        systemPrompt += `
-            Responde en un SOLO párrafo de máximo 3 frases.
-            NUNCA uses listas, viñetas, ni formatos estructurados.
-            La respuesta debe ser clara, concisa y adecuada para un agente de voz.
-            `;
+        systemPrompt += `FORMATO SALIDA: Responde en un SOLO párrafo de máximo 3 frases. NUNCA uses listas, viñetas, ni formatos estructurados. La respuesta debe ser clara, concisa y adecuada para un agente de voz.`;
 
         const conversation = [
             { role: "system" as const, content: systemPrompt },
