@@ -1,4 +1,5 @@
 import http from "http";
+import path from "path";
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -26,6 +27,10 @@ app.use(cors({
     origin: process.env.APP_URL,
     credentials: true,
 }));
+
+// Static files from server/public
+const publicDir = path.join(process.cwd(), "public");
+app.use(express.static(publicDir));
 
 // Rate limiting for all API endpoints
 app.use("/api/v1", generalRateLimiter);

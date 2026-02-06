@@ -49,10 +49,7 @@ export default function ChatMessageList({
                     <React.Fragment key={index}>
                         {item.role === "assistant" ? (
                             <AssistantMessage
-                                key={
-                                    item.messageId ??
-                                    `${item.role}-${item.timestamp}-${index}`
-                                }
+                                key={item.messageId ?? `${item.role}-${item.timestamp}-${index}`}
                                 message={item}
                                 prevUserMessage={prevUserMessage}
                                 disabled={disabled}
@@ -60,10 +57,7 @@ export default function ChatMessageList({
                             />
                         ) : (
                             <UserMessage
-                                key={
-                                    item.messageId ??
-                                    `${item.role}-${item.timestamp}-${index}`
-                                }
+                                key={item.messageId ?? `${item.role}-${item.timestamp}-${index}`}
                                 message={item}
                                 disabled={disabled}
                                 onUpdateMessage={onUpdateMessage}
@@ -222,72 +216,99 @@ function UserMessage({ message, disabled, onUpdateMessage }) {
         }
     };
 
+    const getFileType = (mimeType) => {
+        if (mimeType.includes("pdf")) return "PDF";
+        if (mimeType.includes("docx")) return "DOCX";
+        if (mimeType.includes("doc")) return "DOC";
+        if (mimeType.includes("xlsx")) return "XLSX";
+        return mimeType;
+    };
+
     return (
-        <div className="w-full flex gap-2 justify-end group">
-            <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
-                {!isEditing && (
-                    <>
-                        <button
-                            className="btn btn-ghost w-8 h-8 rounded p-0"
-                            onClick={() => {
-                                navigator.clipboard.writeText(message.content.text);
-                                toast.success("Respuesta copiada al portapapeles");
-                            }}
-                        >
-                            <CopyIcon size={15} />
-                        </button>
-                        <button
-                            className="btn btn-ghost w-8 h-8 rounded p-0 disabled:opacity-50 disabled:pointer-events-none"
-                            disabled={disabled}
-                            onClick={() => {
-                                if (!disabled) {
-                                    setIsEditing(true);
-                                    setEditedContent(message.content.text);
-                                }
-                            }}
-                        >
-                            <PenIcon size={15} />
-                        </button>
-                    </>
-                )}
-            </div>
-            <div
-                className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis space-y-4"
-                style={{
-                    width: isEditing ? "100%" : "fit-content",
-                }}
-            >
-                {isEditing ? (
-                    <>
-                        <textarea
-                            ref={textareaRef}
-                            className="w-full min-w-0 max-w-full outline-none resize-none border border-base-content/30 rounded-md bg-base-content/10 p-1"
-                            rows={1}
-                            value={editedContent}
-                            onChange={(e) => setEditedContent(e.target.value)}
-                        />
-                        <div className="flex items-center w-full justify-end gap-2">
+        <div className="flex flex-col items-end gap-2 w-full">
+            {message.content.mediaContent && (
+                <article
+                    className="w-30 bg-base-300 border border-base-content/20 rounded-lg p-2 text-sm group relative flex flex-col cursor-pointer"
+                    onClick={() => {
+                        window.open(message.content.mediaContent.url, "_blank");
+                    }}
+                >
+                    <div className="flex-1">
+                        <p className="text-sm font-medium leading-tight line-clamp-3 pb-5">
+                            {message.content.mediaContent.filename}
+                        </p>
+                    </div>
+                    <div className="badge badge-sm text-sm rounded badge-outline">
+                        {getFileType(message.content.mediaContent.mimeType)}
+                    </div>
+                </article>
+            )}
+            <div className="w-full flex gap-2 justify-end group">
+                <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
+                    {!isEditing && (
+                        <>
                             <button
-                                className="btn btn-ghost btn-sm rounded"
+                                className="btn btn-ghost w-8 h-8 rounded p-0"
                                 onClick={() => {
-                                    setIsEditing(false);
-                                    setEditedContent(message.content.text);
+                                    navigator.clipboard.writeText(message.content.text);
+                                    toast.success("Respuesta copiada al portapapeles");
                                 }}
                             >
-                                Cancelar
+                                <CopyIcon size={15} />
                             </button>
                             <button
-                                className="btn btn-ghost btn-sm rounded disabled:opacity-50 disabled:pointer-events-none"
+                                className="btn btn-ghost w-8 h-8 rounded p-0 disabled:opacity-50 disabled:pointer-events-none"
                                 disabled={disabled}
-                                onClick={handleSave}
+                                onClick={() => {
+                                    if (!disabled) {
+                                        setIsEditing(true);
+                                        setEditedContent(message.content.text);
+                                    }
+                                }}
                             >
-                                Guardar
+                                <PenIcon size={15} />
                             </button>
-                        </div>
-                    </>
-                ) : (
-                    <>{message.content.text}</>
-                )}
+                        </>
+                    )}
+                </div>
+                <div
+                    className="w-fit max-w-xl rounded-2xl rounded-tr bg-primary text-primary-content p-4 overflow-x-clip text-ellipsis space-y-4"
+                    style={{
+                        width: isEditing ? "100%" : "fit-content",
+                    }}
+                >
+                    {isEditing ? (
+                        <>
+                            <textarea
+                                ref={textareaRef}
+                                className="w-full min-w-0 max-w-full outline-none resize-none border border-base-content/30 rounded-md bg-base-content/10 p-1"
+                                rows={1}
+                                value={editedContent}
+                                onChange={(e) => setEditedContent(e.target.value)}
+                            />
+                            <div className="flex items-center w-full justify-end gap-2">
+                                <button
+                                    className="btn btn-ghost btn-sm rounded"
+                                    onClick={() => {
+                                        setIsEditing(false);
+                                        setEditedContent(message.content.text);
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    className="btn btn-ghost btn-sm rounded disabled:opacity-50 disabled:pointer-events-none"
+                                    disabled={disabled}
+                                    onClick={handleSave}
+                                >
+                                    Guardar
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>{message.content.text}</>
+                    )}
+                </div>
             </div>
         </div>
     );
