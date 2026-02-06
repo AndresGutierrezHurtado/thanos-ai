@@ -121,7 +121,7 @@ export default function CallPage() {
     if (error || speechError) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="text-red-500">Error: {error?.message || speechError}</div>
+                <div className="text-error">Error: {error?.message || speechError}</div>
             </div>
         );
     }
@@ -142,13 +142,13 @@ export default function CallPage() {
                 type="button"
                 onClick={toggleRecording}
                 className={`btn btn-primary p-8 rounded-full ${
-                    isRecording ? "bg-red-500 animate-pulse" : "bg-blue-500"
+                    isRecording ? "bg-info animate-pulse" : "bg-primary"
                 }`}
             >
                 {isRecording ? <MicOffIcon size={40} /> : <MicIcon size={40} />}
             </button>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm opacity-70">
                 {isRecording ? "Grabando... Click para enviar" : "Click para hablar"}
             </p>
         </div>
