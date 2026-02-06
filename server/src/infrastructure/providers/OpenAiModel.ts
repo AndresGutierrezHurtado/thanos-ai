@@ -32,7 +32,7 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
             model: "gpt-4o-mini",
             apiKey: process.env.OPENAI_API_KEY,
             temperature: 0,
-            maxTokens: 150,
+            maxTokens: 125,
         });
     }
 
@@ -40,7 +40,7 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         messages: Message[],
         context?: string,
         documentText?: string | null,
-        onChunk?: (text: string) => void
+        onChunk?: (text: string) => void,
     ): Promise<string> {
         const hasContext = context && context.trim().length > 0;
         let systemPrompt = hasContext
@@ -76,19 +76,13 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         return response.content.toString();
     }
 
-    public async generateSimpleResponse(
-        messages: Message[],
-        context?: string,
-        documentText?: string | null
-    ): Promise<string> {
+    public async generateSimpleResponse(messages: Message[], context?: string): Promise<string> {
         const hasContext = context && context.trim().length > 0;
         let systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
-        systemPrompt += "\nResponde de forma MUY BREVE (1-2 frases).";
-        if (documentText) {
-            systemPrompt += `\n\nDOCUMENTO CARGADO POR EL USUARIO:\n${documentText}`;
-        }
+        systemPrompt +=
+            "\nResponde de forma MUY BREVE, siempre opta por responder en parrafos de 2 frases o menos, evitando listas y puntos";
 
         const conversation = [
             { role: "system" as const, content: systemPrompt },
@@ -138,7 +132,7 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const response = await client.audio.speech.create({
             model: "tts-1",
-            voice: "alloy",
+            voice: "echo",
             input: text,
         });
         return Buffer.from(await response.arrayBuffer());

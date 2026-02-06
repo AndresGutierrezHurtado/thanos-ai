@@ -70,13 +70,11 @@ export default class LlmProvider implements ILlmProvider {
         messages: Message[],
     ): Promise<{ message: Message; sources: Source[] }> {
         const lastUserMessage = this.getLastUserMessage(messages);
-        const documentText = await this.getDocumentFromMessage(lastUserMessage);
         const { context, sources } = await this.retrieveContext(lastUserMessage, 4);
 
         const responseContent = await this.openAiModel.generateSimpleResponse(
             messages,
             context,
-            documentText,
         );
 
         const message = new Message(
