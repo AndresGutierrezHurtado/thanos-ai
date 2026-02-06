@@ -10,6 +10,7 @@ import HealthController from "../../presentation/http/controllers/healthControll
 import MessageUseCase from "../../application/useCases/MessageUseCase";
 import ChatUseCase from "../../application/useCases/chatUseCase";
 import InformationUseCase from "../../application/useCases/informationUseCase";
+import SpeechUseCase from "../../application/useCases/SpeechUseCase";
 
 // Ports
 import IChatRepository from "../../application/ports/repositories/IChatRepository";
@@ -100,6 +101,16 @@ export default class DIContainer {
             this.getChunker(),
             this.getVectorStore(),
             this.getTransactionRepository(),
+            this.getLogger(),
+        );
+    }
+
+    public getSpeechUseCase(): SpeechUseCase {
+        return new SpeechUseCase(
+            this.getChatRepository(),
+            this.getMessageRepository(),
+            this.getSourceRepository(),
+            this.getLlmProvider(),
             this.getLogger(),
         );
     }

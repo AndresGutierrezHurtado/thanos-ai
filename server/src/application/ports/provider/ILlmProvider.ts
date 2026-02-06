@@ -10,6 +10,7 @@ interface ILlmProvider {
     ): Promise<{ message: Message, sources: Source[] }>;
     generateChatTitle(content: string): Promise<string>;
     speechToText(audio: Buffer): Promise<string>;
+    textToSpeech(text: string): Promise<Buffer>;
 }
 
 export default ILlmProvider;

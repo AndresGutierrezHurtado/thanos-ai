@@ -1,6 +1,9 @@
+import http from "http";
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { Server as SocketServer } from "socket.io";
+import { registerWebSocketHandler } from "./presentation/websockets/websocketsHandler.js";
 
 // Middlewares
 import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "./presentation/http/middlewares";
@@ -37,7 +40,13 @@ app.use("/api/v1", driveRoutes);
 app.use(errorHandlerMiddleware);
 app.use(notFoundMiddleware);
 
-// Start the server
-app.listen(process.env.PORT, () => {
+// HTTP server + WebSocket (Socket.IO) for P2P signaling
+const server = http.createServer(app);
+const io = new SocketServer(server, {
+    cors: { origin: process.env.APP_URL ?? "*", credentials: true },
+});
+registerWebSocketHandler(io);
+
+server.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);
 });

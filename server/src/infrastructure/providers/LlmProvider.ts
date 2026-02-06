@@ -70,6 +70,10 @@ export default class LlmProvider implements ILlmProvider {
         return await this.openAiModel.speechToText(audio);
     }
 
+    public async textToSpeech(text: string): Promise<Buffer> {
+        return await this.openAiModel.textToSpeech(text);
+    }
+
     // FUNCION FOR GETTING THE LAST USER MESSAGE CONTENT
     private getLastUserMessage(messages: Message[]): Message {
         const userMessages = messages.filter((m) => m.getRole() === MessageRole.USER);
