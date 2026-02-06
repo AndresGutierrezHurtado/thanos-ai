@@ -37,8 +37,8 @@ export default class SpeechUseCase {
         );
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
-        this.logger.log(SyslogSeverity.DEBUG, "Generating response", { messages });
-        const { message: assistantMessage, sources } = await this.llmProvider.generateResponse(
+        this.logger.log(SyslogSeverity.DEBUG, "Generating simple response", { messagesCount: messages.length });
+        const { message: assistantMessage, sources } = await this.llmProvider.generateSimpleResponse(
             chat,
             messages,
         );

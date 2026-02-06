@@ -8,6 +8,7 @@ interface ILlmProvider {
         messages: Message[],
         onChunk?: (text: string) => void
     ): Promise<{ message: Message, sources: Source[] }>;
+    generateSimpleResponse(chat: Chat, messages: Message[]): Promise<{ message: Message, sources: Source[] }>;
     generateChatTitle(content: string): Promise<string>;
     speechToText(audio: Buffer): Promise<string>;
     textToSpeech(text: string): Promise<Buffer>;

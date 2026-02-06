@@ -4,6 +4,7 @@ import Message from "../../domain/entities/message";
 import OpenAI from "openai";
 
 export default class OpenAiModel {
+    private simpleModel: ChatOpenAI;
     private model: ChatOpenAI;
     private systemPrompt: string = `
 Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
@@ -26,6 +27,12 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
             temperature: 0.5,
             maxTokens: 500,
             topP: 1,
+        });
+        this.simpleModel = new ChatOpenAI({
+            model: "gpt-4o-mini",
+            apiKey: process.env.OPENAI_API_KEY,
+            temperature: 0,
+            maxTokens: 150,
         });
     }
 
@@ -66,6 +73,32 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         }
 
         const response = await this.model.invoke(conversation);
+        return response.content.toString();
+    }
+
+    public async generateSimpleResponse(
+        messages: Message[],
+        context?: string,
+        documentText?: string | null
+    ): Promise<string> {
+        const hasContext = context && context.trim().length > 0;
+        let systemPrompt = hasContext
+            ? this.buildSystemPromptWithContext(context)
+            : this.systemPrompt;
+        systemPrompt += "\nResponde de forma MUY BREVE (1-2 frases).";
+        if (documentText) {
+            systemPrompt += `\n\nDOCUMENTO CARGADO POR EL USUARIO:\n${documentText}`;
+        }
+
+        const conversation = [
+            { role: "system" as const, content: systemPrompt },
+            ...messages.map((message) => ({
+                role: message.getRole() as "user" | "assistant",
+                content: message.getContent(),
+            })),
+        ];
+
+        const response = await this.simpleModel.invoke(conversation);
         return response.content.toString();
     }
 

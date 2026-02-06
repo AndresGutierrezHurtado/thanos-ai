@@ -21,14 +21,12 @@ import ProcessorFactory from "../services/ProcessorFactory";
 // Providers
 import OpenAiModel from "./OpenAiModel";
 
-const NO_CONTEXT_RESPONSE = "No encontré información sobre esto en los documentos disponibles.";
-
 export default class LlmProvider implements ILlmProvider {
     constructor(
         private readonly openAiModel: OpenAiModel,
         private readonly vectorStore: IVectorStore,
         private readonly processorFactory: ProcessorFactory,
-        private readonly logger: ILogger
+        private readonly logger: ILogger,
     ) {}
 
     public async generateChatTitle(content: string): Promise<string> {
@@ -40,17 +38,19 @@ export default class LlmProvider implements ILlmProvider {
     public async generateResponse(
         chat: Chat,
         messages: Message[],
-        onChunk?: (text: string) => void
+        onChunk?: (text: string) => void,
     ): Promise<{ message: Message; sources: Source[] }> {
         const lastUserMessage = this.getLastUserMessage(messages);
         const documentText = await this.getDocumentFromMessage(lastUserMessage);
 
         const { context, sources } = await this.retrieveContext(lastUserMessage);
 
-        const responseContent =
-            context.length > 0
-                ? await this.openAiModel.generateResponse(messages, context, documentText, onChunk)
-                : NO_CONTEXT_RESPONSE;
+        const responseContent = await this.openAiModel.generateResponse(
+            messages,
+            context,
+            documentText,
+            onChunk,
+        );
 
         // Save the response
         const message = new Message(
@@ -59,7 +59,33 @@ export default class LlmProvider implements ILlmProvider {
             MessageRole.ASSISTANT,
             responseContent,
             new DateTimeValue(),
-            null
+            null,
+        );
+
+        return { message, sources };
+    }
+
+    public async generateSimpleResponse(
+        chat: Chat,
+        messages: Message[],
+    ): Promise<{ message: Message; sources: Source[] }> {
+        const lastUserMessage = this.getLastUserMessage(messages);
+        const documentText = await this.getDocumentFromMessage(lastUserMessage);
+        const { context, sources } = await this.retrieveContext(lastUserMessage, 4);
+
+        const responseContent = await this.openAiModel.generateSimpleResponse(
+            messages,
+            context,
+            documentText,
+        );
+
+        const message = new Message(
+            null,
+            chat.getId() as Identifier,
+            MessageRole.ASSISTANT,
+            responseContent,
+            new DateTimeValue(),
+            null,
         );
 
         return { message, sources };
@@ -97,7 +123,7 @@ export default class LlmProvider implements ILlmProvider {
     }
 
     // FUNCION FOR RETRIEVING THE CONTEXT OF THE DOCUMENTS
-    private async retrieveContext(message: Message): Promise<{
+    private async retrieveContext(message: Message, maxResults: number = 6): Promise<{
         context: string;
         sources: Source[];
     }> {
@@ -108,7 +134,7 @@ export default class LlmProvider implements ILlmProvider {
         const results: Source[] = await this.vectorStore.query(
             DOCUMENTS_COLLECTION,
             message.getContent(),
-            10
+            maxResults,
         );
 
         const context = results
