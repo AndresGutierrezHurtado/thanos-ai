@@ -26,6 +26,9 @@ export function PeerProvider({ children }) {
         const s = io(socketUrl, {
             autoConnect: true,
             transports: ["websocket", "polling"],
+            timeout: 3000,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
         });
 
         s.on("connect", () => {
@@ -33,7 +36,19 @@ export function PeerProvider({ children }) {
         });
 
         s.on("connect_error", (err) => {
-            console.error("Error de conexión:", err);
+            console.log("Error de conexión:", err);
+        });
+
+        s.on("disconnect", (reason) => {
+            console.warn("Socket desconectado:", reason);
+        });
+    
+        s.io.on("reconnect_attempt", (attempt) => {
+            console.log("Intentando reconectar:", attempt);
+        });
+    
+        s.io.on("reconnect_failed", () => {
+            console.log("No se pudo reconectar");
         });
 
         setSocket(s);
@@ -54,7 +69,7 @@ export function PeerProvider({ children }) {
         });
 
         socket.on("speech-error", ({ message }) => {
-            console.error("Error de speech:", message);
+            console.log("Error de speech:", message);
             setSpeechResponseAudio(null);
             setSpeechError(message ?? "Speech failed");
         });
@@ -68,12 +83,12 @@ export function PeerProvider({ children }) {
     // Función para enviar audio
     const sendSpeech = (chatId, audioBase64) => {
         if (!socket) {
-            console.error("Socket no conectado");
+            console.log("Socket no conectado");
             return;
         }
 
         if (!chatId || !audioBase64) {
-            console.error("chatId o audioBase64 faltante");
+            console.log("chatId o audioBase64 faltante");
             return;
         }
 
