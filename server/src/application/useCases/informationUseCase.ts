@@ -7,6 +7,7 @@ import resolveFileType from "../utils/resolveFileType";
 import { DOCUMENTS_COLLECTION } from "../constants/collections";
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 import ITransactionRepository from "../ports/repositories/ITransactionRepository";
+import Source from "../../domain/entities/source";
 
 export default class InformationUseCase {
     private readonly CONCURRENT_DOWNLOADS = 10;
@@ -22,6 +23,10 @@ export default class InformationUseCase {
 
     public async listFiles(): Promise<DriveFile[]> {
         return await this.driveProvider.listFiles();
+    }
+
+    public async listChromaFiles(query: string): Promise<Source[]> {
+        return await this.vectorStore.query(DOCUMENTS_COLLECTION, query, 10);
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
@@ -62,6 +67,7 @@ export default class InformationUseCase {
                 driveId: file.id,
                 version: file.modifiedTime,
                 sourceType,
+                path: file.path,
             });
 
             this.logger.log(SyslogSeverity.DEBUG, `chunks created from: ${file.name} (${chunks.length} chunks)`);
@@ -82,6 +88,7 @@ export default class InformationUseCase {
                 version: file.modifiedTime,
                 checksum: checksum as string,
                 normCode: null,
+                path: file.path,
             });
 
             this.logger.log(SyslogSeverity.DEBUG, `adding documents to vector store: ${file.name}`);

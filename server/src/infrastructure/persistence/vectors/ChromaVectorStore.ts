@@ -4,6 +4,8 @@ import IEmbeddingProvider from "../../../application/ports/provider/IEmbeddingPr
 import Source from "../../../domain/entities/source";
 import IDocumentRepository from "../../../application/ports/repositories/IDocumentRepository";
 import Document from "../../../domain/entities/document";
+import LoggerAdapter from "../../services/LoggerAdapter";
+import { SyslogSeverity } from "../../../application/ports/services/ILogger";
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -67,40 +69,49 @@ export default class ChromaVectorStore implements IVectorStore {
         collection: string,
         queryText: string,
         nResults = 5,
+        maxDistance = 0.25,
     ): Promise<Source[]> {
         const col = await this.client.getOrCreateCollection({ name: collection });
         const [embedding] = await this.embeddingProvider.embed([queryText]);
+
         const result = await col.query({
             queryEmbeddings: [embedding],
             nResults,
-            include: ["documents", "metadatas"],
+            include: ["documents", "metadatas", "distances"],
         });
 
         const documents = result.documents?.[0] ?? [];
         const metadatas = result.metadatas?.[0] ?? [];
+        const distances = result.distances?.[0] ?? [];
         const ids = result.ids?.[0] ?? [];
 
-        const sources: Source[] = await Promise.all(
-            documents.map(async (doc, index): Promise<Source> => {
-                const metadata = metadatas[index] ?? {};
-                const document: Document | null = await this.documentRepository.findByDriveId(
-                    metadata.driveId as string
-                );
+        const sources: Source[] = [];
 
-                const source = new Source(
-                    ids[index] as string,
-                    document?.getId() ?? null,
-                    null,
-                    metadata.documentVersion as string,
-                    metadata.sourceType as string,
-                    metadata.section as string,
-                    doc as string
-                );
+        for (let i = 0; i < documents.length; i++) {
+            const id = ids[i] ?? "";
+            const metadata = metadatas[i] ?? {};
+            const document = documents[i] ?? "";
+            const distance = distances[i] ?? 0;
 
-                source.setDocument(document as Document);
-                return source;
-            })
-        );
+            if (distance < (1 - maxDistance)) continue;
+
+            const driveDocument: Document | null = await this.documentRepository.findByDriveId(
+                metadata.driveId as string,
+            );
+
+            const source = new Source(
+                id,
+                driveDocument?.getId() ?? null,
+                null,
+                metadata.documentVersion as string,
+                metadata.sourceType as string,
+                metadata.section as string,
+                document as string,
+            );
+
+            source.setDocument(driveDocument as Document);
+            sources.push(source);
+        }
 
         return sources;
     }

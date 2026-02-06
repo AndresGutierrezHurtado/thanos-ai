@@ -6,6 +6,7 @@ export interface DriveFile {
     md5Checksum?: string;
     size?: number;
     webViewLink?: string;
+    path?: string;
 }
 
 export default interface IDriveProvider {

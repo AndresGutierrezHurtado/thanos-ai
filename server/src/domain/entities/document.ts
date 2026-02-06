@@ -10,6 +10,7 @@ export default class Document {
     private version: string;
     private checksum: string;
     private processedAt: DateTimeValue;
+    private path?: string;
 
     constructor(
         id: Identifier | null,
@@ -20,6 +21,7 @@ export default class Document {
         version: string,
         checksum: string,
         processedAt: DateTimeValue,
+        path?: string,
     ) {
         this.id = id;
         this.driveId = driveId;
@@ -29,6 +31,7 @@ export default class Document {
         this.version = version;
         this.checksum = checksum;
         this.processedAt = processedAt;
+        this.path = path;
     }
 
     // Getters
@@ -64,6 +67,10 @@ export default class Document {
         return this.processedAt;
     }
 
+    public getPath(): string | undefined {
+        return this.path;
+    }
+
     // Setters
     public setId(id: Identifier | null): void {
         this.id = id;
@@ -96,5 +103,8 @@ export default class Document {
     public setProcessedAt(processedAt: DateTimeValue): void {
         this.processedAt = processedAt;
     }
-}
 
+    public setPath(path: string): void {
+        this.path = path;
+    }
+}

@@ -27,7 +27,11 @@ export default class GoogleDriveProvider implements IDriveProvider {
     }
 
     // Listar archivos de una carpeta
-    async listFiles(folderId: string | null = null, files: DriveFile[] = []): Promise<DriveFile[]> {
+    async listFiles(
+        folderId: string | null = null,
+        files: DriveFile[] = [],
+        currentPath: string = "",
+    ): Promise<DriveFile[]> {
         // Get folders
         const response = await this.drive.files.list({
             q: `'${
@@ -40,13 +44,18 @@ export default class GoogleDriveProvider implements IDriveProvider {
         // Extract files in the subfolders
         for (const file of response.data.files || []) {
             if (file.mimeType === "application/vnd.google-apps.folder") {
-                await this.listFiles(file.id, files);
+                await this.listFiles(file.id, files, currentPath + file.name + "/");
             } else {
-                files.push(file as DriveFile);
+                const driveFile: DriveFile = {
+                    ...(file as DriveFile),
+                    path: currentPath + file.name,
+                };
+
+                files.push(driveFile);
                 if (files.length % 10 === 0) {
                     this.logger.log(
                         SyslogSeverity.DEBUG,
-                        `pulled ${files.length} files from drive`
+                        `pulled ${files.length} files from drive`,
                     );
                 }
             }
@@ -71,14 +80,14 @@ export default class GoogleDriveProvider implements IDriveProvider {
                 },
                 {
                     responseType: "arraybuffer",
-                }
+                },
             );
             return Buffer.from(response.data as ArrayBuffer);
         }
 
         const response = await this.drive.files.get(
             { fileId, alt: "media" },
-            { responseType: "arraybuffer" }
+            { responseType: "arraybuffer" },
         );
 
         return Buffer.from(response.data as ArrayBuffer);

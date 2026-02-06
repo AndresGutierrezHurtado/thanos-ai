@@ -23,4 +23,14 @@ export default class DriveController {
             data: files,
         });
     }
+
+    public async listChromaFiles(req: Request, res: Response): Promise<Response> {
+        const query = req.query.query as string;
+        const files = await this.informationUseCase.listChromaFiles(query);
+        return res.status(200).json({
+            success: true,
+            message: "Chroma files fetched successfully",
+            data: files,
+        });
+    }
 }

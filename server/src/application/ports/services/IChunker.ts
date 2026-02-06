@@ -9,12 +9,13 @@ export interface ChunkData {
         section: string;
         sourceType: string;
         norm?: string;
+        path?: string;
     };
 }
 
 export default interface IChunker {
     createChunks(
         extracted: ExtractedDocument,
-        context: { driveId: string; version: string; sourceType: string; norm?: string }
+        context: { driveId: string; version: string; sourceType: string; norm?: string; path?: string }
     ): ChunkData[];
 }

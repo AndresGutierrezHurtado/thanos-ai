@@ -12,10 +12,11 @@ export default class HierarchicalChunker implements IChunker {
             version: string;
             sourceType: string;
             norm?: string;
+            path?: string;
         }
     ): ChunkData[] {
         const chunks: ChunkData[] = [];
-        const { driveId, version, sourceType, norm } = context;
+        const { driveId, version, sourceType, norm, path } = context;
 
         const sections =
             (extracted.sections?.length ?? 0) > 0
@@ -35,6 +36,7 @@ export default class HierarchicalChunker implements IChunker {
                         section: section.title,
                         sourceType,
                         norm,
+                        path,
                     },
                 });
             }

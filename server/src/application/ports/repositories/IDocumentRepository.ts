@@ -8,6 +8,7 @@ export interface DocumentRecord {
     version: string;
     checksum: string;
     normCode: string | null;
+    path?: string;
 }
 
 export default interface IDocumentRepository {

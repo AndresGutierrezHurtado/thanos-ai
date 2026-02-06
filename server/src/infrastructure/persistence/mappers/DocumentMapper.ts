@@ -12,6 +12,7 @@ export interface DocumentMongoDoc {
     version: string;
     checksum: string;
     updatedAt: Date;
+    path?: string;
 }
 
 export default class DocumentMapper {
@@ -25,7 +26,8 @@ export default class DocumentMapper {
             doc.normCode,
             doc.version,
             doc.checksum,
-            new DateTimeValue(doc.updatedAt)
+            new DateTimeValue(doc.updatedAt),
+            doc.path
         );
     }
 
@@ -38,6 +40,7 @@ export default class DocumentMapper {
             version: record.version,
             checksum: record.checksum,
             updatedAt: new Date(),
+            path: record.path,
         };
     }
 }

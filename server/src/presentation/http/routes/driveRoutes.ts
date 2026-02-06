@@ -9,7 +9,7 @@ const driveController = container.getDriveController();
 const routes = Router();
 
 routes.get("/drive/files", driveController.listFiles.bind(driveController));
-
+routes.get("/chroma/files", driveController.listChromaFiles.bind(driveController));
 routes.post("/drive/sync", driveController.syncDocuments.bind(driveController));
 
 export default routes;

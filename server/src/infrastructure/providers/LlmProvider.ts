@@ -46,7 +46,7 @@ export default class LlmProvider implements ILlmProvider {
         const { context, sources } = await this.retrieveContext(lastUserMessage);
 
         const responseContent = await this.openAiModel.generateResponse(
-            messages,
+            messages.slice(0, 5),
             context,
             documentText,
             onChunk,
@@ -72,10 +72,7 @@ export default class LlmProvider implements ILlmProvider {
         const lastUserMessage = this.getLastUserMessage(messages);
         const { context, sources } = await this.retrieveContext(lastUserMessage, 4);
 
-        const responseContent = await this.openAiModel.generateSimpleResponse(
-            messages,
-            context,
-        );
+        const responseContent = await this.openAiModel.generateSimpleResponse(messages.slice(0, 5), context);
 
         const message = new Message(
             null,
@@ -121,7 +118,10 @@ export default class LlmProvider implements ILlmProvider {
     }
 
     // FUNCION FOR RETRIEVING THE CONTEXT OF THE DOCUMENTS
-    private async retrieveContext(message: Message, maxResults: number = 6): Promise<{
+    private async retrieveContext(
+        message: Message,
+        maxResults: number = 6,
+    ): Promise<{
         context: string;
         sources: Source[];
     }> {
@@ -136,7 +136,7 @@ export default class LlmProvider implements ILlmProvider {
         );
 
         const context = results
-            .map((r) => r.getContent())
+            .map((r) => "DOCUMENT '" + r.getDocument()?.getPath() + "': " + r.getContent())
             .filter(Boolean)
             .join("\n\n---\n\n");
 
