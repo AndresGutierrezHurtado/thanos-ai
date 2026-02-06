@@ -46,7 +46,7 @@ export default class LlmProvider implements ILlmProvider {
         const { context, sources } = await this.retrieveContext(lastUserMessage);
 
         const responseContent = await this.openAiModel.generateResponse(
-            messages.slice(0, 5),
+            messages.slice(-5),
             context,
             documentText,
             onChunk,
@@ -72,7 +72,7 @@ export default class LlmProvider implements ILlmProvider {
         const lastUserMessage = this.getLastUserMessage(messages);
         const { context, sources } = await this.retrieveContext(lastUserMessage, 4);
 
-        const responseContent = await this.openAiModel.generateSimpleResponse(messages.slice(0, 5), context);
+        const responseContent = await this.openAiModel.generateSimpleResponse(messages.slice(-5), context);
 
         const message = new Message(
             null,
@@ -135,10 +135,10 @@ export default class LlmProvider implements ILlmProvider {
             maxResults,
         );
 
-        const context = results
-            .map((r) => "DOCUMENT '" + r.getDocument()?.getPath() + "': " + r.getContent())
-            .filter(Boolean)
-            .join("\n\n---\n\n");
+        let context = "DOCUMENTOS RELEVANTES:\n";
+        for (const result of results) {
+            context += "- `PATHNAME`: '" + result.getDocument()?.getPath() + "' - `CONTENT`: " + result.getContent() + "\n";
+        }
 
         return { context, sources: results };
     }

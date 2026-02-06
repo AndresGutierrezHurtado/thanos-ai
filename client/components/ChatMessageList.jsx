@@ -42,8 +42,8 @@ export default function ChatMessageList({
     return (
         <div className="flex flex-col max-w-3xl mx-auto gap-5 pb-4">
             {messages.map((item, index) => {
-                const userMessages = messages.filter((m) => m.role === "user");
-                const prevUserMessage = userMessages[index - 1];
+                const userMessages = messages.slice(0, index).filter((m) => m.role === "user");
+                const prevUserMessage = userMessages[userMessages.length - 1];
 
                 return (
                     <React.Fragment key={index}>
@@ -51,7 +51,6 @@ export default function ChatMessageList({
                             <AssistantMessage
                                 key={
                                     item.messageId ??
-                                    item.id ??
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
@@ -63,7 +62,6 @@ export default function ChatMessageList({
                             <UserMessage
                                 key={
                                     item.messageId ??
-                                    item.id ??
                                     `${item.role}-${item.timestamp}-${index}`
                                 }
                                 message={item}
@@ -210,10 +208,10 @@ function UserMessage({ message, disabled, onUpdateMessage }) {
             textareaRef.current.selectionStart = textareaRef.current.selectionEnd =
                 textareaRef.current.value.length;
         }
-    }, [isEditing, editedContent]);
+    }, [isEditing]);
 
     const handleSave = () => {
-        const id = message.messageId ?? message.id;
+        const id = message.messageId;
         const newContent = editedContent.trim();
         if (id && newContent && onUpdateMessage) {
             onUpdateMessage(id, newContent);

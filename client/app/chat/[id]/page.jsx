@@ -6,6 +6,7 @@ import { useApi } from "@/hooks/useApi";
 import { streamRequest } from "@/lib/streamRequest";
 import ChatInput from "@/components/ChatInput";
 import ChatMessageList from "@/components/ChatMessageList";
+import toBase64 from "@/lib/toBase64";
 
 export default function ChatByIdPage() {
     // Refs
@@ -64,28 +65,6 @@ export default function ChatByIdPage() {
 
     const addMessage = useCallback((message) => {
         setMessages((prevMessages) => [...prevMessages, message]);
-    }, []);
-
-    const replaceLastWithFinalMessage = useCallback((data) => {
-        setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last?.role === "assistant" && data) {
-                next[next.length - 1] = {
-                    ...last,
-                    messageId: data.messageId ?? last.messageId,
-                    timestamp: data.timestamp ?? last.timestamp,
-                    streaming: false,
-                    content: {
-                        text: data.content?.text ?? last.content?.text,
-                        sources: data.content?.sources ?? [],
-                        mediaContent: null,
-                    },
-                };
-            }
-            return next;
-        });
-        setTimeout(() => textareaRef.current?.focus(), 100);
     }, []);
 
     const appendToLastAssistantMessage = useCallback((textToAppend) => {
@@ -213,25 +192,8 @@ export default function ChatByIdPage() {
                 { chatId, content: trimmedContent, mediaContent },
                 {
                     onChunk: appendToLastAssistantMessage,
-                    onFinal: (data) => {
-                        setMessages((prev) => {
-                            const next = [...prev];
-                            const last = next[next.length - 1];
-                            if (last?.role === "assistant" && data) {
-                                next[next.length - 1] = {
-                                    ...last,
-                                    messageId: data.messageId ?? last.messageId,
-                                    timestamp: data.timestamp ?? last.timestamp,
-                                    streaming: false,
-                                    content: {
-                                        text: data.content?.text ?? last.content?.text,
-                                        sources: data.content?.sources ?? [],
-                                        mediaContent: null,
-                                    },
-                                };
-                            }
-                            return next;
-                        });
+                    onFinal: () => {
+                        loadMessages();
                         setTimeout(() => textareaRef.current?.focus(), 100);
                     },
                 }
@@ -271,7 +233,10 @@ export default function ChatByIdPage() {
                     { content },
                     {
                         onChunk: appendToLastAssistantMessage,
-                        onFinal: replaceLastWithFinalMessage,
+                        onFinal: () => {
+                            loadMessages();
+                            setTimeout(() => textareaRef.current?.focus(), 100);
+                        },
                     }
                 );
             } catch (error) {
@@ -301,13 +266,12 @@ export default function ChatByIdPage() {
             chatId,
             prepareForStreamingAfterUserMessage,
             appendToLastAssistantMessage,
-            replaceLastWithFinalMessage,
         ]
     );
 
     return (
         <div className="w-full h-full flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden pt-5" ref={containerRef}>
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 pt-5" ref={containerRef}>
                 <ChatMessageList
                     messages={messages}
                     loading={messagesLoading}

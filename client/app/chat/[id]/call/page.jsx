@@ -16,6 +16,7 @@ export default function CallPage() {
     const [isRecording, setIsRecording] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [callTime, setCallTime] = useState(0);
+    const [voiceLevel, setVoiceLevel] = useState(0);
 
     // Refs
     const audioRef = useRef(null);
@@ -125,19 +126,77 @@ export default function CallPage() {
 
     // Play the audio response
     useEffect(() => {
-        if (speechResponseAudio && audioRef.current) {
-            // Convert base64 to Blob
-            const binaryString = atob(speechResponseAudio);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: "audio/mpeg" });
-            const url = URL.createObjectURL(blob);
+        if (!speechResponseAudio || !audioRef.current) return;
 
-            audioRef.current.src = url;
-            audioRef.current.play().catch((err) => console.error("Error playing audio:", err));
+        const audioEl = audioRef.current;
+
+        // Convert base64 to Blob
+        const binaryString = atob(speechResponseAudio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
         }
+        const blob = new Blob([bytes], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+
+        audioRef.current.src = url;
+
+        // Convert base64 to Blob
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(audioEl);
+        const analyser = audioCtx.createAnalyser();
+
+        analyser.fftSize = 256;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+
+        let rafId;
+        let closed = false;
+
+        const cleanupAudioContext = () => {
+            if (closed) return;
+            closed = true;
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+            }
+            if (audioCtx.state !== "closed") {
+                audioCtx.close();
+            }
+        };
+
+        const tick = () => {
+            analyser.getByteFrequencyData(dataArray);
+
+            // Promedio del volumen
+            const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
+
+            // Normalizamos (0–1 aprox)
+            const normalized = Math.min(avg / 100, 1);
+
+            setVoiceLevel(normalized);
+            rafId = requestAnimationFrame(tick);
+        };
+
+        audioEl.onplay = () => {
+            audioCtx.resume();
+            tick();
+        };
+
+        audioEl.onended = () => {
+            setVoiceLevel(0);
+            cleanupAudioContext();
+        };
+
+        audioEl.play().catch((err) => console.error("Error playing audio:", err));
+
+        return () => {
+            audioEl.onplay = null;
+            audioEl.onended = null;
+            setVoiceLevel(0);
+            cleanupAudioContext();
+        };
     }, [speechResponseAudio]);
 
     const cancelRecording = () => {
@@ -201,28 +260,33 @@ export default function CallPage() {
                     Thanos AI
                 </h2>
             </div>
-            <div className="avatar outline-2 outline-offset-40 outline-dashed outline-primary/40 rounded-full">
-                <div className="ring-primary ring-offset-base-100 w-60 rounded-full outline-2 outline-offset-20 outline-dashed outline-primary/60">
-                    <img
-                        src="/assistant.png"
-                        alt="Assistant image"
-                        className="w-full h-full object-cover"
-                    />
+            <div className="w-fit h-fit relative">
+                <div
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-radial from-primary/60 from-50% to-base-100 to-70%"
+                    style={{ transform: `scale(${1 + voiceLevel * 0.5})` }}
+                ></div>
+                <div className="avatar outline-2 outline-offset-40 outline-dashed outline-primary/40 rounded-full">
+                    <div className="ring-primary ring-offset-base-100 w-60 rounded-full outline-2 outline-offset-20 outline-dashed outline-primary/60">
+                        <img
+                            src="/assistant.png"
+                            alt="Assistant image"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
                 </div>
             </div>
             <div className="flex items-center justify-center gap-8">
-
-            {isRecording && (
-                <button
-                    type="button"
-                    onClick={cancelRecording}
-                    disabled={isLoading}
-                    className="btn btn-primary p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom"
-                    data-tip="Cancelar mensaje"
-                >
-                    <XIcon size={25} />
-                </button>
-            ) }
+                {isRecording && (
+                    <button
+                        type="button"
+                        onClick={cancelRecording}
+                        disabled={isLoading}
+                        className="btn btn-primary p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom"
+                        data-tip="Cancelar mensaje"
+                    >
+                        <XIcon size={25} />
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={toggleRecording}

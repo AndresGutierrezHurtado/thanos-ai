@@ -3,6 +3,8 @@ import { DynamicTool } from "@langchain/core/tools";
 import Message from "../../domain/entities/message";
 import OpenAI from "openai";
 import BusinessTermNormalizer from "./BusinessTermNormalizer";
+import LoggerAdapter from "../services/LoggerAdapter";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 export default class OpenAiModel {
     private simpleModel: ChatOpenAI;
@@ -12,13 +14,12 @@ Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especia
 ÁMBITO:
 - Documentación interna de la empresa (PRIORIDAD)
 - Consultas generales sobre grupo plataforma
-- Gestión documental general
 REGLAS:
-1. Para consultas de documentación interna: Usa SOLO el CONTEXTO proporcionado
-2. Para consultas generales de AV o gestión documental: Puedes usar conocimiento general
-3. Si no hay información en el contexto: "No encontré información sobre [tema] en los documentos"
-4. NUNCA inventes información sobre documentos internos
-FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
+1. No respondas preguntas que no sean sobre la documentación interna de la empresa o el grupo plataforma.
+2. Para consultas de documentación interna: Usa SOLO el CONTEXTO proporcionado
+3. Para consultas generales de AV o gestión documental: Puedes usar conocimiento general
+4. Si no hay información en el contexto: "No encontré información sobre [tema] en los documentos"
+5. NUNCA inventes información sobre documentos internos
 `;
 
     constructor() {
@@ -47,6 +48,7 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         let systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
+        systemPrompt += "Se breve y directo, puedes usar listas cuando ayude a la claridad.";
 
         if (documentText) {
             systemPrompt += `\n\nDOCUMENTO CARGADO POR EL USUARIO:\n${documentText}`;
@@ -63,6 +65,9 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
             }),
         ];
 
+        const logger = new LoggerAdapter();
+        logger.log(SyslogSeverity.DEBUG, "System prompt", { conversation });
+
         if (onChunk) {
             let fullText = "";
             const stream = await this.model.stream(conversation);
@@ -78,6 +83,10 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
 
         const response = await this.model.invoke(conversation);
         return response.content.toString();
+    }
+
+    private buildSystemPromptWithContext(context: string): string {
+        return `CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n${context}\n---\n${this.systemPrompt}`;
     }
 
     public async generateSimpleResponse(messages: Message[], context?: string): Promise<string> {
@@ -176,10 +185,6 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         });
 
         return response.choices[0]?.message?.content ?? "";
-    }
-
-    private buildSystemPromptWithContext(context: string): string {
-        return `CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n${context}\n---\n${this.systemPrompt}`;
     }
 
     public getTools() {
