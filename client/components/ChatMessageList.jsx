@@ -43,7 +43,7 @@ export default function ChatMessageList({
         <div className="flex flex-col max-w-3xl mx-auto gap-5 pb-4">
             {messages.map((item, index) => {
                 const userMessages = messages.filter((m) => m.role === "user");
-                const prevUserMessage = userMessages[userMessages.length - 1];
+                const prevUserMessage = userMessages[index - 1];
 
                 return (
                     <React.Fragment key={index}>

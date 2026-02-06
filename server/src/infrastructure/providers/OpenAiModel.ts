@@ -2,6 +2,7 @@ import { ChatOpenAI, OpenAI as LangchainOpenAI } from "@langchain/openai";
 import { DynamicTool } from "@langchain/core/tools";
 import Message from "../../domain/entities/message";
 import OpenAI from "openai";
+import BusinessTermNormalizer from "./BusinessTermNormalizer";
 
 export default class OpenAiModel {
     private simpleModel: ChatOpenAI;
@@ -53,10 +54,13 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
 
         const conversation = [
             { role: "system" as const, content: systemPrompt },
-            ...messages.map((message) => ({
-                role: message.getRole() as "user" | "assistant",
-                content: message.getContent(),
-            })),
+            ...messages.map((message) => {
+                const { normalizedText } = BusinessTermNormalizer.normalize(message.getContent());
+                return {
+                    role: message.getRole() as "user" | "assistant",
+                    content: normalizedText,
+                };
+            }),
         ];
 
         if (onChunk) {
@@ -81,8 +85,12 @@ FORMATO: Respuestas directas, usa listas cuando ayude a la claridad.
         let systemPrompt = hasContext
             ? this.buildSystemPromptWithContext(context)
             : this.systemPrompt;
-        systemPrompt +=
-            "\nResponde de forma MUY BREVE, siempre opta por responder en parrafos de 2 frases o menos, evitando listas y puntos";
+
+        systemPrompt += `
+            Responde en un SOLO párrafo de máximo 3 frases.
+            NUNCA uses listas, viñetas, ni formatos estructurados.
+            La respuesta debe ser clara, concisa y adecuada para un agente de voz.
+            `;
 
         const conversation = [
             { role: "system" as const, content: systemPrompt },

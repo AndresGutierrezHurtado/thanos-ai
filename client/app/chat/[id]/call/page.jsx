@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { usePeer } from "@/components/Peer";
-import { MicIcon, MicOffIcon, PhoneMissedIcon, PhoneCallIcon } from "lucide-react";
+import { MicIcon, MicOffIcon, PhoneMissedIcon, PhoneCallIcon, XIcon } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function CallPage() {
@@ -22,6 +22,7 @@ export default function CallPage() {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
+    const discardRecordingRef = useRef(false);
 
     // Hooks
     const { sendSpeech, speechResponseAudio, speechError } = usePeer();
@@ -90,6 +91,14 @@ export default function CallPage() {
         };
 
         mediaRecorder.onstop = async () => {
+            // Si el usuario canceló el mensaje, descartamos todo y no enviamos nada.
+            if (discardRecordingRef.current) {
+                discardRecordingRef.current = false;
+                audioChunksRef.current = [];
+                setIsLoading(false);
+                return;
+            }
+
             const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
             audioChunksRef.current = [];
 
@@ -131,6 +140,15 @@ export default function CallPage() {
         }
     }, [speechResponseAudio]);
 
+    const cancelRecording = () => {
+        if (!mediaRecorderRef.current) return;
+        // Marcar para descartar el audio cuando dispare onstop
+        discardRecordingRef.current = true;
+        audioChunksRef.current = [];
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+    };
+
     const toggleRecording = () => {
         if (!mediaRecorderRef.current) return;
 
@@ -140,6 +158,7 @@ export default function CallPage() {
             setIsRecording(false);
         } else {
             // Start recording
+            discardRecordingRef.current = false;
             audioChunksRef.current = [];
             mediaRecorderRef.current.start();
             setIsRecording(true);
@@ -192,14 +211,26 @@ export default function CallPage() {
                 </div>
             </div>
             <div className="flex items-center justify-center gap-8">
+
+            {isRecording && (
+                <button
+                    type="button"
+                    onClick={cancelRecording}
+                    disabled={isLoading}
+                    className="btn btn-primary p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom"
+                    data-tip="Cancelar mensaje"
+                >
+                    <XIcon size={25} />
+                </button>
+            ) }
                 <button
                     type="button"
                     onClick={toggleRecording}
                     disabled={isLoading}
-                    className={`btn btn-primary p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom ${
-                        isRecording ? "bg-info animate-pulse" : "bg-primary"
+                    className={`btn p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom ${
+                        isRecording ? "btn-info animate-pulse" : "btn-primary"
                     } ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
-                    data-tip={isRecording ? "Detener grabación" : "Grabar voz"}
+                    data-tip={isRecording ? "Enviar mensaje" : "Grabar voz"}
                 >
                     {isRecording ? <MicOffIcon size={25} /> : <MicIcon size={25} />}
                 </button>
