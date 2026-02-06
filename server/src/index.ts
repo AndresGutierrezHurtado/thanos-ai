@@ -43,7 +43,7 @@ app.use(notFoundMiddleware);
 // HTTP server + WebSocket (Socket.IO) for P2P signaling
 const server = http.createServer(app);
 const io = new SocketServer(server, {
-    cors: { origin: process.env.APP_URL ?? "*", credentials: true },
+    cors: { origin: process.env.APP_URL, credentials: true },
 });
 registerWebSocketHandler(io);
 

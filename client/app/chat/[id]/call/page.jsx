@@ -3,60 +3,154 @@
 import React, { useState, useEffect, useRef } from "react";
 import { usePeer } from "@/components/Peer";
 import { MicIcon, MicOffIcon } from "lucide-react";
+import { useParams } from "next/navigation";
 
 export default function CallPage() {
+    const params = useParams();
+    const chatId = params?.id ?? null;
+
+    // States
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
-    const [isMuted, setIsMuted] = useState(false);
-    const { sendStream, remoteStream } = usePeer();
+    const [isRecording, setIsRecording] = useState(false);
+
+    // Refs
     const audioRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
 
+    // Hooks
+    const { sendSpeech, speechResponseAudio, speechError } = usePeer();
+
+    // Get access to the microphone
     useEffect(() => {
         let cancelled = false;
         (async () => {
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 16000,
+                    },
+                });
                 if (!cancelled) {
-                    streamRef.current = s;
-                    setStream(s);
+                    streamRef.current = mediaStream;
+                    setStream(mediaStream);
                 } else {
-                    s.getTracks().forEach((t) => t.stop());
+                    mediaStream.getTracks().forEach((track) => track.stop());
                 }
-            } catch (e) {
-                if (!cancelled) setError(e);
+            } catch (err) {
+                if (!cancelled) setError(err);
             }
         })();
+
         return () => {
             cancelled = true;
-            streamRef.current?.getTracks().forEach((t) => t.stop());
+            streamRef.current?.getTracks().forEach((track) => track.stop());
         };
     }, []);
 
+    // Configure MediaRecorder when we have the stream
     useEffect(() => {
-        if (stream) sendStream(stream);
-    }, [stream, sendStream]);
+        if (!stream) return;
 
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: "audio/webm",
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunksRef.current.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+            audioChunksRef.current = [];
+
+            // Convert to base64
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const base64Audio = btoa(
+                new Uint8Array(arrayBuffer).reduce(
+                    (data, byte) => data + String.fromCharCode(byte),
+                    "",
+                ),
+            );
+
+            // Send to the server
+            sendSpeech(chatId, base64Audio);
+        };
+
+        mediaRecorderRef.current = mediaRecorder;
+    }, [stream, chatId, sendSpeech]);
+
+    // Play the audio response
     useEffect(() => {
-        if (audioRef.current && remoteStream) audioRef.current.srcObject = remoteStream;
-    }, [remoteStream]);
+        if (speechResponseAudio && audioRef.current) {
+            // Convert base64 to Blob
+            const binaryString = atob(speechResponseAudio);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: "audio/mpeg" });
+            const url = URL.createObjectURL(blob);
 
-    if (error) return <div>Error al obtener el micrófono: {error.message}</div>;
-    if (!stream) return <div>Cargando...</div>;
+            audioRef.current.src = url;
+            audioRef.current.play().catch((err) => console.error("Error playing audio:", err));
+        }
+    }, [speechResponseAudio]);
+
+    const toggleRecording = () => {
+        if (!mediaRecorderRef.current) return;
+
+        if (isRecording) {
+            // Stop recording
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        } else {
+            // Start recording
+            audioChunksRef.current = [];
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+        }
+    };
+
+    if (error || speechError) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-red-500">Error: {error?.message || speechError}</div>
+            </div>
+        );
+    }
+
+    if (!stream) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div>Cargando micrófono...</div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
-            {remoteStream && <audio ref={audioRef} autoPlay playsInline />}
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+            <audio ref={audioRef} />
+
             <button
                 type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                    streamRef.current.getTracks().forEach((t) => (t.enabled = !t.enabled));
-                    setIsMuted(!isMuted);
-                }}
+                onClick={toggleRecording}
+                className={`btn btn-primary p-8 rounded-full ${
+                    isRecording ? "bg-red-500 animate-pulse" : "bg-blue-500"
+                }`}
             >
-                {isMuted ? <MicOffIcon size={20} /> : <MicIcon size={20} />}
+                {isRecording ? <MicOffIcon size={40} /> : <MicIcon size={40} />}
             </button>
+
+            <p className="text-sm text-gray-600">
+                {isRecording ? "Grabando... Click para enviar" : "Click para hablar"}
+            </p>
         </div>
     );
 }

@@ -1,8 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { io } from "socket.io-client";
 
 const PeerContext = createContext(null);
+
+const socketUrl =
+    typeof window !== "undefined" && process.env.NEXT_PUBLIC_WS_URL
+        ? process.env.NEXT_PUBLIC_WS_URL.replace(/^ws/, "http")
+        : "http://localhost:4000";
 
 export function usePeer() {
     const ctx = useContext(PeerContext);
@@ -11,30 +17,81 @@ export function usePeer() {
 }
 
 export function PeerProvider({ children }) {
-    const [remoteStream, setRemoteStream] = useState(null);
+    const [socket, setSocket] = useState(null);
+    const [speechResponseAudio, setSpeechResponseAudio] = useState(null);
+    const [speechError, setSpeechError] = useState(null);
 
-    const peer = useMemo(() => {
-        if (typeof window === "undefined") return null;
-        return new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    // Conectar socket
+    useEffect(() => {
+        const s = io(socketUrl, {
+            autoConnect: true,
+            transports: ["websocket", "polling"],
         });
+
+        s.on("connect", () => {
+            console.log("Socket conectado:", s.id);
+        });
+
+        s.on("connect_error", (err) => {
+            console.error("Error de conexión:", err);
+        });
+
+        setSocket(s);
+
+        return () => {
+            s.disconnect();
+        };
     }, []);
 
-    const sendStream = (stream) => {
-        if (!stream) return;
-        stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    // Escuchar eventos del servidor
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on("speech-response", ({ audio }) => {
+            console.log("Respuesta de audio recibida:", audio?.length);
+            setSpeechError(null);
+            setSpeechResponseAudio(audio ?? null);
+        });
+
+        socket.on("speech-error", ({ message }) => {
+            console.error("Error de speech:", message);
+            setSpeechResponseAudio(null);
+            setSpeechError(message ?? "Speech failed");
+        });
+
+        return () => {
+            socket.off("speech-response");
+            socket.off("speech-error");
+        };
+    }, [socket]);
+
+    // Función para enviar audio
+    const sendSpeech = (chatId, audioBase64) => {
+        if (!socket) {
+            console.error("Socket no conectado");
+            return;
+        }
+
+        if (!chatId || !audioBase64) {
+            console.error("chatId o audioBase64 faltante");
+            return;
+        }
+
+        console.log("Enviando audio...", { chatId, audioLength: audioBase64.length });
+        setSpeechError(null);
+        socket.emit("speech", { chatId, audio: audioBase64 });
     };
 
-    useEffect(() => {
-        const onTrack = (event) => {
-            const stream = event.streams?.[0];
-            if (stream) setRemoteStream(stream);
-        };
-        peer.addEventListener("track", onTrack);
-        return () => peer.removeEventListener("track", onTrack);
-    }, [peer]);
-
-    const value = useMemo(() => ({ peer, sendStream, remoteStream }), [peer, remoteStream]);
+    const value = useMemo(
+        () => ({
+            socket,
+            sendSpeech,
+            speechResponseAudio,
+            speechError,
+            isConnected: socket?.connected ?? false,
+        }),
+        [socket, speechResponseAudio, speechError]
+    );
 
     return <PeerContext.Provider value={value}>{children}</PeerContext.Provider>;
 }

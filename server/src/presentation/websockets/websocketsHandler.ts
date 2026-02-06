@@ -1,48 +1,33 @@
 import { Server } from "socket.io";
 import DIContainer from "../../infrastructure/config/DIContainer";
 
+const log = (event: string, data: unknown) => {
+    console.log("[WS]", event, JSON.stringify(data, (_, v) => (typeof v === "string" && v.length > 80 ? `${v.slice(0, 80)}...(${v.length})` : v)));
+};
+
 export function registerWebSocketHandler(io: Server) {
     io.on("connection", (socket) => {
-        let roomId: string | null = null;
+        log("connection", { socketId: socket.id });
 
         socket.on("speech", async (payload: { chatId: string; audio: string }) => {
             try {
-                console.log("speech", payload);
+                log("speech", { chatId: payload.chatId, audioLength: payload.audio?.length ?? 0 });
                 const container = await DIContainer.getInstance();
                 const speechUseCase = container.getSpeechUseCase();
                 const audioBuffer = Buffer.from(payload.audio, "base64");
                 const responseAudio = await speechUseCase.execute(payload.chatId, audioBuffer);
-                socket.emit("speech-response", { audio: responseAudio.toString("base64") });
+                const b64 = responseAudio.toString("base64");
+                log("speech-response", { audioLength: b64.length });
+                socket.emit("speech-response", { audio: b64 });
             } catch (err) {
-                socket.emit("speech-error", { message: err instanceof Error ? err.message : "Speech failed" });
+                const msg = err instanceof Error ? err.message : "Speech failed";
+                log("speech-error", { message: msg });
+                socket.emit("speech-error", { message: msg });
             }
         });
 
-        socket.on("join-room", (chatId: string) => {
-            console.log("join-room", chatId);
-            roomId = chatId;
-            socket.join(roomId);
-            socket.to(roomId).emit("peer-joined", { peerId: socket.id });
-        });
-
-        socket.on("offer", (payload: { sdp: object }) => {
-            console.log("offer", payload);
-            if (roomId) socket.to(roomId).emit("offer", { from: socket.id, ...payload });
-        });
-
-        socket.on("answer", (payload: { to: string; sdp: object }) => {
-            console.log("answer", payload);
-            io.to(payload.to).emit("answer", { from: socket.id, sdp: payload.sdp });
-        });
-
-        socket.on("ice-candidate", (payload: { to: string; candidate: object }) => {
-            console.log("ice-candidate", payload);
-            io.to(payload.to).emit("ice-candidate", { from: socket.id, ...payload });
-        });
-
         socket.on("disconnect", () => {
-            console.log("disconnect", roomId);
-            if (roomId) socket.to(roomId).emit("peer-left", { peerId: socket.id });
+            log("disconnect", { socketId: socket.id });
         });
     });
 }
