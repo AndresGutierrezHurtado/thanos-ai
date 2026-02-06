@@ -77,7 +77,6 @@ export function PeerProvider({ children }) {
             return;
         }
 
-        console.log("Enviando audio...", { chatId, audioLength: audioBase64.length });
         setSpeechError(null);
         socket.emit("speech", { chatId, audio: audioBase64 });
     };

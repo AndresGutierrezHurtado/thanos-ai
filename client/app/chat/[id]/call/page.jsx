@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { usePeer } from "@/components/Peer";
-import { MicIcon, MicOffIcon, ArrowLeftIcon, XIcon, PhoneMissedIcon, PhoneCallIcon } from "lucide-react";
+import { MicIcon, MicOffIcon, PhoneMissedIcon, PhoneCallIcon } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function CallPage() {
@@ -26,7 +26,19 @@ export default function CallPage() {
     // Hooks
     const { sendSpeech, speechResponseAudio, speechError } = usePeer();
 
-    // Effects
+    // Effect to prevent the close of the tab or navigation away from the page if is loading
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (isLoading) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isLoading]);
+
+    // Effect to increment the call time
     useEffect(() => {
         const interval = setInterval(() => {
             setCallTime(callTime + 1);
@@ -153,7 +165,7 @@ export default function CallPage() {
     const formatTime = (time) => {
         const minutes = Math.floor(time / 60);
         const seconds = time % 60;
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        return `${minutes}:${seconds.toString().padStart(2, "0")}`;
     };
 
     return (
@@ -162,13 +174,21 @@ export default function CallPage() {
             <div className="flex flex-col items-center justify-center gap-2">
                 <span className="badge badge-primary badge-lg badge-soft flex items-center gap-2">
                     <PhoneCallIcon size={16} />
-                    <p className="text-base font-medium scale-y-105">En llamada {formatTime(callTime)}</p>
+                    <p className="text-base font-medium scale-y-105">
+                        En llamada {formatTime(callTime)}
+                    </p>
                 </span>
-                <h2 className="text-2xl font-semibold scale-y-105 tracking-tight opacity-90">Thanos AI</h2>
+                <h2 className="text-2xl font-semibold scale-y-105 tracking-tight opacity-90">
+                    Thanos AI
+                </h2>
             </div>
             <div className="avatar outline-2 outline-offset-40 outline-dashed outline-primary/40 rounded-full">
                 <div className="ring-primary ring-offset-base-100 w-60 rounded-full outline-2 outline-offset-20 outline-dashed outline-primary/60">
-                    <img src="/assistant.png" alt="Assistant image" className="w-full h-full object-cover" />
+                    <img
+                        src="/assistant.png"
+                        alt="Assistant image"
+                        className="w-full h-full object-cover"
+                    />
                 </div>
             </div>
             <div className="flex items-center justify-center gap-8">
@@ -185,9 +205,14 @@ export default function CallPage() {
                 </button>
                 <button
                     type="button"
-                    onClick={() => router.push(`/chat/${chatId}`)}
+                    onClick={() => {
+                        if (!isLoading) {
+                            router.push(`/chat/${chatId}`);
+                        }
+                    }}
                     className="btn btn-error bg-error/20 text-error w-12 h-12 rounded-lg p-0 tooltip tooltip-bottom"
-                    data-tip="Cancelar llamada"
+                    disabled={isLoading}
+                    data-tip={isLoading ? "Espera a que se termine la llamada" : "Cancelar llamada"}
                 >
                     {/* hang off icon */}
                     <PhoneMissedIcon size={25} />
