@@ -6,6 +6,7 @@ import IDocumentRepository from "../../../application/ports/repositories/IDocume
 import Document from "../../../domain/entities/document";
 import LoggerAdapter from "../../services/LoggerAdapter";
 import { SyslogSeverity } from "../../../application/ports/services/ILogger";
+import BusinessTermNormalizer from "../../providers/BusinessTermNormalizer";
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -71,8 +72,10 @@ export default class ChromaVectorStore implements IVectorStore {
         nResults = 5,
         maxDistance = 0.25,
     ): Promise<Source[]> {
+        const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
+
         const col = await this.client.getOrCreateCollection({ name: collection });
-        const [embedding] = await this.embeddingProvider.embed([queryText]);
+        const [embedding] = await this.embeddingProvider.embed([normalizedText]);
 
         const result = await col.query({
             queryEmbeddings: [embedding],
@@ -93,7 +96,7 @@ export default class ChromaVectorStore implements IVectorStore {
             const document = documents[i] ?? "";
             const distance = distances[i] ?? 0;
 
-            if (distance < (1 - maxDistance)) continue;
+            if (distance < 1 - maxDistance) continue;
 
             const driveDocument: Document | null = await this.documentRepository.findByDriveId(
                 metadata.driveId as string,
