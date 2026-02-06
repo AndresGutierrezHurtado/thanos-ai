@@ -3,13 +3,13 @@ import cors from "cors";
 import bodyParser from "body-parser";
 
 // Middlewares
-import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "./infrastructure/http/middlewares";
+import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "./presentation/http/middlewares";
 
 // Routes
-import healthRoutes from "./infrastructure/http/routes/healthRoutes";
-import messageRoutes from "./infrastructure/http/routes/messageRoutes";
-import chatRoutes from "./infrastructure/http/routes/chatRoutes";
-import driveRoutes from "./infrastructure/http/routes/driveRoutes";
+import healthRoutes from "./presentation/http/routes/healthRoutes";
+import messageRoutes from "./presentation/http/routes/messageRoutes";
+import chatRoutes from "./presentation/http/routes/chatRoutes";
+import driveRoutes from "./presentation/http/routes/driveRoutes";
 
 // App Config
 const app = express();

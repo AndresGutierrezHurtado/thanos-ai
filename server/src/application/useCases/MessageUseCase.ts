@@ -144,8 +144,6 @@ export default class MessageUseCase {
 
     public async getMediaContent(messageId: Identifier): Promise<MediaContent | null> {
         const mediaContent = await this.mediaContentRepository.findByMessageId(messageId);
-        const logger = new LoggerAdapter();
-        logger.log(SyslogSeverity.DEBUG, `Media content found`, { mediaContent });
         return mediaContent as MediaContent;
     }
 

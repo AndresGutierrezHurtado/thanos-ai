@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 // DI Container
-import diContainer from "../../config/DIContainer";
+import diContainer from "../../../infrastructure/config/DIContainer";
 
 const container = await diContainer.getInstance();
 const driveController = container.getDriveController();

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import LoggerAdapter from "../../services/LoggerAdapter";
+import LoggerAdapter from "../../../infrastructure/services/LoggerAdapter";
 import { SyslogSeverity } from "../../../application/ports/services/ILogger";
 
 // Singleton logger for use in middlewares

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import DIContainer from "../../config/DIContainer";
+import DIContainer from "../../../infrastructure/config/DIContainer";
 
 const diContainer = await DIContainer.getInstance();
 const healthController = diContainer.getHealthController();

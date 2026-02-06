@@ -1,10 +1,10 @@
 import { Db } from "mongodb";
 
 // Presentation
-import MessageController from "../http/controllers/messageController";
-import DriveController from "../http/controllers/driveController";
-import ChatController from "../http/controllers/chatController";
-import HealthController from "../http/controllers/healthController";
+import MessageController from "../../presentation/http/controllers/messageController";
+import DriveController from "../../presentation/http/controllers/driveController";
+import ChatController from "../../presentation/http/controllers/chatController";
+import HealthController from "../../presentation/http/controllers/healthController";
 
 // Application
 import MessageUseCase from "../../application/useCases/MessageUseCase";
