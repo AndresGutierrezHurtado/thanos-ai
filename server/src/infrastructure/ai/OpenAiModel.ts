@@ -1,4 +1,4 @@
-import { ChatOpenAI, OpenAI as LangchainOpenAI } from "@langchain/openai";
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { DynamicTool } from "@langchain/core/tools";
 import Message from "../../domain/entities/message";
 import OpenAI from "openai";
@@ -7,8 +7,9 @@ import LoggerAdapter from "../services/LoggerAdapter";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 export default class OpenAiModel {
-    private simpleModel: ChatOpenAI;
     private model: ChatOpenAI;
+    private embeddings: OpenAIEmbeddings;
+
     private systemPrompt: string = `
 ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
 ÁMBITO:
@@ -27,15 +28,16 @@ REGLAS:
             model: "gpt-4o-mini",
             apiKey: process.env.OPENAI_API_KEY,
             temperature: 0.3,
-            maxTokens: 500,
             topP: 1,
         });
-        this.simpleModel = new ChatOpenAI({
-            model: "gpt-4o-mini",
+        this.embeddings = new OpenAIEmbeddings({
+            model: "text-embedding-3-small",
             apiKey: process.env.OPENAI_API_KEY,
-            temperature: 0,
-            maxTokens: 125,
         });
+    }
+
+    async embed(texts: string[]): Promise<number[][]> {
+        return this.embeddings.embedDocuments(texts);
     }
 
     public async generateResponse(
@@ -46,8 +48,9 @@ REGLAS:
     ): Promise<string> {
         const hasContext = context && context.trim().length > 0;
         let systemPrompt = hasContext
-            ? this.buildSystemPromptWithContext(context)
+            ? `${context}\n---\n${this.systemPrompt}`
             : this.systemPrompt;
+
         systemPrompt +=
             "\nFORMATO SALIDA: Se breve y directo, puedes usar listas cuando ayude a la claridad.";
 
@@ -82,18 +85,15 @@ REGLAS:
             return fullText;
         }
 
+        this.model.maxTokens = 500;
         const response = await this.model.invoke(conversation);
         return response.content.toString();
-    }
-
-    private buildSystemPromptWithContext(context: string): string {
-        return `\n${context}\n---\n${this.systemPrompt}`;
     }
 
     public async generateSimpleResponse(messages: Message[], context?: string): Promise<string> {
         const hasContext = context && context.trim().length > 0;
         let systemPrompt = hasContext
-            ? this.buildSystemPromptWithContext(context)
+            ? `${context}\n---\n${this.systemPrompt}`
             : this.systemPrompt;
 
         systemPrompt += `FORMATO SALIDA: Responde en un SOLO párrafo de máximo 3 frases. NUNCA uses listas, viñetas, ni formatos estructurados. La respuesta debe ser clara, concisa y adecuada para un agente de voz.`;
@@ -106,11 +106,13 @@ REGLAS:
             })),
         ];
 
-        const response = await this.simpleModel.invoke(conversation);
+        this.model.maxTokens = 125;
+        const response = await this.model.invoke(conversation);
         return response.content.toString();
     }
 
     public async generateChatTitle(content: string): Promise<string> {
+        this.model.maxTokens = 100;
         const response = await this.model.invoke([
             {
                 role: "system" as const,
@@ -120,6 +122,16 @@ REGLAS:
             { role: "user" as const, content: content },
         ]);
         return response.content.toString();
+    }
+
+    public async textToSpeech(text: string): Promise<Buffer> {
+        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const response = await client.audio.speech.create({
+            model: "tts-1",
+            voice: "echo",
+            input: text,
+        });
+        return Buffer.from(await response.arrayBuffer());
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
@@ -140,16 +152,6 @@ REGLAS:
         });
 
         return response.text;
-    }
-
-    public async textToSpeech(text: string): Promise<Buffer> {
-        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const response = await client.audio.speech.create({
-            model: "tts-1",
-            voice: "echo",
-            input: text,
-        });
-        return Buffer.from(await response.arrayBuffer());
     }
 
     public async imageToText(image: Buffer, mimeType: string): Promise<string> {

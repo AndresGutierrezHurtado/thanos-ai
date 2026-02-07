@@ -31,13 +31,12 @@ import SourceRepository from "../persistence/repositories/SourceRepository";
 import TransactionRepository from "../persistence/repositories/TransactionRepository";
 import MediaContentRepository from "../persistence/repositories/MediaContentRepository";
 import Database from "../persistence/Database";
-import ChromaVectorStore from "../persistence/vectors/ChromaVectorStore";
+import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import LoggerAdapter from "../services/LoggerAdapter";
-import OpenAIEmbeddingProvider from "../providers/OpenAIEmbeddingProvider";
-import LlmProvider from "../providers/LlmProvider";
-import OpenAiModel from "../providers/OpenAiModel";
+import LlmProvider from "../ai/LlmProvider";
+import OpenAiModel from "../ai/OpenAiModel";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
 
 export default class DIContainer {
@@ -154,15 +153,15 @@ export default class DIContainer {
     }
 
     private getVectorStore(): ChromaVectorStore {
-        return new ChromaVectorStore(this.getEmbeddingProvider(), this.getDocumentRepository());
-    }
-
-    private getEmbeddingProvider(): OpenAIEmbeddingProvider {
-        return new OpenAIEmbeddingProvider();
+        return new ChromaVectorStore(this.getAiProvider(), this.getDocumentRepository());
     }
 
     private getLlmProvider(): ILlmProvider {
-        return new LlmProvider(new OpenAiModel(), this.getVectorStore(), this.getProcessorFactory(), this.getLogger());
+        return new LlmProvider(this.getAiProvider(), this.getVectorStore(), this.getProcessorFactory(), this.getLogger());
+    }
+
+    private getAiProvider(): OpenAiModel {
+        return new OpenAiModel();
     }
 
     public getDriveProvider(): IDriveProvider {

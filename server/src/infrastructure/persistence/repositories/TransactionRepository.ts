@@ -5,7 +5,7 @@ import ITransactionRepository from "../../../application/ports/repositories/ITra
 
 // Infrastructure
 import Database from "../Database";
-import ChromaVectorStore from "../vectors/ChromaVectorStore";
+import ChromaVectorStore from "../../ai/ChromaVectorStore";
 
 export default class TransactionRepository implements ITransactionRepository {
     private session: ClientSession | null = null;

@@ -1,7 +1,7 @@
 import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/provider/IDocumentProcessor";
-import OpenAiModel from "../providers/OpenAiModel";
+import OpenAiModel from "../ai/OpenAiModel";
 
 export default class ImageProcessor implements IDocumentProcessor {
     private openAiModel: OpenAiModel;
