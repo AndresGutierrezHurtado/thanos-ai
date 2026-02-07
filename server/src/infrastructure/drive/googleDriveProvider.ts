@@ -52,7 +52,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
                 };
 
                 files.push(driveFile);
-                if (files.length % 10 === 0) {
+                if (files.length % 50 === 0) {
                     this.logger.log(
                         SyslogSeverity.DEBUG,
                         `pulled ${files.length} files from drive`,
