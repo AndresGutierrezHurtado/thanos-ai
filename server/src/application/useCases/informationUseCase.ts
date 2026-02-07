@@ -11,6 +11,11 @@ import Source from "../../domain/entities/source";
 
 export default class InformationUseCase {
     private readonly CONCURRENT_DOWNLOADS = 10;
+    private totalFiles = 0;
+    private percentage = 0;
+    private processed = 0;
+    private skipped = 0;
+
     constructor(
         private readonly driveProvider: IDriveProvider,
         private readonly documentRepository: IDocumentRepository,
@@ -18,7 +23,7 @@ export default class InformationUseCase {
         private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore,
         private readonly transactionRepository: ITransactionRepository,
-        private readonly logger: ILogger
+        private readonly logger: ILogger,
     ) {}
 
     public async listFiles(): Promise<DriveFile[]> {
@@ -30,38 +35,52 @@ export default class InformationUseCase {
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
-        this.logger.log(SyslogSeverity.DEBUG, "pulling files from drive...");
+        // GETTING FILES FROM A FILE PROVIDER
         const files = await this.driveProvider.listFiles();
-        this.logger.log(SyslogSeverity.DEBUG, `pulled ${files.length} files from drive`);
+        this.totalFiles = files.length;
 
-        let processed = 0;
-        let skipped = 0;
-
+        // PROCESSING FILES IN BATCHES
         for (let i = 0; i < files.length; i += this.CONCURRENT_DOWNLOADS) {
             const batch = files.slice(i, i + this.CONCURRENT_DOWNLOADS);
-            await Promise.all(batch.map((file) => this.processFile(file, processed, skipped)));
+            await Promise.all(batch.map((file) => this.processFile(file)));
         }
 
-        return { processed, skipped };
+        // RETURNING THE RESULT
+        return { processed: this.processed, skipped: this.skipped };
     }
 
-    public async processFile(file: DriveFile, processed: number, skipped: number): Promise<void> {
+    public async processFile(file: DriveFile): Promise<void> {
         await this.transactionRepository.begin();
+        const percentage = Math.round((this.processed / this.totalFiles) * 100);
+
+        if (
+            this.processed === 0 ||
+            this.processed === this.totalFiles ||
+            (percentage !== this.percentage && percentage >= this.percentage + 5)
+        ) {
+            this.logger.log(
+                SyslogSeverity.DEBUG,
+                `processed ${percentage}% of files (${this.processed} of ${this.totalFiles})`,
+            );
+            this.percentage = percentage;
+        }
+
         try {
+            // CHECK IF FILE ALREADY EXISTS
             const exists = await this.documentRepository.findByDriveId(file.id);
             const checksum = file.md5Checksum ?? file.modifiedTime;
 
-            if (exists && exists.getChecksum() === checksum as string) {
-                skipped++;
+            if (exists && exists.getChecksum() === (checksum as string)) {
+                this.skipped++;
                 return;
             }
 
-            this.logger.log(SyslogSeverity.DEBUG, `downloading file ${file.name}...`);
+            // INFORMATION EXTRACTION FROM FILE
             const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
             const processor = this.processorFactory.get(file.mimeType);
             const extracted = await processor.extract(buffer, file.mimeType);
-            this.logger.log(SyslogSeverity.DEBUG, `information extracted from: ${file.name}`);
 
+            // CHUNKING THE DOCUMENT
             const sourceType = resolveFileType(file.mimeType);
             const chunks = this.chunker.createChunks(extracted, {
                 driveId: file.id,
@@ -70,17 +89,15 @@ export default class InformationUseCase {
                 path: file.path,
             });
 
-            this.logger.log(SyslogSeverity.DEBUG, `chunks created from: ${file.name} (${chunks.length} chunks)`);
-
             if (chunks.length === 0) {
-                skipped++;
+                this.skipped++;
                 return;
             }
 
-            this.logger.log(SyslogSeverity.DEBUG, `deleting existing documents from: ${file.name}`);
+            // DELETING EXISTING DOCUMENTS FROM THE VECTOR STORE
             await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
-            this.logger.log(SyslogSeverity.DEBUG, `saving document to database: ${file.name}`);
+            // SAVING THE DOCUMENT TO THE DATABASE
             await this.documentRepository.save({
                 driveId: file.id,
                 title: file.name,
@@ -91,20 +108,27 @@ export default class InformationUseCase {
                 path: file.path,
             });
 
-            this.logger.log(SyslogSeverity.DEBUG, `adding documents to vector store: ${file.name}`);
+            // ADDING THE DOCUMENTS TO THE VECTOR STORE
             await this.vectorStore.addDocuments(
                 DOCUMENTS_COLLECTION,
                 chunks.map((chunk: ChunkData) => ({
                     id: chunk.id,
                     content: chunk.content,
                     metadata: chunk.metadata,
-                }))
+                })),
             );
-            processed++;
+
+            this.processed++;
+
+            // COMMITTING THE TRANSACTION
             await this.transactionRepository.commit();
         } catch (err: unknown) {
             await this.transactionRepository.rollback();
-            this.logger.log(SyslogSeverity.ERROR, `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`, { error: err as Error });
+            this.logger.log(
+                SyslogSeverity.ERROR,
+                `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`,
+                { error: err as Error },
+            );
         }
     }
 }

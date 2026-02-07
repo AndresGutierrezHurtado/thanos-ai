@@ -145,7 +145,7 @@ export default class DIContainer {
     }
 
     private getProcessorFactory(): ProcessorFactory {
-        return new ProcessorFactory(this.getLogger());
+        return new ProcessorFactory();
     }
 
     private getChunker(): HierarchicalChunker {

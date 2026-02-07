@@ -1,4 +1,3 @@
-import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
 import IDocumentProcessor from "../../application/ports/provider/IDocumentProcessor";
 
 // Processors
@@ -17,17 +16,11 @@ export default class ProcessorFactory {
         new ImageProcessor(),
     ];
 
-    constructor(private readonly logger: ILogger) {}
-
     get(mimeType: string): IDocumentProcessor {
-        this.logger.log(SyslogSeverity.DEBUG, `Getting processor for mimeType: ${mimeType}`);
         const processor = this.processors.find((p) => p.supports(mimeType));
         if (!processor) {
-            this.logger.log(SyslogSeverity.WARNING, `No processor found for mimeType: ${mimeType}`);
             return this.processors.find((p) => p instanceof TextProcessor)!;
         }
-        // ver clase del processor
-        this.logger.log(SyslogSeverity.DEBUG, `Processor class: ${processor.constructor.name}`);
         return processor;
     }
 }

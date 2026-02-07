@@ -6,6 +6,8 @@ import IDriveProvider, { type DriveFile } from "../../application/ports/provider
 
 export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;
+    private logSize = 100;
+    private lastLogTime = Date.now();
 
     constructor(private readonly logger: ILogger) {
         if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
@@ -52,11 +54,16 @@ export default class GoogleDriveProvider implements IDriveProvider {
                 };
 
                 files.push(driveFile);
-                if (files.length % 50 === 0) {
+                if (files.length % this.logSize === 0 || files.length === 1) {
+                    const now = Date.now();
+                    const seconds = Number(((now - this.lastLogTime) / 1000).toFixed(3));
+
                     this.logger.log(
                         SyslogSeverity.DEBUG,
-                        `pulled ${files.length} files from drive`,
+                        `pulled ${files.length} files from drive in ${seconds}s`,
                     );
+
+                    this.lastLogTime = now;
                 }
             }
         }

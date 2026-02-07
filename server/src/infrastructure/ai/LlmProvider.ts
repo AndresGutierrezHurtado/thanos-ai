@@ -127,8 +127,6 @@ export default class LlmProvider implements ILlmProvider {
         const processor = this.processorFactory.get(mediaContent.getMimeType());
         const extracted = await processor.extract(buffer);
 
-        this.logger.log(SyslogSeverity.DEBUG, "Document extracted", { extracted });
-
         return extracted.text;
     }
 

@@ -3,8 +3,6 @@ import IVectorStore, { VectorDocument } from "../../application/ports/services/I
 import Source from "../../domain/entities/source";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import Document from "../../domain/entities/document";
-import LoggerAdapter from "../services/LoggerAdapter";
-import { SyslogSeverity } from "../../application/ports/services/ILogger";
 import BusinessTermNormalizer from "./BusinessTermNormalizer";
 import OpenAiModel from "./OpenAiModel";
 
@@ -89,9 +87,6 @@ export default class ChromaVectorStore implements IVectorStore {
         const ids = result.ids?.[0] ?? [];
 
         const sources: Source[] = [];
-
-        const logger = new LoggerAdapter();
-        logger.log(SyslogSeverity.DEBUG, "Query result", { result });
 
         for (let i = 0; i < documents.length; i++) {
             const id = ids[i] ?? "";
