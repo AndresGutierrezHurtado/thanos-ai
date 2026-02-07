@@ -3,7 +3,6 @@ import fs from "fs";
 
 // Application
 import ILlmProvider from "../../application/ports/provider/ILlmProvider";
-import { DOCUMENTS_COLLECTION } from "../../application/constants/collections";
 
 // Domain
 import Chat from "../../domain/entities/chat";
@@ -143,7 +142,7 @@ export default class LlmProvider implements ILlmProvider {
         }
 
         const results: Source[] = await this.vectorStore.query(
-            DOCUMENTS_COLLECTION,
+            "iso-docs",
             message.getContent(),
             maxResults,
         );

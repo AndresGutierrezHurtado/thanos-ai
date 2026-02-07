@@ -4,7 +4,6 @@ import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IVectorStore from "../ports/services/IVectorStore";
 import IChunker, { ChunkData } from "../ports/services/IChunker";
 import resolveFileType from "../utils/resolveFileType";
-import { DOCUMENTS_COLLECTION } from "../constants/collections";
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 import ITransactionRepository from "../ports/repositories/ITransactionRepository";
 import Source from "../../domain/entities/source";
@@ -31,7 +30,7 @@ export default class InformationUseCase {
     }
 
     public async listChromaFiles(query: string): Promise<Source[]> {
-        return await this.vectorStore.query(DOCUMENTS_COLLECTION, query, 10);
+        return await this.vectorStore.query("iso-docs", query, 10);
     }
 
     public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
@@ -95,7 +94,7 @@ export default class InformationUseCase {
             }
 
             // DELETING EXISTING DOCUMENTS FROM THE VECTOR STORE
-            await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
+            await this.vectorStore.deleteByDriveId("iso-docs", file.id);
 
             // SAVING THE DOCUMENT TO THE DATABASE
             await this.documentRepository.save({
@@ -110,7 +109,7 @@ export default class InformationUseCase {
 
             // ADDING THE DOCUMENTS TO THE VECTOR STORE
             await this.vectorStore.addDocuments(
-                DOCUMENTS_COLLECTION,
+                "iso-docs",
                 chunks.map((chunk: ChunkData) => ({
                     id: chunk.id,
                     content: chunk.content,

@@ -4,6 +4,8 @@ import Message from "../../domain/entities/message";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
+import MediaContent from "../../domain/entities/mediaContent";
+import MediaContentType from "../../domain/valueObjects/MediaContentType";
 
 // DTOs and Resources
 import SendMessageDto from "../ports/dtos/SendMessageDTO";
@@ -16,8 +18,6 @@ import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
-import MediaContent from "../../domain/entities/mediaContent";
-import MediaContentType from "../../domain/valueObjects/MediaContentType";
 
 export default class ChatUseCase {
     constructor(

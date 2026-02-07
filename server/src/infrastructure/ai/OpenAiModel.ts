@@ -1,10 +1,12 @@
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { DynamicTool } from "@langchain/core/tools";
-import Message from "../../domain/entities/message";
 import OpenAI from "openai";
+
+// Domain
+import Message from "../../domain/entities/message";
+
+// Infrastructure
 import BusinessTermNormalizer from "./BusinessTermNormalizer";
-import LoggerAdapter from "../services/LoggerAdapter";
-import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 export default class OpenAiModel {
     private model: ChatOpenAI;
@@ -68,9 +70,6 @@ REGLAS:
                 };
             }),
         ];
-
-        const logger = new LoggerAdapter();
-        logger.log(SyslogSeverity.DEBUG, "System prompt", { conversation });
 
         if (onChunk) {
             let fullText = "";

@@ -1,13 +1,15 @@
+// Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import ILlmProvider from "../ports/provider/ILlmProvider";
+import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
+// Domain
 import Message from "../../domain/entities/message";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
-import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
 export default class SpeechUseCase {
     constructor(

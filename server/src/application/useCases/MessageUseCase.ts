@@ -19,8 +19,6 @@ import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 import MediaContent from "../../domain/entities/mediaContent";
-import LoggerAdapter from "../../infrastructure/services/LoggerAdapter";
-import { SyslogSeverity } from "../ports/services/ILogger";
 import { MediaContentType } from "../../domain/valueObjects/MediaContentType";
 
 export default class MessageUseCase {
