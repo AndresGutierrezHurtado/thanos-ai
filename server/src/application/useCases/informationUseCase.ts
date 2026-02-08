@@ -1,27 +1,20 @@
 import IDriveProvider, { DriveFile } from "../ports/provider/IDriveProvider";
-import IDocumentRepository from "../ports/repositories/IDocumentRepository";
-import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IVectorStore from "../ports/services/IVectorStore";
-import IChunker, { ChunkData } from "../ports/services/IChunker";
-import resolveFileType from "../utils/resolveFileType";
-import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
-import ITransactionRepository from "../ports/repositories/ITransactionRepository";
 import Source from "../../domain/entities/source";
+import ProcessFileService from "../services/ProcessFileService";
+import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
 export default class InformationUseCase {
     private readonly CONCURRENT_DOWNLOADS = 10;
-    private totalFiles = 0;
-    private percentage = 0;
+    private filesLength = 0;
     private processed = 0;
     private skipped = 0;
+    private percentage = 0;
 
     constructor(
         private readonly driveProvider: IDriveProvider,
-        private readonly documentRepository: IDocumentRepository,
-        private readonly processorFactory: ProcessorFactory,
-        private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore,
-        private readonly transactionRepository: ITransactionRepository,
+        private readonly processFileService: ProcessFileService,
         private readonly logger: ILogger,
     ) {}
 
@@ -33,10 +26,10 @@ export default class InformationUseCase {
         return await this.vectorStore.query("iso-docs", query, 10);
     }
 
-    public async syncDocuments(): Promise<{ processed: number; skipped: number }> {
+    public async syncDocuments(): Promise<{ total: number }> {
         // GETTING FILES FROM A FILE PROVIDER
         const files = await this.driveProvider.listFiles();
-        this.totalFiles = files.length;
+        this.filesLength = files.length;
 
         // PROCESSING FILES IN BATCHES
         for (let i = 0; i < files.length; i += this.CONCURRENT_DOWNLOADS) {
@@ -45,89 +38,36 @@ export default class InformationUseCase {
         }
 
         // RETURNING THE RESULT
-        return { processed: this.processed, skipped: this.skipped };
+        return { total: this.filesLength };
     }
 
-    public async processFile(file: DriveFile): Promise<void> {
-        await this.transactionRepository.begin();
-        const percentage = Math.round((this.processed / this.totalFiles) * 100);
+    private async processFile(file: DriveFile): Promise<Boolean> {
+        // LOG THE PROGRESS
+        const total = this.processed + this.skipped;
+        const percentage = Math.round((total / this.filesLength) * 100);
 
         if (
-            this.processed === 0 ||
-            this.processed === this.totalFiles ||
+            total === 0 ||
+            total === this.filesLength ||
             (percentage !== this.percentage && percentage >= this.percentage + 5)
         ) {
             this.logger.log(
                 SyslogSeverity.DEBUG,
-                `processed ${percentage}% of files (${this.processed} of ${this.totalFiles})`,
+                `processed ${percentage}% of files (${total} of ${this.filesLength})`,
             );
             this.percentage = percentage;
         }
 
-        try {
-            // CHECK IF FILE ALREADY EXISTS
-            const exists = await this.documentRepository.findByDriveId(file.id);
-            const checksum = file.md5Checksum ?? file.modifiedTime;
+        // PROCESS THE FILE
+        const result = await this.processFileService.execute(file);
 
-            if (exists && exists.getChecksum() === (checksum as string)) {
-                this.skipped++;
-                return;
-            }
-
-            // INFORMATION EXTRACTION FROM FILE
-            const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
-            const processor = this.processorFactory.get(file.mimeType);
-            const extracted = await processor.extract(buffer, file.mimeType);
-
-            // CHUNKING THE DOCUMENT
-            const sourceType = resolveFileType(file.mimeType);
-            const chunks = this.chunker.createChunks(extracted, {
-                driveId: file.id,
-                version: file.modifiedTime,
-                sourceType,
-                path: file.path,
-            });
-
-            if (chunks.length === 0) {
-                this.skipped++;
-                return;
-            }
-
-            // DELETING EXISTING DOCUMENTS FROM THE VECTOR STORE
-            await this.vectorStore.deleteByDriveId("iso-docs", file.id);
-
-            // SAVING THE DOCUMENT TO THE DATABASE
-            await this.documentRepository.save({
-                driveId: file.id,
-                title: file.name,
-                mimeType: file.mimeType,
-                version: file.modifiedTime,
-                checksum: checksum as string,
-                normCode: null,
-                path: file.path,
-            });
-
-            // ADDING THE DOCUMENTS TO THE VECTOR STORE
-            await this.vectorStore.addDocuments(
-                "iso-docs",
-                chunks.map((chunk: ChunkData) => ({
-                    id: chunk.id,
-                    content: chunk.content,
-                    metadata: chunk.metadata,
-                })),
-            );
-
+        if (result) {
             this.processed++;
-
-            // COMMITTING THE TRANSACTION
-            await this.transactionRepository.commit();
-        } catch (err: unknown) {
-            await this.transactionRepository.rollback();
-            this.logger.log(
-                SyslogSeverity.ERROR,
-                `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`,
-                { error: err as Error },
-            );
+        } else {
+            this.skipped++;
         }
+
+        // RETURN THE RESULT
+        return result;
     }
 }

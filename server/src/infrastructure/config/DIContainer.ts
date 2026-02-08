@@ -11,6 +11,7 @@ import MessageUseCase from "../../application/useCases/MessageUseCase";
 import ChatUseCase from "../../application/useCases/chatUseCase";
 import InformationUseCase from "../../application/useCases/informationUseCase";
 import SpeechUseCase from "../../application/useCases/SpeechUseCase";
+import ProcessFileService from "../../application/services/ProcessFileService";
 
 // Ports
 import IChatRepository from "../../application/ports/repositories/IChatRepository";
@@ -95,11 +96,8 @@ export default class DIContainer {
     public getInformationUseCase(): InformationUseCase {
         return new InformationUseCase(
             this.getDriveProvider(),
-            this.getDocumentRepository(),
-            this.getProcessorFactory(),
-            this.getChunker(),
             this.getVectorStore(),
-            this.getTransactionRepository(),
+            this.getProcessFileService(),
             this.getLogger(),
         );
     }
@@ -140,6 +138,18 @@ export default class DIContainer {
         return new TransactionRepository(Database.getInstance(), this.getVectorStore());
     }
 
+    private getProcessFileService(): ProcessFileService {
+        return new ProcessFileService(
+            this.getDriveProvider(),
+            this.getDocumentRepository(),
+            this.getProcessorFactory(),
+            this.getChunker(),
+            this.getVectorStore(),
+            this.getTransactionRepository(),
+            this.getLogger(),
+        );
+    }
+
     public getLogger(): ILogger {
         return new LoggerAdapter();
     }
@@ -157,7 +167,12 @@ export default class DIContainer {
     }
 
     private getLlmProvider(): ILlmProvider {
-        return new LlmProvider(this.getAiProvider(), this.getVectorStore(), this.getProcessorFactory(), this.getLogger());
+        return new LlmProvider(
+            this.getAiProvider(),
+            this.getVectorStore(),
+            this.getProcessorFactory(),
+            this.getLogger(),
+        );
     }
 
     private getAiProvider(): OpenAiModel {
