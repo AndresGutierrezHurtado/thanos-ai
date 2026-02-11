@@ -177,7 +177,7 @@ export default class GptLlmProvider implements ILlmProvider {
         messages: Message[],
         maxTokens: number = 500,
         temperature: number = 0.3,
-    ): Promise<string> {
+    ): Promise<{ response: string; sources: Source[] }> {
         // Mismo flujo que generateResponse, pero con un prompt que solo cambia el formato de salida para voz
         const agent = this.getSpeechAgent(maxTokens, temperature);
 
@@ -194,7 +194,7 @@ export default class GptLlmProvider implements ILlmProvider {
         const responseText =
             llmResponse.messages[llmResponse.messages.length - 1].content?.toString?.() ?? "";
 
-        return responseText;
+        return { response: responseText, sources: this.lastSources };
     }
 
     public async generateSimpleResponse(message: string): Promise<string> {

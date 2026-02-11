@@ -64,11 +64,16 @@ export default class MessageService {
                 null,
                 chat.getId() as Identifier,
                 MessageRole.ASSISTANT,
-                llmResponse,
+                llmResponse.response,
                 new DateTimeValue(),
                 null,
             ),
         );
+
+        for (const source of llmResponse.sources) {
+            source.setMessageId(assistantMessage.getId() as Identifier);
+            await this.sourceRepository.create(source);
+        }
 
         chat.addMessage(assistantMessage);
 
