@@ -5,7 +5,7 @@ import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IChunker, { ChunkData } from "../ports/services/IChunker";
 import IVectorStore from "../ports/services/IVectorStore";
 import ITransactionRepository from "../ports/repositories/ITransactionRepository";
-import resolveFileType from "../utils/resolveFileType";
+import resolveFileType from "../../domain/services/resolveFileType";
 
 export default class ProcessFileService {
     constructor(
@@ -18,7 +18,7 @@ export default class ProcessFileService {
         private readonly logger: ILogger,
     ) {}
 
-    public async execute(file: DriveFile): Promise<Boolean> {
+    public async execute(file: DriveFile): Promise<Boolean> {1
         await this.transactionRepository.begin();
 
         try {

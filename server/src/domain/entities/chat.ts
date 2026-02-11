@@ -3,6 +3,7 @@ import DateTimeValue from "../valueObjects/DateTimeValue";
 
 // Entities
 import Message from "./message";
+import { MessageRole } from "../valueObjects/MessageRole";
 
 export default class Chat {
     private id: Identifier | null;
@@ -73,5 +74,15 @@ export default class Chat {
 
     public addMessage(message: Message): void {
         this.messages.push(message);
+    }
+
+    public getLastUserMessage(): Message | null {
+        const userMessages = this.messages.filter((m) => m.getRole() === MessageRole.USER);
+        return userMessages[userMessages.length - 1] ?? null;
+    }
+
+    public getLastAssistantMessage(): Message | null {
+        const assistantMessages = this.messages.filter((m) => m.getRole() === MessageRole.ASSISTANT);
+        return assistantMessages[assistantMessages.length - 1] ?? null;
     }
 }
