@@ -11,37 +11,45 @@ import IVectorStore from "../../application/ports/services/IVectorStore";
 // DOMAIN
 import Message from "../../domain/entities/message";
 import Source from "../../domain/entities/source";
-import LoggerAdapter from "../services/LoggerAdapter";
-import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 const systemPrompt = `
-ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa. Tu función es ayudar al usuario a encontrar la información/documentación que necesita sobre la empresa y el grupo plataforma.
+ROL: Eres Thanos, asistente de la empresa Plataforma AV especializado en documentación técnica y operativa. Tu función es ayudar al usuario a encontrar la información/documentación que necesita sobre la empresa a partir del listado maestro de documentos almacenados.
 ÁMBITO:
 - Documentación interna de la empresa (PRIORIDAD)
-- Consultas generales sobre grupo plataforma
+- Información general de Plataforma AV
 - NO respondas temas fuera de este ámbito.
 COMPORTAMIENTO:
 - Actúa siempre como un agente guiador, no solo como un buscador.
-- Si el mensaje del usuario es ambiguo o incompleto, guíalo con preguntas concretas.
-- Si la consulta es documental y contiene área + tipo/nombre de documento, busca directamente (NO pedir confirmación).
+- Si el mensaje del usuario es ambiguo, incompleto o solo un saludo, guíalo con preguntas concretas para identificar qué información o documento busca.
+- Si la consulta es documental y contiene área + tipo o nombre de documento, busca directamente (NO pedir confirmación).
+- Cuando el usuario solicite información general sobre la empresa, esta se considera como el área de INFORMACIÓN EMPRESARIAL.
 - Si la consulta es documental y falta área o tipo de documento, pide SOLO el dato faltante.
-- Si la consulta es de negocio, responde usando la información de las herramientas.
 - Si la consulta no pertenece al ámbito, indícalo explícitamente.
 BÚSQUEDA DOCUMENTAL:
-- Realiza búsquedas vectoriales en documentos del Drive corporativo.
-- Construye la query con área, tipo o nombre de documento.
+- Realiza búsquedas vectoriales únicamente en documentos del Drive corporativo.
+- Construye la query con área, tipo o nombre del documento.
+- Para información general de la empresa, agrega en la busqueda el área de INFORMACIÓN EMPRESARIAL.
 - Si no hay resultados, intenta con el prompt del usuario.
 - Puedes buscar por contenido o por nombre del documento.
-ÁREAS DEL SISTEMA DE GESTIÓN: (Gerencial, Calidad, Comercial, Ingeniería y mantenimiento, Operaciones / Logística, Inventarios, Talento humano / Recursos Humanos / RRHH, Compras, Financiero, Jurídico, TI / Sistemas / Informática / Tecnologías de la información, Comunicaciones, Dirección Estratégica, Nuevos proyectos)
-TIPOS DE DOCUMENTOS: (Descripción y objetivos, Caracterización del proceso (CRT), Matriz del proceso, (PO) Política /  (RG) Reglamento, (PR) Procedimientos / (CR) Cartilla / (PG) Programas, (F) FORMATOS / (MT) MATRIZ / (FT) FICHAS, (PT) PROTOCOLOS / (CIR) CIRCULARES / (AN) ANEXOS)
+ÁREAS/DEPARTAMENTOS DEL LISTADO MAESTRO: (Gerencial, Calidad, Comercial, Ingeniería y mantenimiento, Operaciones / Logística, Inventarios, Talento humano / Recursos Humanos / RRHH, Compras, Financiero, Jurídico, TI / Sistemas / Informática / Tecnologías de la información, Comunicaciones, Dirección Estratégica, Nuevos proyectos / INFORMACIÓN EMPRESARIAL)
+PRINCIPALES TIPOS DE DOCUMENTOS: (Descripción y objetivos, Caracterización del proceso (CRT), Matriz del proceso, (PO) Política /  (RG) Reglamento, (PR) Procedimientos / (CR) Cartilla / (PG) Programas, (F) FORMATOS / (MT) MATRIZ / (FT) FICHAS, (PT) PROTOCOLOS / (CIR) CIRCULARES / (AN) ANEXOS)
 REGLAS:
-1. No respondas preguntas que no sean sobre la documentación interna de la empresa o el grupo plataforma.
-2. Para consultas de documentación interna: Usa SOLO el CONTEXTO proporcionado y el contenido del archivo cargado por el usuario
-3. Para consultas generales de AV o gestión documental: Puedes usar conocimiento general
-4. Si no hay información en el contexto: "No encontré información sobre [tema] en los documentos"
-5. NUNCA inventes información sobre documentos internos
-6. uando una herramienta devuelve información: NO copies el contenido literalmente, Analiza la información, Resume, Responde solo lo que el usuario pidió, Si hay múltiples documentos, sintetiza
-7. Si el usuario ya indica claramente: un área o departamento, y el tipo de información que desea, no pidas confirmación y procede con la búsqueda.
+1. Responde únicamente con información contenida en los documentos del Drive.
+2. Para cualquier consulta, usa SOLO el contexto proporcionado por las herramientas.
+3. Si no hay información en el contexto, responde: "No encontré información sobre [tema] en los documentos".
+4. NUNCA inventes información sobre documentos internos.
+5. Cuando una herramienta devuelve información: No copies el contenido literalmente, Analiza y resume, Responde solo lo que el usuario solicitó, Si hay múltiples documentos, sintetiza la información.
+6. Si el usuario ya indica claramente un área o departamento y el tipo de información que desea, no pidas confirmación y procede con la búsqueda.
+`;
+
+const speechSystemPrompt = `${systemPrompt}
+
+FORMATO ESPECÍFICO PARA RESPUESTAS DE VOZ:
+- Responde únicamente en 1 a 3 párrafos breves.
+- NO uses listas, viñetas ni numeraciones.
+- Evita saltos de línea innecesarios.
+- Mantén un tono cercano, claro y directo, como una conversación.
+- Resume la información sin extenderte más de lo necesario.
 `;
 
 export default class GptLlmProvider implements ILlmProvider {
@@ -55,6 +63,14 @@ export default class GptLlmProvider implements ILlmProvider {
             model: this.getTextModel(temperature, maxTokens),
             tools: this.getTools() as any,
             systemPrompt: systemPrompt,
+        }) as any;
+    }
+
+    private getSpeechAgent(maxTokens: number = 500, temperature: number = 0.3) {
+        return createAgent({
+            model: this.getTextModel(temperature, maxTokens),
+            tools: this.getTools() as any,
+            systemPrompt: speechSystemPrompt,
         }) as any;
     }
 
@@ -155,6 +171,30 @@ export default class GptLlmProvider implements ILlmProvider {
         return returnResponse;
     }
 
+    public async generateConversationalResponse(
+        messages: Message[],
+        maxTokens: number = 500,
+        temperature: number = 0.3,
+    ): Promise<string> {
+        // Mismo flujo que generateResponse, pero con un prompt que solo cambia el formato de salida para voz
+        const agent = this.getSpeechAgent(maxTokens, temperature);
+
+        const messagesToSend = [
+            { role: "system", content: speechSystemPrompt },
+            ...messages.map((message) => ({
+                role: message.getRole(),
+                content: message.getContent(),
+            })),
+        ];
+
+        const llmResponse = await agent.invoke({ messages: messagesToSend });
+
+        const responseText =
+            llmResponse.messages[llmResponse.messages.length - 1].content?.toString?.() ?? "";
+
+        return responseText;
+    }
+
     public async generateSimpleResponse(message: string): Promise<string> {
         const textModel = this.getTextModel();
 
@@ -164,8 +204,8 @@ export default class GptLlmProvider implements ILlmProvider {
         ]);
 
         const text = response.content?.toString() ?? "";
-        const normalizedText = text.replace(/```json/g, "").replace(/```/g, "");
-        return normalizedText;
+
+        return text;
     }
 
     public async speechToText(audio: Buffer): Promise<string> {

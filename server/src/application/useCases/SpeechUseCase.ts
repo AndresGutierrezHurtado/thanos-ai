@@ -10,13 +10,14 @@ import Message from "../../domain/entities/message";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
+import MessageService from "../services/MessageService";
 
 export default class SpeechUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
-        private readonly sourceRepository: ISourceRepository,
         private readonly llmProvider: ILlmProvider,
+        private readonly messageService: MessageService,
         private readonly logger: ILogger,
     ) {}
 
@@ -39,21 +40,17 @@ export default class SpeechUseCase {
         );
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
-        this.logger.log(SyslogSeverity.DEBUG, "Generating simple response", { messagesCount: messages.length });
-        const { message: assistantMessage, sources } = await this.llmProvider.generateSimpleResponse(
-            chat,
-            messages,
-        );
+        this.logger.log(SyslogSeverity.DEBUG, "Generating speech response", {
+            messagesCount: messages.length,
+        });
 
-        this.logger.log(SyslogSeverity.DEBUG, "saving message", { assistantMessage });
-        const savedMessage = await this.messageRepository.create(assistantMessage);
+        const aiResponseChat = await this.messageService.generateSpeechResponse(chat, messages);
 
-        for (const source of sources) {
-            source.setMessageId(savedMessage.getId() as Identifier);
-            await this.sourceRepository.create(source);
-        }
+        this.logger.log(SyslogSeverity.DEBUG, "saving message", {
+            assistantMessage: aiResponseChat,
+        });
 
-        const responseText = assistantMessage.getContent();
+        const responseText = aiResponseChat.getLastAssistantMessage()?.getContent() ?? "";
         this.logger.log(SyslogSeverity.DEBUG, "Text to speech", { responseText });
         return await this.llmProvider.textToSpeech(responseText);
     }

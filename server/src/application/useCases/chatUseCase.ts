@@ -54,7 +54,7 @@ export default class ChatUseCase {
             new Chat(
                 null,
                 null,
-                await this.messageService.generateTitle(content),
+                (await this.messageService.generateTitle(content)).replaceAll("\"", ""),
                 new DateTimeValue(),
                 new DateTimeValue(),
             ),

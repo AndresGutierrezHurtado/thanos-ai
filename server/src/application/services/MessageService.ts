@@ -10,7 +10,6 @@ import ILlmProvider from "../ports/services/ILlmProvider";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 
-
 export default class MessageService {
     constructor(
         private readonly llmProvider: ILlmProvider,
@@ -52,7 +51,33 @@ export default class MessageService {
         return chat;
     }
 
+    async generateSpeechResponse(chat: Chat, messages: Message[]): Promise<Chat> {
+        // Respuesta optimizada para voz: modelo directo, menos tokens y estilo conversacional en párrafos
+        const llmResponse = await this.llmProvider.generateConversationalResponse(
+            messages,
+            256,
+            0.5,
+        );
+
+        const assistantMessage = await this.messageRepository.create(
+            new Message(
+                null,
+                chat.getId() as Identifier,
+                MessageRole.ASSISTANT,
+                llmResponse,
+                new DateTimeValue(),
+                null,
+            ),
+        );
+
+        chat.addMessage(assistantMessage);
+
+        return chat;
+    }
+
     async generateTitle(content: string): Promise<string> {
-        return await this.llmProvider.generateSimpleResponse(`Genera un titulo corto y descriptivo para basado en lo siguiente: ${content}`);
+        return await this.llmProvider.generateSimpleResponse(
+            `Genera un titulo corto y descriptivo para la conversación segun el contenido de la conversación: ${content}`,
+        );
     }
 }

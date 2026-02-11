@@ -9,6 +9,8 @@ import Document from "../../domain/entities/document";
 // PORTS
 import IVectorStore, { VectorDocument } from "../../application/ports/services/IVectorStore";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
+import LoggerAdapter from "../services/LoggerAdapter";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -74,11 +76,7 @@ export default class ChromaVectorStore implements IVectorStore {
         }
     }
 
-    async query(
-        collection: string,
-        queryText: string,
-        nCandidates = 20,
-    ): Promise<Source[]> {
+    async query(collection: string, queryText: string, nCandidates = 20): Promise<Source[]> {
         const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
 
         const col = await this.client.getOrCreateCollection({ name: collection });
@@ -118,6 +116,9 @@ export default class ChromaVectorStore implements IVectorStore {
             source.setDocument(driveDocument as Document);
             sources.push(source);
         }
+
+        const logger = new LoggerAdapter();
+        logger.log(SyslogSeverity.DEBUG, `Vectorial search done '${queryText}' with ${sources.length} results`, { sources });
 
         return sources;
     }

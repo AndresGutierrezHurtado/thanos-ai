@@ -105,8 +105,8 @@ export default class DIContainer {
         return new SpeechUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
-            this.getSourceRepository(),
             this.getLlmProvider(),
+            this.getMessageService(),
             this.getLogger(),
         );
     }
