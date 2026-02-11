@@ -1,6 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { createAgent, tool } from "langchain";
+import OpenAI from "openai";
 import { z } from "zod";
 
 // APPLICATION
@@ -14,12 +15,14 @@ import LoggerAdapter from "../services/LoggerAdapter";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 const systemPrompt = `
-ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
+ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa. Tu función es ayudar al usuario a encontrar la información/documentación que necesita sobre la empresa y el grupo plataforma.
 ÁMBITO:
 - Documentación interna de la empresa (PRIORIDAD)
 - Consultas generales sobre grupo plataforma
 - NO respondas temas fuera de este ámbito.
 COMPORTAMIENTO:
+- Actúa siempre como un agente guiador, no solo como un buscador.
+- Si el mensaje del usuario es ambiguo o incompleto, guíalo con preguntas concretas.
 - Si la consulta es documental y contiene área + tipo/nombre de documento, busca directamente (NO pedir confirmación).
 - Si la consulta es documental y falta área o tipo de documento, pide SOLO el dato faltante.
 - Si la consulta es de negocio, responde usando la información de las herramientas.
@@ -166,10 +169,32 @@ export default class GptLlmProvider implements ILlmProvider {
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
-        return "";
+        const client = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+
+        const mimeType = "audio/webm";
+        const audioBlob = new Blob([new Uint8Array(audio.buffer as ArrayBuffer)], {
+            type: mimeType,
+        });
+        const audioFile = new File([audioBlob], "audio.webm", { type: mimeType });
+
+        const response = await client.audio.transcriptions.create({
+            file: audioFile as unknown as File,
+            model: "whisper-1",
+            language: "es",
+        });
+
+        return response.text;
     }
 
     public async textToSpeech(text: string): Promise<Buffer> {
-        return Buffer.from("");
+        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const response = await client.audio.speech.create({
+            model: "tts-1",
+            voice: "echo",
+            input: text,
+        });
+        return Buffer.from(await response.arrayBuffer());
     }
 }
