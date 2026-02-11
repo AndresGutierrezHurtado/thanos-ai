@@ -1,7 +1,12 @@
 "use client";
 
+import React, { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { toast } from "react-toastify";
+
+// ICONS
 import {
-    CheckIcon,
     CopyIcon,
     LoaderIcon,
     PenIcon,
@@ -9,12 +14,7 @@ import {
     Sparkles,
     Square,
     Volume2Icon,
-    XIcon,
 } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import React, { useEffect, useRef, useState } from "react";
-import { toast } from "react-toastify";
 
 export default function ChatMessageList({
     messages = [],
@@ -44,7 +44,7 @@ export default function ChatMessageList({
             {messages.map((item, index) => {
                 const userMessages = messages.slice(0, index).filter((m) => m.role === "user");
                 const prevUserMessage = userMessages[userMessages.length - 1];
-
+                const isLastMessage = index === messages.length - 1;
                 return (
                     <React.Fragment key={index}>
                         {item.role === "assistant" ? (
@@ -54,6 +54,7 @@ export default function ChatMessageList({
                                 prevUserMessage={prevUserMessage}
                                 disabled={disabled}
                                 onRegenerateResponse={onRegenerateResponse}
+                                isLastMessage={isLastMessage}
                             />
                         ) : (
                             <UserMessage
@@ -70,7 +71,7 @@ export default function ChatMessageList({
     );
 }
 
-function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse }) {
+function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse, isLastMessage = false }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     const handlePlayStop = () => {
@@ -107,9 +108,9 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                         <Markdown remarkPlugins={[remarkGfm]} components={components} >{message.content.text}</Markdown>
                     </div>
                     {!message.streaming && (message.content.sources ?? []).length > 0 && (
-                        <div className="collapse collapse-arrow bg-base-100 border-base-300 border">
-                            <input type="checkbox" />
-                            <div className="collapse-title font-semibold">Fuentes:</div>
+                        <div className="collapse collapse-arrow bg-base-200 border-base-300 border">
+                            <input type="checkbox" defaultChecked={isLastMessage} />
+                            <div className="collapse-title font-semibold">Documentos del listado maestro:</div>
                             <div className="collapse-content text-sm">
                                 <div className="w-full grid grid-cols-2 gap-2">
                                     {(message.content.sources ?? []).map((source) => (
