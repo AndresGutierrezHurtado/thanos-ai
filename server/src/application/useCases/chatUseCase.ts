@@ -91,7 +91,7 @@ export default class ChatUseCase {
         // Generate the assistant message and save it and its sources
         const aiResponse = await this.messageService.generateResponse(chat, [userMessage], onChunk);
 
-        return toMessageResource(aiResponse);
+        return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }
 
     public async deleteChat(id: string): Promise<void> {

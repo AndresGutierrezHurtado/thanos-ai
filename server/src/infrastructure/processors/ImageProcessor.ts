@@ -1,11 +1,9 @@
 import IDocumentProcessor, {
     ExtractedDocument,
 } from "../../application/ports/services/IDocumentProcessor";
-import OpenAiModel from "../ai/OpenAiModel";
+import ILlmProvider from "../../application/ports/services/ILlmProvider";
 
 export default class ImageProcessor implements IDocumentProcessor {
-    private openAiModel: OpenAiModel;
-
     private supportedMimeTypes = [
         "image/jpeg",
         "image/jpg",
@@ -14,8 +12,7 @@ export default class ImageProcessor implements IDocumentProcessor {
         "image/gif",
     ];
 
-    constructor() {
-        this.openAiModel = new OpenAiModel();
+    constructor( private readonly llmProvider: ILlmProvider) {
     }
 
     supports(mimeType: string): boolean {
@@ -24,7 +21,7 @@ export default class ImageProcessor implements IDocumentProcessor {
     }
 
     async extract(buffer: Buffer, mimeType: string = "image/jpeg"): Promise<ExtractedDocument> {
-        const text = await this.openAiModel.imageToText(buffer, mimeType);
+        const text = await this.llmProvider.imageToText(buffer, mimeType);
 
         return {
             text,

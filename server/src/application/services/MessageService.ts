@@ -1,12 +1,15 @@
 // DOMAIN
 import Message from "../../domain/entities/message";
-import Identifier from "../../domain/valueObjects/Identifier";
 import Chat from "../../domain/entities/chat";
+import Identifier from "../../domain/valueObjects/Identifier";
+import MessageRole from "../../domain/valueObjects/MessageRole";
+import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 
 // PORTS
 import ILlmProvider from "../ports/services/ILlmProvider";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
+
 
 export default class MessageService {
     constructor(
@@ -19,22 +22,37 @@ export default class MessageService {
         chat: Chat,
         messages: Message[],
         onChunk?: (text: string) => void,
-    ): Promise<Message> {
+    ): Promise<Chat> {
         // Generate the AI response
-        const { message: assistantMessage, sources: retrievedSources } =
-            await this.llmProvider.generateResponse(chat, messages, onChunk);
-        const savedMessage = await this.messageRepository.create(assistantMessage);
+        const { response: llmResponse, sources } = await this.llmProvider.generateResponse(
+            messages,
+            500,
+            0.3,
+            onChunk,
+        );
 
-        for (const source of retrievedSources) {
-            source.setMessageId(savedMessage.getId() as Identifier);
-            const createdSource = await this.sourceRepository.create(source);
-            savedMessage.addSource(createdSource);
+        const assistantMessage = await this.messageRepository.create(
+            new Message(
+                null,
+                chat.getId() as Identifier,
+                MessageRole.ASSISTANT,
+                llmResponse,
+                new DateTimeValue(),
+                null,
+            ),
+        );
+
+        for (const source of sources) {
+            source.setMessageId(assistantMessage.getId() as Identifier);
+            await this.sourceRepository.create(source);
         }
 
-        return savedMessage;
+        chat.addMessage(assistantMessage);
+
+        return chat;
     }
 
     async generateTitle(content: string): Promise<string> {
-        return await this.llmProvider.generateChatTitle(content);
+        return await this.llmProvider.generateSimpleResponse(`Genera un titulo corto y descriptivo para basado en lo siguiente: ${content}`);
     }
 }

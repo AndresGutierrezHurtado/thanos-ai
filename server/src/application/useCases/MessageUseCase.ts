@@ -77,7 +77,7 @@ export default class MessageUseCase {
             onChunk,
         );
 
-        return toMessageResource(aiResponse);
+        return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }
 
     public async updateMessage(
@@ -110,7 +110,7 @@ export default class MessageUseCase {
             onChunk,
         );
 
-        return toMessageResource(aiResponse);
+        return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }
 
     public async getMessagesByChatId(chatId: string): Promise<MessageResource[]> {

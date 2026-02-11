@@ -36,8 +36,7 @@ import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import LoggerAdapter from "../services/LoggerAdapter";
-import LlmProvider from "../ai/LlmProvider";
-import OpenAiModel from "../ai/OpenAiModel";
+import GptLlmProvider from "../ai/GptLlmProvider";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
 import MessageService from "../../application/services/MessageService";
 
@@ -135,7 +134,11 @@ export default class DIContainer {
 
     // Application Services
     private getMessageService(): MessageService {
-        return new MessageService(this.getLlmProvider(), this.getMessageRepository(), this.getSourceRepository());
+        return new MessageService(
+            this.getLlmProvider(),
+            this.getMessageRepository(),
+            this.getSourceRepository(),
+        );
     }
 
     private getProcessorFactory(): ProcessorFactory {
@@ -168,20 +171,11 @@ export default class DIContainer {
     }
 
     private getVectorStore(): ChromaVectorStore {
-        return new ChromaVectorStore(this.getAiProvider(), this.getDocumentRepository());
+        return new ChromaVectorStore(this.getDocumentRepository());
     }
 
     private getLlmProvider(): ILlmProvider {
-        return new LlmProvider(
-            this.getAiProvider(),
-            this.getVectorStore(),
-            this.getProcessorFactory(),
-            this.getLogger(),
-        );
-    }
-
-    private getAiProvider(): OpenAiModel {
-        return new OpenAiModel();
+        return new GptLlmProvider(this.getVectorStore());
     }
 
     public getDriveProvider(): IDriveProvider {
