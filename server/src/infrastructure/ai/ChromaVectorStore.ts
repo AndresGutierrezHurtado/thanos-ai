@@ -1,10 +1,14 @@
 import { ChromaClient } from "chromadb";
-import IVectorStore, { VectorDocument } from "../../application/ports/services/IVectorStore";
-import Source from "../../domain/entities/source";
-import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
-import Document from "../../domain/entities/document";
-import BusinessTermNormalizer from "./BusinessTermNormalizer";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import BusinessTermNormalizer from "./BusinessTermNormalizer";
+
+// DOMAIN
+import Source from "../../domain/entities/source";
+import Document from "../../domain/entities/document";
+
+// PORTS
+import IVectorStore, { VectorDocument } from "../../application/ports/services/IVectorStore";
+import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -73,8 +77,7 @@ export default class ChromaVectorStore implements IVectorStore {
     async query(
         collection: string,
         queryText: string,
-        nResults = 5,
-        maxDistance = 0.3,
+        nCandidates = 20,
     ): Promise<Source[]> {
         const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
 
@@ -83,13 +86,12 @@ export default class ChromaVectorStore implements IVectorStore {
 
         const result = await col.query({
             queryEmbeddings: [embedding],
-            nResults,
-            include: ["documents", "metadatas", "distances"],
+            nResults: nCandidates,
+            include: ["documents", "metadatas"],
         });
 
         const documents = result.documents?.[0] ?? [];
         const metadatas = result.metadatas?.[0] ?? [];
-        const distances = result.distances?.[0] ?? [];
         const ids = result.ids?.[0] ?? [];
 
         const sources: Source[] = [];
@@ -98,11 +100,8 @@ export default class ChromaVectorStore implements IVectorStore {
             const id = ids[i] ?? "";
             const metadata = metadatas[i] ?? {};
             const document = documents[i] ?? "";
-            const distance = distances[i] ?? 0;
 
-            if (distance < 1 - maxDistance) continue;
-
-            const driveDocument: Document | null = await this.documentRepository.findByDriveId(
+            const driveDocument = await this.documentRepository.findByDriveId(
                 metadata.driveId as string,
             );
 

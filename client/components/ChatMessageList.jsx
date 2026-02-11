@@ -89,6 +89,12 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
         setIsSpeaking(true);
     };
 
+    const components = {
+        a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+        ),
+    };
+
     return (
         <div className="w-full flex flex-col gap-5 relative">
             <div className="flex items-center gap-2 text-primary">
@@ -98,7 +104,7 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
             <div className="flex flex-col gap-2 w-full">
                 <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
                     <div className="markdown prose">
-                        <Markdown remarkPlugins={[remarkGfm]}>{message.content.text}</Markdown>
+                        <Markdown remarkPlugins={[remarkGfm]} components={components} >{message.content.text}</Markdown>
                     </div>
                     {!message.streaming && (message.content.sources ?? []).length > 0 && (
                         <div className="collapse collapse-arrow bg-base-100 border-base-300 border">

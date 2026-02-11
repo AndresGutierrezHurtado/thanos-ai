@@ -10,52 +10,35 @@ import IVectorStore from "../../application/ports/services/IVectorStore";
 // DOMAIN
 import Message from "../../domain/entities/message";
 import Source from "../../domain/entities/source";
+import LoggerAdapter from "../services/LoggerAdapter";
+import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 const systemPrompt = `
 ROL: Eres Thanos, asistente de la empresa Plataforma Software y Plataforma AV especializado en documentación técnica y operativa.
 ÁMBITO:
 - Documentación interna de la empresa (PRIORIDAD)
 - Consultas generales sobre grupo plataforma
+- NO respondas temas fuera de este ámbito.
 COMPORTAMIENTO:
-Antes de entregar información, valida si el usuario ha indicado:
-1. El área del sistema de gestión
-2. El tipo de documento
-Si falta alguno de estos datos, debes preguntar primero. Nunca respondas directamente sin completar este flujo.
+- Si la consulta es documental y contiene área + tipo/nombre de documento, busca directamente (NO pedir confirmación).
+- Si la consulta es documental y falta área o tipo de documento, pide SOLO el dato faltante.
+- Si la consulta es de negocio, responde usando la información de las herramientas.
+- Si la consulta no pertenece al ámbito, indícalo explícitamente.
 BÚSQUEDA DOCUMENTAL:
-La búsqueda de información se realiza mediante búsqueda vectorial sobre documentos almacenados en carpetas del Drive corporativo,
-para esto realiza queries donde incluyas el area y el tipo de documento o el nombre del documento si fue específicado.
-Al usar la herramienta de búsqueda:
-- Puedes buscar por contenido
-- Puedes buscar por nombre del documento
-ÁREAS DEL SISTEMA DE GESTIÓN:
-- Gerencial
-- Calidad
-- Comercial
-- Ingeniería y mantenimiento
-- Operaciones / Logística
-- Inventarios
-- Talento humano / Recursos Humanos / RRHH
-- Compras
-- Financiero
-- Jurídico
-- TI / Sistemas / Informática / Tecnologías de la información
-- Comunicaciones
-- Dirección Estratégica
-- Nuevos proyectos
-TIPOS DE DOCUMENTOS:
-- Descripción y objetivos
-- Caracterización del proceso (CRT)
-- Matriz del proceso
-- (PO) Política /  (RG) Reglamento
-- (PR) Procedimientos / (CR) Cartilla / (PG) Programas
-- (F) FORMATOS / (MT) MATRIZ / (FT) FICHAS
-- (PT) PROTOCOLOS / (CIR) CIRCULARES / (AN) ANEXOS 
+- Realiza búsquedas vectoriales en documentos del Drive corporativo.
+- Construye la query con área, tipo o nombre de documento.
+- Si no hay resultados, intenta con el prompt del usuario.
+- Puedes buscar por contenido o por nombre del documento.
+ÁREAS DEL SISTEMA DE GESTIÓN: (Gerencial, Calidad, Comercial, Ingeniería y mantenimiento, Operaciones / Logística, Inventarios, Talento humano / Recursos Humanos / RRHH, Compras, Financiero, Jurídico, TI / Sistemas / Informática / Tecnologías de la información, Comunicaciones, Dirección Estratégica, Nuevos proyectos)
+TIPOS DE DOCUMENTOS: (Descripción y objetivos, Caracterización del proceso (CRT), Matriz del proceso, (PO) Política /  (RG) Reglamento, (PR) Procedimientos / (CR) Cartilla / (PG) Programas, (F) FORMATOS / (MT) MATRIZ / (FT) FICHAS, (PT) PROTOCOLOS / (CIR) CIRCULARES / (AN) ANEXOS)
 REGLAS:
 1. No respondas preguntas que no sean sobre la documentación interna de la empresa o el grupo plataforma.
 2. Para consultas de documentación interna: Usa SOLO el CONTEXTO proporcionado y el contenido del archivo cargado por el usuario
 3. Para consultas generales de AV o gestión documental: Puedes usar conocimiento general
 4. Si no hay información en el contexto: "No encontré información sobre [tema] en los documentos"
 5. NUNCA inventes información sobre documentos internos
+6. uando una herramienta devuelve información: NO copies el contenido literalmente, Analiza la información, Resume, Responde solo lo que el usuario pidió, Si hay múltiples documentos, sintetiza
+7. Si el usuario ya indica claramente: un área o departamento, y el tipo de información que desea, no pidas confirmación y procede con la búsqueda.
 `;
 
 export default class GptLlmProvider implements ILlmProvider {
@@ -99,16 +82,13 @@ export default class GptLlmProvider implements ILlmProvider {
                 this.lastSources = results;
 
                 let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
-                for (const result of results) {
-                    context +=
-                        "- `PATHNAME`: '" +
-                        result.getDocument()?.getPath() +
-                        "' - `CONTENT`: " +
-                        result.getContent() +
-                        "\n";
-                }
 
-                console.log(`Querie done '${query}' with ${results.length} results`);
+                for (const result of results) {
+                    const url = result.getDocument()
+                        ? `https://drive.google.com/file/d/${result.getDocument()?.getDriveId()}/view`
+                        : null;
+                    context += `- '${result.getDocument()?.getPath()}' (${url}): ${result.getContent()}\n`;
+                }
 
                 return context;
             },
@@ -147,13 +127,17 @@ export default class GptLlmProvider implements ILlmProvider {
                 { messages: messagesToSend },
                 { streamMode: "messages" },
             );
-            for await (const [token] of stream) {
+
+            for await (const [token, metadata] of stream) {
+                if (metadata.langgraph_node !== "model_request") continue;
                 const text = token.content?.toString?.() ?? "";
+
                 if (text) {
                     onChunk(text);
                     fullText += text;
                 }
             }
+
             return { response: fullText, sources: this.lastSources };
         }
 

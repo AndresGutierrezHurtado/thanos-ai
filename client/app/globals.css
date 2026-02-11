@@ -26,3 +26,40 @@
 .markdown * {
     all: revert;
 }
+
+.markdown {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--color-base-content);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.markdown p {
+    margin: 0.25rem 0;
+}
+
+.markdown ul {
+    margin: 0.5rem 0 0.75rem 1.25rem;
+    padding-left: 1rem;
+    list-style-type: disc;
+}
+
+.markdown li {
+    margin-bottom: 0.25rem;
+}
+
+.markdown strong {
+    font-weight: 600;
+    color: var(--color-primary-content);
+}
+
+.markdown a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.markdown a:hover {
+    color: #00c400;
+}

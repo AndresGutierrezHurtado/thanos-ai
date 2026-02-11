@@ -18,7 +18,7 @@ export default class BusinessTermNormalizer {
     };
 
     static normalize(text: string): { normalizedText: string; detectedTerms: string[] } {
-        let normalizedText = text;
+        let normalizedText = text.toLocaleLowerCase().trim();
         const detectedTerms: string[] = [];
 
         for (const [alias, canonical] of Object.entries(this.glossary)) {
