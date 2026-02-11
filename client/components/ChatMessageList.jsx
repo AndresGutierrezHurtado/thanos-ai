@@ -47,7 +47,6 @@ export default function ChatMessageList({
             {messages.map((item, index) => {
                 const userMessages = messages.slice(0, index).filter((m) => m.role === "user");
                 const prevUserMessage = userMessages[userMessages.length - 1];
-                const isLastMessage = index === messages.length - 1;
                 return (
                     <React.Fragment key={index}>
                         {item.role === "assistant" ? (
@@ -57,7 +56,6 @@ export default function ChatMessageList({
                                 prevUserMessage={prevUserMessage}
                                 disabled={disabled}
                                 onRegenerateResponse={onRegenerateResponse}
-                                isLastMessage={isLastMessage}
                             />
                         ) : (
                             <UserMessage
@@ -74,7 +72,7 @@ export default function ChatMessageList({
     );
 }
 
-function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse, isLastMessage = false }) {
+function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [previewModal, setPreviewModal] = useState({ isOpen: false, driveId: null, documentTitle: null });
 
@@ -113,7 +111,7 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     </div>
                     {!message.streaming && (message.content.sources ?? []).length > 0 && (
                         <div className="collapse collapse-arrow bg-base-200 border-base-300 border">
-                            <input type="checkbox" defaultChecked={isLastMessage} />
+                            <input type="checkbox" defaultChecked />
                             <div className="collapse-title font-semibold">Documentos del listado maestro:</div>
                             <div className="collapse-content text-sm">
                                 <div className="w-full grid grid-cols-2 gap-2">
