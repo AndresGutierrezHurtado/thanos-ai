@@ -99,4 +99,25 @@ export default class GoogleDriveProvider implements IDriveProvider {
 
         return Buffer.from(response.data as ArrayBuffer);
     }
+
+    async getFileById(fileId: string): Promise<DriveFile | null> {
+        try {
+            const response = await this.drive.files.get({
+                fileId,
+                fields: "id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink",
+            });
+
+            if (!response.data) {
+                return null;
+            }
+
+            return response.data as DriveFile;
+        } catch (error) {
+            this.logger.log(
+                SyslogSeverity.ERROR,
+                `Error getting file ${fileId}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return null;
+        }
+    }
 }

@@ -26,6 +26,30 @@ export default class InformationUseCase {
         return await this.vectorStore.query("iso-docs", query, 10);
     }
 
+    public async downloadFileById(fileId: string): Promise<{ buffer: Buffer; filename: string; mimeType: string } | null> {
+        const file = await this.driveProvider.getFileById(fileId);
+        
+        if (!file) {
+            return null;
+        }
+
+        const googleNativeTypes: Record<string, string> = {
+            "application/vnd.google-apps.document": "application/pdf",
+            "application/vnd.google-apps.spreadsheet": "application/pdf",
+            "application/vnd.google-apps.presentation": "application/pdf",
+        };
+
+        const finalMimeType = googleNativeTypes[file.mimeType] || file.mimeType;
+
+        const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
+        
+        return {
+            buffer,
+            filename: file.name,
+            mimeType: finalMimeType,
+        };
+    }
+
     public async syncDocuments(): Promise<{ total: number }> {
         // GETTING FILES FROM A FILE PROVIDER
         const files = await this.driveProvider.listFiles();

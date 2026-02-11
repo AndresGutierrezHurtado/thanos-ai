@@ -16,6 +16,9 @@ import {
     Volume2Icon,
 } from "lucide-react";
 
+// COMPONENTS
+import PreviewDocumentModal from "./PreviewDocumentModal";
+
 export default function ChatMessageList({
     messages = [],
     loading = false,
@@ -73,6 +76,7 @@ export default function ChatMessageList({
 
 function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse, isLastMessage = false }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [previewModal, setPreviewModal] = useState({ isOpen: false, driveId: null, documentTitle: null });
 
     const handlePlayStop = () => {
         if (isSpeaking) {
@@ -124,10 +128,11 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                                             }
                                             onClick={() => {
                                                 if (source.document?.driveId) {
-                                                    window.open(
-                                                        `https://drive.google.com/file/d/${source.document.driveId}/view`,
-                                                        "_blank",
-                                                    );
+                                                    setPreviewModal({
+                                                        isOpen: true,
+                                                        driveId: source.document.driveId,
+                                                        documentTitle: source.document?.title || "Documento",
+                                                    });
                                                 }
                                             }}
                                         >
@@ -186,6 +191,12 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     <RefreshCcwIcon size={15} />
                 </button>
             </div>
+            <PreviewDocumentModal
+                isOpen={previewModal.isOpen}
+                onClose={() => setPreviewModal({ isOpen: false, driveId: null, documentTitle: null })}
+                driveId={previewModal.driveId}
+                documentTitle={previewModal.documentTitle}
+            />
         </div>
     );
 }
