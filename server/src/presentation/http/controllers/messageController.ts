@@ -3,17 +3,23 @@ import { Request, Response } from "express";
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
 import UpdateMessageDto from "../../../application/ports/dtos/updateMessageDTO";
+import SpeechUseCase from "../../../application/useCases/SpeechUseCase";
 
 export default class MessageController {
     private readonly MAX_MEDIA_CONTENT_SIZE = 7 * 1024 * 1024; // 7MB
 
-    constructor(private readonly messageUseCase: MessageUseCase) {}
+    constructor(
+        private readonly messageUseCase: MessageUseCase,
+        private readonly speechUseCase: SpeechUseCase,
+    ) {}
 
     public async sendMessage(req: Request, res: Response): Promise<Response | void> {
         const { chatId, content, mediaContent, stream: useStream } = req.body;
 
         if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
-            throw new Error(`Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`);
+            throw new Error(
+                `Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`,
+            );
         }
 
         if (mediaContent && mediaContent.buffer && mediaContent.buffer.length > 0) {
@@ -30,14 +36,14 @@ export default class MessageController {
             };
             const message = await this.messageUseCase.sendMessage(
                 { chatId, content, mediaContent },
-                onChunk
+                onChunk,
             );
             res.write(
                 `data: ${JSON.stringify({
                     success: true,
                     message: "Message sent successfully",
                     data: message,
-                })}\n\n`
+                })}\n\n`,
             );
             res.end();
             return;
@@ -53,7 +59,7 @@ export default class MessageController {
 
     public async updateMessage(req: Request, res: Response): Promise<Response | void> {
         const idRaw = req.params.id;
-        const id = Array.isArray(idRaw) ? idRaw[0] : idRaw ?? "";
+        const id = Array.isArray(idRaw) ? idRaw[0] : (idRaw ?? "");
         const { content, stream: useStream } = req.body;
         const dto: UpdateMessageDto = { id, content };
 
@@ -71,7 +77,7 @@ export default class MessageController {
                     success: true,
                     message: "Message updated successfully",
                     data: result,
-                })}\n\n`
+                })}\n\n`,
             );
             res.end();
             return;
@@ -87,7 +93,7 @@ export default class MessageController {
 
     public async speechToText(req: Request, res: Response): Promise<Response | void> {
         const { audio } = req.body as { audio: string };
-        const result = await this.messageUseCase.speechToText(Buffer.from(audio, "base64"));
+        const result = await this.speechUseCase.speechToText(Buffer.from(audio, "base64"));
         return res.status(200).json({
             success: true,
             message: "Speech to text completed successfully",

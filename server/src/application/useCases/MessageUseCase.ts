@@ -160,8 +160,4 @@ export default class MessageUseCase {
         const mediaContent = await this.mediaContentRepository.findByMessageId(messageId);
         return mediaContent as MediaContent;
     }
-
-    public async speechToText(audio: Buffer): Promise<string> {
-        return await this.llmProvider.speechToText(audio);
-    }
 }

@@ -57,4 +57,8 @@ export default class SpeechUseCase {
         this.logger.log(SyslogSeverity.DEBUG, "Text to speech", { responseText });
         return await this.llmProvider.textToSpeech(responseText);
     }
+
+    public async speechToText(audio: Buffer): Promise<string> {
+        return await this.llmProvider.speechToText(audio);
+    }
 }

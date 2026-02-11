@@ -56,7 +56,7 @@ export default class DIContainer {
 
     // Controllers
     public getMessageController(): MessageController {
-        return new MessageController(this.getMessageUseCase());
+        return new MessageController(this.getMessageUseCase(), this.getSpeechUseCase());
     }
 
     public getChatController(): ChatController {
