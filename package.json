@@ -6,6 +6,10 @@
     "scripts": {
         "download": "npm install --prefix server && npm install --prefix client",
         "server": "clear && npm start --prefix server",
-        "client": "clear && npm run dev --prefix client"
+        "client": "clear && npm run dev --prefix client",
+        "sync:documents": "clear && npm run sync:documents --prefix server",
+        "chroma:query": "clear && npm run chroma:query --prefix server",
+        "docker:up": "clear && npm run docker:up --prefix server",
+        "docker:down": "clear && npm run docker:down --prefix server"
     }
 }

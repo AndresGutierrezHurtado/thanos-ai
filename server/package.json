@@ -4,7 +4,11 @@
     "description": "Backend for THANOS-AI",
     "main": "dist/index.ts",
     "scripts": {
-        "start": "tsx watch src/index.ts"
+        "start": "tsx watch src/index.ts",
+        "sync:documents": "tsx src/presentation/cli/syncDocuments.ts",
+        "chroma:query": "tsx src/presentation/cli/chromaQuery.ts",
+        "docker:up": "docker-compose up -d",
+        "docker:down": "docker-compose down"
     },
     "keywords": [
         "thanos-ai",

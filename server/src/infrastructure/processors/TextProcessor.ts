@@ -19,7 +19,7 @@ export default class TextProcessor implements IDocumentProcessor {
             return { text, metadata: { sourceType: "text" } };
         } catch (error) {
             const logger = new LoggerAdapter();
-            logger.log(SyslogSeverity.ERROR, "Error extracting TEXT", { error: error });
+            logger.log(SyslogSeverity.ERROR, `Error extracting TEXT: ${error instanceof Error ? error.message : "Unknown error"}`, { error: error });
             return { text: "", metadata: { sourceType: "text" } };
         }
     }

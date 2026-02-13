@@ -46,7 +46,7 @@ export default class XlsxProcessor implements IDocumentProcessor {
                 metadata: { sourceType: "xlsx" },
             };
         } catch (error) {
-            logger.log(SyslogSeverity.ERROR, "Error extracting XLSX", { error: error });
+            logger.log(SyslogSeverity.ERROR, `Error extracting XLSX: ${error instanceof Error ? error.message : "Unknown error"}`, { error: error });
             return {
                 text: "",
                 sections: undefined,

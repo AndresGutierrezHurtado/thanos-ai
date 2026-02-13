@@ -25,7 +25,7 @@ export default class DocxProcessor implements IDocumentProcessor {
             };
         } catch (error) {
             const logger = new LoggerAdapter();
-            logger.log(SyslogSeverity.ERROR, "Error extracting DOCX", { error: error });
+            logger.log(SyslogSeverity.ERROR, `Error extracting DOCX: ${error instanceof Error ? error.message : "Unknown error"}`, { error: error });
             return {
                 text: "",
                 sections: undefined,
