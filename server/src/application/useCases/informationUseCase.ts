@@ -26,9 +26,11 @@ export default class InformationUseCase {
         return await this.vectorStore.query("iso-docs", query, 10);
     }
 
-    public async downloadFileById(fileId: string): Promise<{ buffer: Buffer; filename: string; mimeType: string } | null> {
+    public async downloadFileById(
+        fileId: string,
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string } | null> {
         const file = await this.driveProvider.getFileById(fileId);
-        
+
         if (!file) {
             return null;
         }
@@ -42,7 +44,7 @@ export default class InformationUseCase {
         const finalMimeType = googleNativeTypes[file.mimeType] || file.mimeType;
 
         const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
-        
+
         return {
             buffer,
             filename: file.name,
@@ -50,9 +52,9 @@ export default class InformationUseCase {
         };
     }
 
-    public async syncDocuments(): Promise<{ total: number }> {
+    public async syncDocuments(limit?: number): Promise<{ total: number, processed: number, skipped: number }> {
         // GETTING FILES FROM A FILE PROVIDER
-        const files = await this.driveProvider.listFiles();
+        const files = await this.driveProvider.listFiles(limit);
         this.filesLength = files.length;
 
         // PROCESSING FILES IN BATCHES
@@ -62,10 +64,19 @@ export default class InformationUseCase {
         }
 
         // RETURNING THE RESULT
-        return { total: this.filesLength };
+        return { total: this.filesLength, processed: this.processed, skipped: this.skipped };
     }
 
     private async processFile(file: DriveFile): Promise<Boolean> {
+        // PROCESS THE FILE
+        const result = await this.processFileService.execute(file);
+
+        if (result) {
+            this.processed++;
+        } else {
+            this.skipped++;
+        }
+
         // LOG THE PROGRESS
         const total = this.processed + this.skipped;
         const percentage = Math.round((total / this.filesLength) * 100);
@@ -80,15 +91,6 @@ export default class InformationUseCase {
                 `processed ${percentage}% of files (${total} of ${this.filesLength})`,
             );
             this.percentage = percentage;
-        }
-
-        // PROCESS THE FILE
-        const result = await this.processFileService.execute(file);
-
-        if (result) {
-            this.processed++;
-        } else {
-            this.skipped++;
         }
 
         // RETURN THE RESULT

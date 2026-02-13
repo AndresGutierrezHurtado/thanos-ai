@@ -89,7 +89,7 @@ export default class ProcessFileService {
             await this.transactionRepository.rollback();
             this.logger.log(
                 SyslogSeverity.ERROR,
-                `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}):`,
+                `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}): ${err instanceof Error ? err.message : "Unknown error"}`,
                 { error: err as Error },
             );
             return false;

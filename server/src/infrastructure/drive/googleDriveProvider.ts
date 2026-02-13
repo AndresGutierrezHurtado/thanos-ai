@@ -30,10 +30,13 @@ export default class GoogleDriveProvider implements IDriveProvider {
 
     // Listar archivos de una carpeta
     async listFiles(
+        limit?: number,
         folderId: string | null = null,
         files: DriveFile[] = [],
         currentPath: string = "",
     ): Promise<DriveFile[]> {
+        if (limit && files.length >= limit) return files;
+
         // Get folders
         const response = await this.drive.files.list({
             q: `'${
@@ -46,7 +49,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
         // Extract files in the subfolders
         for (const file of response.data.files || []) {
             if (file.mimeType === "application/vnd.google-apps.folder") {
-                await this.listFiles(file.id, files, currentPath + file.name + "/");
+                await this.listFiles(limit, file.id, files, currentPath + file.name + "/");
             } else {
                 const driveFile: DriveFile = {
                     ...(file as DriveFile),
@@ -66,6 +69,8 @@ export default class GoogleDriveProvider implements IDriveProvider {
                     this.lastLogTime = now;
                 }
             }
+
+            if (limit && files.length >= limit) return files;
         }
 
         return files;

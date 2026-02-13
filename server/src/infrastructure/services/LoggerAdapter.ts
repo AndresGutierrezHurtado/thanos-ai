@@ -25,11 +25,7 @@ export default class LoggerAdapter implements ILogger {
     }
 
     private writeToStd(level: SyslogSeverity, entry: LoggerEntry): void {
-        if (level <= SyslogSeverity.ERROR) {
-            console.error(JSON.stringify(entry));
-        } else {
-            console.log(`[${entry.timestamp}] [${entry.severity}] ${entry.message}`);
-        }
+        console.log(`${entry.timestamp}@${entry.msgId} [${entry.severity}] ${entry.message}`);
     }
 
     public async getLogs(date?: string): Promise<LoggerEntry[]> {
@@ -43,7 +39,7 @@ export default class LoggerAdapter implements ILogger {
                 .sort(
                     (a, b) =>
                         new Date(b?.timestamp as string).getTime() -
-                        new Date(a?.timestamp as string).getTime()
+                        new Date(a?.timestamp as string).getTime(),
                 )
                 .filter((p): p is LoggerEntry => p !== null);
         } catch {
@@ -54,7 +50,7 @@ export default class LoggerAdapter implements ILogger {
     public log(
         level: SyslogSeverity,
         message: string,
-        context: Record<string, unknown> = {}
+        context: Record<string, unknown> = {},
     ): void {
         const entry: LoggerEntry = {
             timestamp: new Date().toISOString(),
