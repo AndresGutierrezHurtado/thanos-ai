@@ -48,20 +48,29 @@ export default class ChatController {
     public async createChat(req: Request, res: Response): Promise<Response | void> {
         const { content, mediaContent, stream: useStream } = req.body;
 
-        if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
+        if (mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
             throw new Error(
                 `Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`,
             );
         }
 
-        if (mediaContent && mediaContent.buffer && mediaContent.buffer.length > 0) {
-            mediaContent.buffer = Buffer.from(mediaContent.buffer, "base64");
+        let normalizedMedia: SendMessageDto["mediaContent"] = null;
+        if (mediaContent && (mediaContent.buffer != null || mediaContent.data != null)) {
+            const raw = mediaContent.buffer ?? mediaContent.data;
+            const buf = typeof raw === "string"
+                ? Buffer.from(raw, "base64")
+                : Buffer.isBuffer(raw)
+                    ? raw
+                    : Buffer.from(raw);
+            if (buf.length > 0) {
+                normalizedMedia = { ...mediaContent, buffer: buf };
+            }
         }
 
         const dto: SendMessageDto = {
             chatId: null,
-            content,
-            mediaContent: mediaContent,
+            content: content ?? "",
+            mediaContent: normalizedMedia ?? null,
         };
 
         if (useStream) {

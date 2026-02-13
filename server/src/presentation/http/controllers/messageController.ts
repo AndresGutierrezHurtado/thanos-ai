@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
-import UpdateMessageDto from "../../../application/ports/dtos/updateMessageDTO";
 import SpeechUseCase from "../../../application/useCases/SpeechUseCase";
 
 export default class MessageController {
@@ -16,7 +15,7 @@ export default class MessageController {
     public async sendMessage(req: Request, res: Response): Promise<Response | void> {
         const { chatId, content, mediaContent, stream: useStream } = req.body;
 
-        if (mediaContent && mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
+        if (mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
             throw new Error(
                 `Media content size exceeds the maximum allowed size of ${this.MAX_MEDIA_CONTENT_SIZE / 1024 / 1024}MB`,
             );
@@ -50,6 +49,7 @@ export default class MessageController {
         }
 
         const message = await this.messageUseCase.sendMessage({ chatId, content, mediaContent });
+
         return res.status(200).json({
             success: true,
             message: "Message sent successfully",
@@ -61,7 +61,6 @@ export default class MessageController {
         const idRaw = req.params.id;
         const id = Array.isArray(idRaw) ? idRaw[0] : (idRaw ?? "");
         const { content, stream: useStream } = req.body;
-        const dto: UpdateMessageDto = { id, content };
 
         if (useStream) {
             res.setHeader("Content-Type", "text/event-stream");
@@ -71,7 +70,7 @@ export default class MessageController {
             const onChunk = (text: string) => {
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
             };
-            const result = await this.messageUseCase.updateMessage(dto, onChunk);
+            const result = await this.messageUseCase.updateMessage({ id, content }, onChunk);
             res.write(
                 `data: ${JSON.stringify({
                     success: true,
@@ -83,7 +82,7 @@ export default class MessageController {
             return;
         }
 
-        const result = await this.messageUseCase.updateMessage(dto);
+        const result = await this.messageUseCase.updateMessage({ id, content });
         return res.status(200).json({
             success: true,
             message: "Message updated successfully",

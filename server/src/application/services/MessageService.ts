@@ -20,6 +20,7 @@ export default class MessageService {
     async generateResponse(
         chat: Chat,
         messages: Message[],
+        extractedText?: string,
         onChunk?: (text: string) => void,
     ): Promise<Chat> {
         // Generate the AI response
@@ -27,6 +28,7 @@ export default class MessageService {
             messages,
             500,
             0.3,
+            extractedText,
             onChunk,
         );
 
@@ -55,8 +57,8 @@ export default class MessageService {
         // Respuesta optimizada para voz: modelo directo, menos tokens y estilo conversacional en párrafos
         const llmResponse = await this.llmProvider.generateConversationalResponse(
             messages,
-            256,
-            0.5,
+            300,
+            0.35,
         );
 
         const assistantMessage = await this.messageRepository.create(

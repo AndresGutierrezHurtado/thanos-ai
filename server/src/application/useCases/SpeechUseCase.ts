@@ -22,10 +22,12 @@ export default class SpeechUseCase {
     ) {}
 
     async execute(chatId: string, audio: Buffer): Promise<Buffer> {
+        // FIND THE CHAT
         this.logger.log(SyslogSeverity.DEBUG, "Executing speech use case", { chatId, audio });
         const chat = await this.chatRepository.findById(new Identifier(chatId));
         if (!chat) throw new Error("Chat not found");
 
+        // CONVERT THE AUDIO TO TEXT
         this.logger.log(SyslogSeverity.DEBUG, "Speech to text", { audio });
         const text = await this.llmProvider.speechToText(audio);
         await this.messageRepository.create(
@@ -38,19 +40,19 @@ export default class SpeechUseCase {
                 null,
             ),
         );
+
+        // GET THE MESSAGES FOR THE LLM
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
+        // GENERATE THE SPEECH RESPONSE
         this.logger.log(SyslogSeverity.DEBUG, "Generating speech response", {
             messagesCount: messages.length,
         });
-
         const aiResponseChat = await this.messageService.generateSpeechResponse(chat, messages);
 
-        this.logger.log(SyslogSeverity.DEBUG, "saving message", {
-            assistantMessage: aiResponseChat,
-        });
-
         const responseText = aiResponseChat.getLastAssistantMessage()?.getContent() ?? "";
+
+        // CONVERT THE TEXT TO SPEECH AND RETURN IT
         this.logger.log(SyslogSeverity.DEBUG, "Text to speech", { responseText });
         return await this.llmProvider.textToSpeech(responseText);
     }

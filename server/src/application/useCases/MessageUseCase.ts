@@ -23,6 +23,9 @@ import { MediaContentType } from "../../domain/valueObjects/MediaContentType";
 // Application Services
 import MessageService from "../services/MessageService";
 
+// Infrastructure
+import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
+
 export default class MessageUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
@@ -31,6 +34,7 @@ export default class MessageUseCase {
         private readonly documentRepository: IDocumentRepository,
         private readonly mediaContentRepository: IMediaContentRepository,
         private readonly messageService: MessageService,
+        private readonly processorFactory: ProcessorFactory,
     ) {}
 
     public async sendMessage(
@@ -41,6 +45,18 @@ export default class MessageUseCase {
 
         const chat = await this.chatRepository.findById(new Identifier(chatId as string));
         if (!chat) throw new Error("Chat not found");
+
+        // Process media content and extract text if exists
+        let extractedText: string | undefined;
+        if (mediaContent?.buffer && mediaContent?.mimeType) {
+            try {
+                const processor = this.processorFactory.get(mediaContent.mimeType);
+                const extracted = await processor.extract(mediaContent.buffer, mediaContent.mimeType);
+                extractedText = extracted?.text;
+            } catch {
+                extractedText = undefined;
+            }
+        }
 
         // Save the user message
         const userMessage = await this.messageRepository.create(
@@ -74,6 +90,7 @@ export default class MessageUseCase {
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
+            extractedText,
             onChunk,
         );
 
@@ -107,6 +124,7 @@ export default class MessageUseCase {
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
+            undefined,
             onChunk,
         );
 

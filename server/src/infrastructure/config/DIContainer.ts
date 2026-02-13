@@ -80,6 +80,7 @@ export default class DIContainer {
             this.getDocumentRepository(),
             this.getMediaContentRepository(),
             this.getMessageService(),
+            this.getProcessorFactory(),
         );
     }
 
@@ -89,6 +90,7 @@ export default class DIContainer {
             this.getMessageRepository(),
             this.getMediaContentRepository(),
             this.getMessageService(),
+            this.getProcessorFactory(),
         );
     }
 

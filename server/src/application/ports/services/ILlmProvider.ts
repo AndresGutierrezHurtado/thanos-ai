@@ -6,6 +6,7 @@ interface ILlmProvider {
         messages: Message[],
         maxTokens?: number,
         temperature?: number,
+        extractedText?: string,
         onChunk?: (text: string) => void,
     ): Promise<{ response: string; sources: Source[] }>;
     generateConversationalResponse(

@@ -20,12 +20,16 @@ import IMediaContentRepository from "../ports/repositories/IMediaContentReposito
 // Application Services
 import MessageService from "../services/MessageService";
 
+// Infrastructure
+import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
+
 export default class ChatUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
         private readonly mediaContentRepository: IMediaContentRepository,
         private readonly messageService: MessageService,
+        private readonly processorFactory: ProcessorFactory,
     ) {}
 
     public async getChats(): Promise<ChatResource[]> {
@@ -49,6 +53,18 @@ export default class ChatUseCase {
         onChunk?: (text: string) => void,
     ): Promise<MessageResource> {
         const { content, mediaContent } = dto;
+
+        // Process media content and extract text if exists
+        let extractedText: string | undefined;
+        if (mediaContent?.buffer && mediaContent?.mimeType) {
+            try {
+                const processor = this.processorFactory.get(mediaContent.mimeType);
+                const extracted = await processor.extract(mediaContent.buffer, mediaContent.mimeType);
+                extractedText = extracted?.text;
+            } catch {
+                extractedText = undefined;
+            }
+        }
 
         const chat = await this.chatRepository.create(
             new Chat(
@@ -89,7 +105,12 @@ export default class ChatUseCase {
         }
 
         // Generate the assistant message and save it and its sources
-        const aiResponse = await this.messageService.generateResponse(chat, [userMessage], onChunk);
+        const aiResponse = await this.messageService.generateResponse(
+            chat,
+            [userMessage],
+            extractedText,
+            onChunk,
+        );
 
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }

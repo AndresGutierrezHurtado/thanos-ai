@@ -127,6 +127,7 @@ export default class GptLlmProvider implements ILlmProvider {
         messages: Message[],
         maxTokens: number = 500,
         temperature: number = 0.3,
+        extractedText?: string,
         onChunk?: (text: string) => void,
     ): Promise<{ response: string; sources: Source[] }> {
         const sources = [] as Source[];
@@ -140,6 +141,15 @@ export default class GptLlmProvider implements ILlmProvider {
                 content: message.getContent(),
             })),
         ];
+
+        if (extractedText) {
+            const lastUserIdx = [...messagesToSend].reverse().findIndex((m) => m.role === "user");
+            const idx = lastUserIdx >= 0 ? messagesToSend.length - 1 - lastUserIdx : messagesToSend.length - 1;
+            const target = messagesToSend[idx];
+            if (target && typeof target.content === "string") {
+                target.content += `\n\nCONTENIDO DEL ARCHIVO ADJUNTO:\n${extractedText}`;
+            }
+        }
 
         // GENERATE THE RESPONSE WITH STREAMING
         if (onChunk) {
