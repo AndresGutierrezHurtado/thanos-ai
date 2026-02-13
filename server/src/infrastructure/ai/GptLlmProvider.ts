@@ -35,9 +35,7 @@ COMPORTAMIENTO:
     - un listado de documentos → lista por área solicitada
     - información basada en documentos → busca y resume
 - Si falta solo un dato (área o tipo), pide únicamente ese dato
-- Si el usuario plantea un caso de uso o situación hipotética:
-    - Identifica el área responsable
-    - Busca el proceso, procedimiento, política o reglamento relacionado
+- Si el usuario plantea un caso de uso o situación hipotética, SIEMPRE DEBES ejecutar la herramienta search_documents con el area que corresponda esa situacion y el tipo de documento que corresponda.
 - Si la consulta no pertenece al ámbito, indícalo explícitamente
 
 BÚSQUEDA DOCUMENTAL:
@@ -46,7 +44,7 @@ BÚSQUEDA DOCUMENTAL:
 - Para información general, incluye INFORMACIÓN EMPRESARIAL
 - Busca por nombre o contenido del documento
 - Si no hay resultados, intenta con el texto original del usuario
-- No uses acrónimos de una sola letra en las búsquedas
+- No uses abreviaturas de 1 o 2 letras en las búsquedas
 
 ÁREAS: (Gerencial, Calidad, Comercial/MICE, Ingeniería y mantenimiento, Operaciones/Logística, Inventarios, Talento humano/Recursos Humanos/RRHH, Compras, Financiero, Jurídico, TI/Sistemas/Informática/Tecnologías de la información, Comunicaciones, Dirección Estratégica, Nuevos proyectos, INFORMACIÓN EMPRESARIAL)
 
@@ -71,30 +69,28 @@ FORMATO RESPUESTA:
 `;
 
 export default class GptLlmProvider implements ILlmProvider {
-    private lastSources: Source[] = [];
-
     constructor(private readonly vectorStore: IVectorStore) {}
 
     // LLM AND AGENTS PROVIDERS
-    private getAgent(maxTokens: number = 500, temperature: number = 0.3) {
+    private getAgent(sources: Source[], maxTokens: number = 500, temperature: number = 0.3) {
         return createAgent({
             model: this.getTextModel(temperature, maxTokens),
-            tools: this.getTools() as any,
+            tools: this.getTools(sources) as any,
             systemPrompt: systemPrompt,
         }) as any;
     }
 
-    private getSpeechAgent(maxTokens: number = 500, temperature: number = 0.3) {
+    private getSpeechAgent(sources: Source[], maxTokens: number = 500, temperature: number = 0.3) {
         return createAgent({
             model: this.getTextModel(temperature, maxTokens),
-            tools: this.getTools() as any,
+            tools: this.getTools(sources) as any,
             systemPrompt: speechSystemPrompt,
         }) as any;
     }
 
     private getTextModel(temperature: number = 0.3, maxTokens: number = 500) {
         return new ChatOpenAI({
-            model: "gpt-4o-mini",
+            model: "gpt-4.1-mini",
             apiKey: process.env.OPENAI_API_KEY,
             topP: 1,
             temperature,
@@ -103,7 +99,7 @@ export default class GptLlmProvider implements ILlmProvider {
     }
 
     // TOOLS PROVIDERS
-    private getTools() {
+    private getTools(sources: Source[]) {
         const searchDocumentsSchema = z.object({
             query: z
                 .string()
@@ -116,7 +112,7 @@ export default class GptLlmProvider implements ILlmProvider {
         const search = tool(
             async ({ query, limit = 5 }) => {
                 const results = await this.vectorStore.query("iso-docs", query, limit);
-                this.lastSources = results;
+                sources.push(...results);
 
                 let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
 
@@ -146,7 +142,8 @@ export default class GptLlmProvider implements ILlmProvider {
         temperature: number = 0.3,
         onChunk?: (text: string) => void,
     ): Promise<{ response: string; sources: Source[] }> {
-        const agent = this.getAgent(maxTokens, temperature);
+        const sources = [] as Source[];
+        const agent = this.getAgent(sources, maxTokens, temperature);
 
         // GENERATE THE MESSAGES THAT THE LLM WILL RESPOND
         const messagesToSend = [
@@ -175,7 +172,7 @@ export default class GptLlmProvider implements ILlmProvider {
                 }
             }
 
-            return { response: fullText, sources: this.lastSources };
+            return { response: fullText, sources: sources };
         }
 
         // GENERATE THE RESPONSE
@@ -184,7 +181,7 @@ export default class GptLlmProvider implements ILlmProvider {
         const returnResponse = {
             response:
                 llmResponse.messages[llmResponse.messages.length - 1].content?.toString?.() ?? "",
-            sources: this.lastSources,
+            sources: sources,
         };
         return returnResponse;
     }
@@ -194,9 +191,13 @@ export default class GptLlmProvider implements ILlmProvider {
         maxTokens: number = 500,
         temperature: number = 0.3,
     ): Promise<{ response: string; sources: Source[] }> {
-        // Mismo flujo que generateResponse, pero con un prompt que solo cambia el formato de salida para voz
-        const agent = this.getSpeechAgent(maxTokens, temperature);
+        // GENERATE THE SOURCES
+        const sources = [] as Source[];
 
+        // CREATE THE AGENT
+        const agent = this.getSpeechAgent(sources, maxTokens, temperature);
+
+        // GENERATE THE MESSAGES TO SEND
         const messagesToSend = [
             { role: "system", content: speechSystemPrompt },
             ...messages.map((message) => ({
@@ -205,12 +206,14 @@ export default class GptLlmProvider implements ILlmProvider {
             })),
         ];
 
+        // GENERATE THE RESPONSE
         const llmResponse = await agent.invoke({ messages: messagesToSend });
 
         const responseText =
             llmResponse.messages[llmResponse.messages.length - 1].content?.toString?.() ?? "";
 
-        return { response: responseText, sources: this.lastSources };
+        // RETURN THE RESPONSE
+        return { response: responseText, sources: sources };
     }
 
     public async generateSimpleResponse(message: string): Promise<string> {
