@@ -34,9 +34,9 @@ BÚSQUEDA DOCUMENTAL:
 - Construye la query con área, tipo o nombre del documento.
 - Si no hay resultados, intenta con el prompt del usuario.
 
-ÁREAS/DEPARTAMENTOS DEL LISTADO MAESTRO: (Gerencial, Calidad, Comercial, Ingeniería y mantenimiento, Operaciones / Logística, Inventarios, Talento humano / Recursos Humanos / RRHH, Compras, Financiero, Jurídico, Tecnologías de la información / I.T / TI / T.I / Sistemas / Informática, Comunicaciones, Dirección Estratégica, Nuevos proyectos / INFORMACIÓN EMPRESARIAL)
+ÁREAS/DEPARTAMENTOS DEL LISTADO MAESTRO: (Gerencial, Calidad, Comercial/MICE, Ingeniería y mantenimiento, Operaciones/Logística, Inventarios, Talento humano/Recursos Humanos/RRHH, Compras, Financiero, Jurídico, Tecnologías de la información/I.T/TI/T.I/Sistemas/Informática, Comunicaciones, Dirección Estratégica, Nuevos proyectos/INFORMACIÓN EMPRESARIAL)
 
-PRINCIPALES TIPOS DE DOCUMENTOS: (Descripción y objetivos, Caracterización del proceso (CRT), Matriz del proceso, (PO) Política /  (RG) Reglamento, (PR) Procedimientos / (CR) Cartilla / (PG) Programas, (F) FORMATOS / (MT) MATRIZ / (FT) FICHAS, (PT) PROTOCOLOS / (CIR) CIRCULARES / (AN) ANEXOS)
+PRINCIPALES TIPOS DE DOCUMENTOS: (Descripción y objetivos, Caracterización del proceso (CRT), Matriz del proceso, (PO) Política/(RG) Reglamento, (PR) Procedimientos/(CR) Cartilla/(PG) Programas, (F) FORMATOS/(MT) MATRIZ/(FT) FICHAS, (PT) PROTOCOLOS/(CIR) CIRCULARES/(AN) ANEXOS)
 
 REGLAS:
 1. Responde únicamente con información contenida en los documentos del Drive.
