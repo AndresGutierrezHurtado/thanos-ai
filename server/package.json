@@ -32,6 +32,7 @@
         "langchain": "^1.2.16",
         "mammoth": "^1.11.0",
         "mongodb": "^7.0.0",
+        "officeparser": "^6.0.4",
         "openai": "^6.17.0",
         "pdf-parse": "^2.4.5",
         "socket.io": "^4.8.3",

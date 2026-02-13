@@ -21,7 +21,7 @@ async function main(): Promise<void> {
         console.log(`Found ${results.length} documents:`);
         for (const result of results) {
             console.log(
-                `- [${result.getDocument()?.getId()?.getValue()}] ${result.getDocument()?.getTitle()} `,
+                `- [${result.getDocument()?.getId()?.getValue()}] ${result.getDocument()?.getTitle()}: ${result.getContent()}`,
             );
         }
     } catch (error) {

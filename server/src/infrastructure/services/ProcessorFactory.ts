@@ -6,14 +6,16 @@ import DocxProcessor from "../processors/DocxProcessor";
 import XlsxProcessor from "../processors/XlsxProcessor";
 import TextProcessor from "../processors/TextProcessor";
 import ImageProcessor from "../processors/ImageProcessor";
+import PptxProcessor from "../processors/PptxProcessor";
 
 export default class ProcessorFactory {
     private readonly processors: IDocumentProcessor[] = [
         new PdfProcessor(),
         new DocxProcessor(),
         new XlsxProcessor(),
+        new PptxProcessor(),
+        new ImageProcessor(), 
         new TextProcessor(),
-        new ImageProcessor(),
     ];
 
     get(mimeType: string): IDocumentProcessor {
