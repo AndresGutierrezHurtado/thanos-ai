@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 // Use Cases
 import InformationUseCase from "../../../application/useCases/informationUseCase";
+import { toSourceResourceArray } from "../../../application/ports/resources/SourceResource";
 
 export default class DriveController {
     constructor(private readonly informationUseCase: InformationUseCase) {}
@@ -30,7 +31,7 @@ export default class DriveController {
         return res.status(200).json({
             success: true,
             message: "Chroma files fetched successfully",
-            data: files,
+            data: toSourceResourceArray(files),
         });
     }
 

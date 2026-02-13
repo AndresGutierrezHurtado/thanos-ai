@@ -40,7 +40,11 @@ export default class ChromaVectorStore implements IVectorStore {
 
     async addDocuments(collection: string, documents: VectorDocument[]): Promise<void> {
         if (documents.length === 0) return;
+
+        // GETTING THE COLLECTION
         const col = await this.client.getOrCreateCollection({ name: collection });
+
+        // GETTING THE CONTENTS, EMBEDDINGS AND METADATAS
         const contents = documents.map((d) => d.content);
         const embeddings = await this.embed(contents);
         const metadatas = documents.map((d) => {
@@ -53,6 +57,8 @@ export default class ChromaVectorStore implements IVectorStore {
             return m;
         });
         const ids = documents.map((d) => d.id);
+
+        // ADDING THE DOCUMENTS TO THE COLLECTION
         await col.add({
             ids,
             documents: contents,

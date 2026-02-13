@@ -7,8 +7,8 @@ export interface ChunkMetadata {
     section: string;
     sourceType: string;
     path?: string;
-    area?: string;
-    type?: string;
+    area?: string | null;
+    type?: string | null;
     code?: string | null;
 }
 
