@@ -1,9 +1,10 @@
 import Source from "../../../domain/entities/source";
+import { ChunkMetadata } from "./IChunker";
 
 export interface VectorDocument {
     id: string;
     content: string;
-    metadata: Record<string, string | number | boolean | undefined>;
+    metadata: ChunkMetadata;
 }
 
 export default interface IVectorStore {

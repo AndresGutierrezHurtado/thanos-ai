@@ -1,21 +1,26 @@
 import { ExtractedDocument } from "./IDocumentProcessor";
 
+export interface ChunkMetadata {
+    driveId: string;
+    name: string;
+    documentVersion: string;
+    section: string;
+    sourceType: string;
+    path?: string;
+    area?: string;
+    type?: string;
+    code?: string | null;
+}
+
 export interface ChunkData {
     id: string;
     content: string;
-    metadata: {
-        driveId: string;
-        documentVersion: string;
-        section: string;
-        sourceType: string;
-        norm?: string;
-        path?: string;
-    };
+    metadata: ChunkMetadata;
 }
 
 export default interface IChunker {
     createChunks(
         extracted: ExtractedDocument,
-        context: { driveId: string; version: string; sourceType: string; norm?: string; path?: string }
+        context: ChunkMetadata
     ): ChunkData[];
 }

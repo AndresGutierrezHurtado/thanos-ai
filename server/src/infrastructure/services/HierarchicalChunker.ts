@@ -1,4 +1,4 @@
-import IChunker, { ChunkData } from "../../application/ports/services/IChunker";
+import IChunker, { ChunkData, ChunkMetadata } from "../../application/ports/services/IChunker";
 import { ExtractedDocument } from "../../application/ports/services/IDocumentProcessor";
 
 const CHUNK_SIZE = 600;
@@ -7,16 +7,10 @@ const CHUNK_OVERLAP = 0.15;
 export default class HierarchicalChunker implements IChunker {
     createChunks(
         extracted: ExtractedDocument,
-        context: {
-            driveId: string;
-            version: string;
-            sourceType: string;
-            norm?: string;
-            path?: string;
-        }
+        context: ChunkMetadata
     ): ChunkData[] {
         const chunks: ChunkData[] = [];
-        const { driveId, version, sourceType, norm, path } = context;
+        const { driveId, documentVersion, sourceType, path, area, type, code, name } = context;
 
         const sections =
             (extracted.sections?.length ?? 0) > 0
@@ -26,17 +20,20 @@ export default class HierarchicalChunker implements IChunker {
         for (const section of sections) {
             const sectionChunks = this.chunkBySize(section.content, CHUNK_SIZE, CHUNK_OVERLAP);
             for (let i = 0; i < sectionChunks.length; i++) {
-                const chunkId = this.buildChunkId(driveId, section.title, i, version);
+                const chunkId = this.buildChunkId(driveId, section.title, i, documentVersion);
                 chunks.push({
                     id: chunkId,
                     content: sectionChunks[i],
                     metadata: {
                         driveId,
-                        documentVersion: version,
+                        name,
+                        documentVersion,
                         section: section.title,
                         sourceType,
-                        norm,
                         path,
+                        area,
+                        type,
+                        code,
                     },
                 });
             }
