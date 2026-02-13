@@ -24,6 +24,11 @@ export default function CallPage() {
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
     const discardRecordingRef = useRef(false);
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const dataArrayRef = useRef(null);
+    const voiceLevelRafRef = useRef(null);
+    const lastAudioUrlRef = useRef(null);
 
     // Hooks
     const { sendSpeech, speechResponseAudio, speechError } = usePeer();
@@ -124,24 +129,11 @@ export default function CallPage() {
         if (speechResponseAudio !== null || speechError) setIsLoading(false);
     }, [speechResponseAudio, speechError]);
 
-    // Play the audio response
+    // One-time setup: connect the audio element to an AudioContext (can only be done once per element)
     useEffect(() => {
-        if (!speechResponseAudio || !audioRef.current) return;
+        if (!stream || !audioRef.current || audioContextRef.current) return;
 
         const audioEl = audioRef.current;
-
-        // Convert base64 to Blob
-        const binaryString = atob(speechResponseAudio);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: "audio/mpeg" });
-        const url = URL.createObjectURL(blob);
-
-        audioRef.current.src = url;
-
-        // Convert base64 to Blob
         const audioCtx = new AudioContext();
         const source = audioCtx.createMediaElementSource(audioEl);
         const analyser = audioCtx.createAnalyser();
@@ -152,50 +144,70 @@ export default function CallPage() {
         source.connect(analyser);
         analyser.connect(audioCtx.destination);
 
-        let rafId;
-        let closed = false;
+        audioContextRef.current = audioCtx;
+        analyserRef.current = analyser;
+        dataArrayRef.current = dataArray;
 
-        const cleanupAudioContext = () => {
-            if (closed) return;
-            closed = true;
-            if (rafId) {
-                cancelAnimationFrame(rafId);
-            }
-            if (audioCtx.state !== "closed") {
-                audioCtx.close();
-            }
+        return () => {
+            if (audioCtx.state !== "closed") audioCtx.close();
+            audioContextRef.current = null;
+            analyserRef.current = null;
+            dataArrayRef.current = null;
         };
+    }, [stream]);
+
+    // Play the audio response (reuses the single MediaElementSourceNode from the effect above)
+    useEffect(() => {
+        if (!speechResponseAudio || !audioRef.current) return;
+
+        const audioEl = audioRef.current;
+        const analyser = analyserRef.current;
+        const dataArray = dataArrayRef.current;
+
+        const binaryString = atob(speechResponseAudio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "audio/mpeg" });
+        const url = URL.createObjectURL(blob);
+        lastAudioUrlRef.current = url;
+
+        audioEl.src = url;
+
+        let rafId;
 
         const tick = () => {
+            if (!analyser || !dataArray) return;
             analyser.getByteFrequencyData(dataArray);
-
-            // Promedio del volumen
             const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
-
-            // Normalizamos (0–1 aprox)
             const normalized = Math.min(avg / 100, 1);
-
             setVoiceLevel(normalized);
             rafId = requestAnimationFrame(tick);
+            voiceLevelRafRef.current = rafId;
         };
 
-        audioEl.onplay = () => {
-            audioCtx.resume();
+        const onPlay = () => {
+            audioContextRef.current?.resume();
             tick();
         };
 
-        audioEl.onended = () => {
+        const onEnded = () => {
             setVoiceLevel(0);
-            cleanupAudioContext();
+            if (rafId) cancelAnimationFrame(rafId);
         };
+
+        audioEl.onplay = onPlay;
+        audioEl.onended = onEnded;
 
         audioEl.play().catch((err) => console.error("Error playing audio:", err));
 
         return () => {
             audioEl.onplay = null;
             audioEl.onended = null;
+            if (rafId) cancelAnimationFrame(rafId);
             setVoiceLevel(0);
-            cleanupAudioContext();
+            URL.revokeObjectURL(url);
         };
     }, [speechResponseAudio]);
 
@@ -208,6 +220,25 @@ export default function CallPage() {
         setIsRecording(false);
     };
 
+    const stopPlayback = () => {
+        const el = audioRef.current;
+        if (el?.src) {
+            el.pause();
+            el.currentTime = 0;
+            el.removeAttribute("src");
+            el.load();
+        }
+        if (lastAudioUrlRef.current) {
+            URL.revokeObjectURL(lastAudioUrlRef.current);
+            lastAudioUrlRef.current = null;
+        }
+        if (voiceLevelRafRef.current) {
+            cancelAnimationFrame(voiceLevelRafRef.current);
+            voiceLevelRafRef.current = null;
+        }
+        setVoiceLevel(0);
+    };
+
     const toggleRecording = () => {
         if (!mediaRecorderRef.current) return;
 
@@ -216,6 +247,8 @@ export default function CallPage() {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
         } else {
+            // Si el bot estaba hablando, detener la reproducción
+            stopPlayback();
             // Start recording
             discardRecordingRef.current = false;
             audioChunksRef.current = [];

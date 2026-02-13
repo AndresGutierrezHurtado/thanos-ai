@@ -57,7 +57,7 @@ export default class MessageService {
         // Respuesta optimizada para voz: modelo directo, menos tokens y estilo conversacional en párrafos
         const llmResponse = await this.llmProvider.generateConversationalResponse(
             messages,
-            300,
+            500,
             0.35,
         );
 
