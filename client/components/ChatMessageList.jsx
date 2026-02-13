@@ -51,7 +51,6 @@ export default function ChatMessageList({
                     <React.Fragment key={index}>
                         {item.role === "assistant" ? (
                             <AssistantMessage
-                                key={item.messageId ?? `${item.role}-${item.timestamp}-${index}`}
                                 message={item}
                                 prevUserMessage={prevUserMessage}
                                 disabled={disabled}
@@ -59,7 +58,6 @@ export default function ChatMessageList({
                             />
                         ) : (
                             <UserMessage
-                                key={item.messageId ?? `${item.role}-${item.timestamp}-${index}`}
                                 message={item}
                                 disabled={disabled}
                                 onUpdateMessage={onUpdateMessage}
@@ -115,9 +113,9 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                             <div className="collapse-title font-semibold">Documentos del listado maestro:</div>
                             <div className="collapse-content text-sm">
                                 <div className="w-full grid grid-cols-2 gap-2">
-                                    {(message.content.sources ?? []).map((source) => (
+                                    {(message.content.sources ?? []).map((source, index) => (
                                         <div
-                                            key={source.chunkId}
+                                            key={source.chunkId + "-" + index}
                                             className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom group"
                                             data-tip={
                                                 source.document?.driveId
