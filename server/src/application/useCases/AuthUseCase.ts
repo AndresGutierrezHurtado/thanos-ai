@@ -7,6 +7,8 @@ import ITokenProvider from "../ports/services/ITokenProvider";
 import IEmailSender from "../ports/services/IEmailSender";
 import RegisterDTO from "../ports/dtos/RegisterDTO";
 import LoginDTO from "../ports/dtos/LoginDTO";
+import ForgotPasswordDTO from "../ports/dtos/ForgotPasswordDTO";
+import ResetPasswordDTO from "../ports/dtos/ResetPasswordDTO";
 import { UserResource, toUserResource } from "../ports/resources/UserResource";
 
 export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
@@ -104,5 +106,38 @@ export default class AuthUseCase {
         if (!id) throw new Error("User must have id");
         const token = this.tokenProvider.sign(id.getValue(), user.getEmail().getValue());
         return { user: toUserResource(user), token };
+    }
+
+    public async requestPasswordReset(dto: ForgotPasswordDTO): Promise<void> {
+        const user = await this.userRepository.findByEmail(dto.email.trim().toLowerCase());
+        if (!user) return;
+        const code = generateOtp();
+        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+        user.setOtpCode(code);
+        user.setOtpExpiresAt(expiresAt);
+        user.setUpdatedAt(new DateTimeValue());
+        await this.userRepository.update(user);
+        await this.emailSender.sendVerificationCode(user.getEmail().getValue(), code);
+    }
+
+    public async resetPassword(dto: ResetPasswordDTO): Promise<void> {
+        if (dto.newPassword !== dto.confirmPassword) {
+            throw new Error("Las contraseñas no coinciden");
+        }
+        const user = await this.userRepository.findByEmail(dto.email.trim().toLowerCase());
+        if (!user) {
+            throw new Error("Código inválido o expirado");
+        }
+        const storedCode = user.getOtpCode();
+        const expiresAt = user.getOtpExpiresAt();
+        if (!storedCode || !expiresAt || expiresAt < new Date() || storedCode !== dto.code.trim()) {
+            throw new Error("Código inválido o expirado");
+        }
+        const passwordHash = await this.passwordHasher.hash(dto.newPassword);
+        user.setPasswordHash(passwordHash);
+        user.setOtpCode(null);
+        user.setOtpExpiresAt(null);
+        user.setUpdatedAt(new DateTimeValue());
+        await this.userRepository.update(user);
     }
 }

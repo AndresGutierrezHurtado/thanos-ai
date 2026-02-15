@@ -20,6 +20,12 @@ export default function LoginPage() {
     const [pendingVerifyEmail, setPendingVerifyEmail] = useState(null);
     const [otpCode, setOtpCode] = useState("");
     const [otpLoading, setOtpLoading] = useState(false);
+    const [forgotPasswordStep, setForgotPasswordStep] = useState(null);
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+    const [resetNewPassword, setResetNewPassword] = useState("");
+    const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [resetLoading, setResetLoading] = useState(false);
 
     useEffect(() => {
         if (isAuthenticated) router.replace("/");
@@ -123,6 +129,86 @@ export default function LoginPage() {
         }
     };
 
+    const handleForgotPasswordRequest = async (e) => {
+        e.preventDefault();
+        const emailToUse = forgotPasswordStep === "email" ? forgotPasswordEmail.trim() : email.trim();
+        console.log(emailToUse);
+        if (!emailToUse) {
+            toast.error("Ingresa tu correo");
+            return;
+        }
+        setForgotLoading(true);
+        try {
+            const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`;
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ email: emailToUse }),
+            });
+            const data = await res.json();
+            if (!data?.success) {
+                toast.error(data?.message || "Error al enviar el código");
+                return;
+            }
+            setForgotPasswordEmail(emailToUse);
+            setForgotPasswordStep("reset");
+            setOtpCode("");
+            toast.success(data.message || "Revisa tu correo para el código.");
+        } catch (err) {
+            toast.error("Error de conexión");
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        const code = otpCode.replace(/\D/g, "").slice(0, 6);
+        if (code.length !== 6) {
+            toast.error("Ingresa los 6 dígitos del código");
+            return;
+        }
+        if (resetNewPassword !== resetConfirmPassword) {
+            toast.error("Las contraseñas no coinciden");
+            return;
+        }
+        if (resetNewPassword.length < 6) {
+            toast.error("La contraseña debe tener al menos 6 caracteres");
+            return;
+        }
+        setResetLoading(true);
+        try {
+            const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`;
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    email: forgotPasswordEmail,
+                    code,
+                    newPassword: resetNewPassword,
+                    confirmPassword: resetConfirmPassword,
+                }),
+            });
+            const data = await res.json();
+            if (!data?.success) {
+                toast.error(data?.message || "Error al restablecer");
+                return;
+            }
+            toast.success(data.message || "Contraseña actualizada. Inicia sesión.");
+            setForgotPasswordStep(null);
+            setForgotPasswordEmail("");
+            setOtpCode("");
+            setResetNewPassword("");
+            setResetConfirmPassword("");
+        } catch (err) {
+            toast.error("Error de conexión");
+        } finally {
+            setResetLoading(false);
+        }
+    };
+
     if (isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-base-100">
@@ -161,7 +247,129 @@ export default function LoginPage() {
                 </Link>
 
                 <div className="rounded-2xl border border-base-300/80 bg-base-200/60 backdrop-blur-sm p-8 shadow-xl shadow-black/20">
-                    {pendingVerifyEmail ? (
+                    {forgotPasswordStep ? (
+                        <>
+                            <p className="text-lg scale-y-105 tracking-wide text-primary mb-1">
+                                {forgotPasswordStep === "email"
+                                    ? "Restablecer contraseña"
+                                    : "Nueva contraseña"}
+                            </p>
+                            {forgotPasswordStep === "email" ? (
+                                <form onSubmit={handleForgotPasswordRequest} className="space-y-6">
+                                    <p className="text-sm leading-tight opacity-60 mb-3">
+                                        Ingresa tu correo y te enviaremos un código.
+                                    </p>
+                                    <div>
+                                        <label htmlFor="forgot-email" className="sr-only">
+                                            Email
+                                        </label>
+                                        <input
+                                            id="forgot-email"
+                                            type="email"
+                                            placeholder="correo@plataforma.com.co"
+                                            value={forgotPasswordEmail}
+                                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                                            required
+                                            className="w-full bg-transparent border-0 border-b border-base-300 py-3 px-0 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-0 transition-colors duration-200"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={forgotLoading}
+                                        className="w-full py-2 rounded-lg bg-primary text-primary-content font-medium tracking-wide hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100 disabled:opacity-50 transition-all duration-200"
+                                    >
+                                        {forgotLoading ? "…" : "Enviar código"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setForgotPasswordStep(null);
+                                            setForgotPasswordEmail("");
+                                        }}
+                                        className="w-full py-2 text-sm text-base-content/60 hover:text-base-content transition-colors cursor-pointer"
+                                    >
+                                        Volver al inicio de sesión
+                                    </button>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleResetPassword} className="space-y-6">
+                                    <p className="text-sm leading-tight opacity-60 mb-3 truncate" title={forgotPasswordEmail}>
+                                        {forgotPasswordEmail}
+                                    </p>
+                                    <div>
+                                        <label htmlFor="reset-otp" className="sr-only">
+                                            Código
+                                        </label>
+                                        <input
+                                            id="reset-otp"
+                                            type="text"
+                                            inputMode="numeric"
+                                            autoComplete="one-time-code"
+                                            placeholder="000000"
+                                            maxLength={6}
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                                            className="w-full bg-transparent border-0 border-b border-base-300 py-3 px-0 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-0 transition-colors duration-200 text-center text-xl tracking-[0.4em] font-mono"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="reset-new-password" className="sr-only">
+                                            Nueva contraseña
+                                        </label>
+                                        <input
+                                            id="reset-new-password"
+                                            type="password"
+                                            placeholder="Nueva contraseña"
+                                            value={resetNewPassword}
+                                            onChange={(e) => setResetNewPassword(e.target.value)}
+                                            minLength={6}
+                                            required
+                                            className="w-full bg-transparent border-0 border-b border-base-300 py-3 px-0 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-0 transition-colors duration-200"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="reset-confirm-password" className="sr-only">
+                                            Confirmar contraseña
+                                        </label>
+                                        <input
+                                            id="reset-confirm-password"
+                                            type="password"
+                                            placeholder="Confirmar contraseña"
+                                            value={resetConfirmPassword}
+                                            onChange={(e) => setResetConfirmPassword(e.target.value)}
+                                            minLength={6}
+                                            required
+                                            className="w-full bg-transparent border-0 border-b border-base-300 py-3 px-0 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-0 transition-colors duration-200"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={
+                                            resetLoading ||
+                                            otpCode.replace(/\D/g, "").length !== 6 ||
+                                            !resetNewPassword ||
+                                            resetNewPassword !== resetConfirmPassword
+                                        }
+                                        className="w-full py-2 rounded-lg bg-primary text-primary-content font-medium tracking-wide hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100 disabled:opacity-50 transition-all duration-200"
+                                    >
+                                        {resetLoading ? "…" : "Restablecer contraseña"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setForgotPasswordStep("email");
+                                            setOtpCode("");
+                                            setResetNewPassword("");
+                                            setResetConfirmPassword("");
+                                        }}
+                                        className="w-full py-2 text-sm text-base-content/60 hover:text-base-content transition-colors"
+                                    >
+                                        Usar otro correo
+                                    </button>
+                                </form>
+                            )}
+                        </>
+                    ) : pendingVerifyEmail ? (
                         <>
                             <p className="text-lg scale-y-105 tracking-wide text-primary mb-1">
                                 Verifica tu correo
@@ -325,6 +533,15 @@ export default function LoginPage() {
                                 >
                                     {loading ? "…" : tab === "login" ? "Entrar" : "Crear cuenta"}
                                 </button>
+                                {tab === "login" && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setForgotPasswordStep("email")}
+                                        className="w-full py-2 text-sm text-base-content/50 hover:text-primary transition-colors cursor-pointer"
+                                    >
+                                        ¿Olvidaste tu contraseña?
+                                    </button>
+                                )}
                             </form>
                         </>
                     )}

@@ -4,6 +4,8 @@ import AuthUseCase, { EMAIL_NOT_VERIFIED } from "../../../application/useCases/A
 import RegisterDTO from "../../../application/ports/dtos/RegisterDTO";
 import LoginDTO from "../../../application/ports/dtos/LoginDTO";
 import VerifyEmailDTO from "../../../application/ports/dtos/VerifyEmailDTO";
+import ForgotPasswordDTO from "../../../application/ports/dtos/ForgotPasswordDTO";
+import ResetPasswordDTO from "../../../application/ports/dtos/ResetPasswordDTO";
 
 export default class AuthController {
     constructor(private readonly authUseCase: AuthUseCase) {}
@@ -101,6 +103,67 @@ export default class AuthController {
         } catch (err) {
             const message = err instanceof Error ? err.message : "Error al verificar";
             if (message === "Código inválido o expirado") {
+                return res.status(400).json({ success: false, message });
+            }
+            throw err;
+        }
+    }
+
+    public async forgotPassword(req: Request, res: Response): Promise<Response> {
+        const { email } = req.body;
+        if (!email || !String(email).trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "El email es obligatorio",
+            });
+        }
+        try {
+            const dto: ForgotPasswordDTO = { email: String(email).trim().toLowerCase() };
+            await this.authUseCase.requestPasswordReset(dto);
+            return res.status(200).json({
+                success: true,
+                message: "Si el correo existe en el sistema, recibirás un código para restablecer tu contraseña.",
+            });
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    public async resetPassword(req: Request, res: Response): Promise<Response> {
+        const { email, code, newPassword, confirmPassword } = req.body;
+        if (!email || !code) {
+            return res.status(400).json({
+                success: false,
+                message: "Email y código son obligatorios",
+            });
+        }
+        if (!newPassword || !confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "La nueva contraseña y la confirmación son obligatorias",
+            });
+        }
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Las contraseñas no coinciden",
+            });
+        }
+        try {
+            const dto: ResetPasswordDTO = {
+                email: String(email).trim().toLowerCase(),
+                code: String(code).trim(),
+                newPassword: String(newPassword),
+                confirmPassword: String(confirmPassword),
+            };
+            await this.authUseCase.resetPassword(dto);
+            return res.status(200).json({
+                success: true,
+                message: "Contraseña actualizada. Ya puedes iniciar sesión.",
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Error al restablecer";
+            if (message === "Código inválido o expirado" || message === "Las contraseñas no coinciden") {
                 return res.status(400).json({ success: false, message });
             }
             throw err;
