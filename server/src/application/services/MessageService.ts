@@ -36,6 +36,7 @@ export default class MessageService {
             new Message(
                 null,
                 chat.getId() as Identifier,
+                chat.getUserId(),
                 MessageRole.ASSISTANT,
                 llmResponse,
                 new DateTimeValue(),
@@ -65,6 +66,7 @@ export default class MessageService {
             new Message(
                 null,
                 chat.getId() as Identifier,
+                chat.getUserId(),
                 MessageRole.ASSISTANT,
                 llmResponse.response,
                 new DateTimeValue(),

@@ -1,13 +1,19 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { getToken } from "@/lib/authStorage";
 
 async function fetchApi(method, endpoint, body) {
     const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+    };
+    const token = typeof getToken === "function" ? getToken() : null;
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
     const options = {
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-        },
+        headers,
         method,
         credentials: "include",
         body: JSON.stringify(body),

@@ -14,6 +14,7 @@ export default class MessageController {
 
     public async sendMessage(req: Request, res: Response): Promise<Response | void> {
         const { chatId, content, mediaContent, stream: useStream } = req.body;
+        const userId = (res.locals as { userId?: string }).userId;
 
         if (mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
             throw new Error(
@@ -36,6 +37,7 @@ export default class MessageController {
             const message = await this.messageUseCase.sendMessage(
                 { chatId, content, mediaContent },
                 onChunk,
+                userId,
             );
             res.write(
                 `data: ${JSON.stringify({
@@ -48,7 +50,11 @@ export default class MessageController {
             return;
         }
 
-        const message = await this.messageUseCase.sendMessage({ chatId, content, mediaContent });
+        const message = await this.messageUseCase.sendMessage(
+            { chatId, content, mediaContent },
+            undefined,
+            userId,
+        );
 
         return res.status(200).json({
             success: true,
@@ -61,6 +67,7 @@ export default class MessageController {
         const idRaw = req.params.id;
         const id = Array.isArray(idRaw) ? idRaw[0] : (idRaw ?? "");
         const { content, stream: useStream } = req.body;
+        const userId = (res.locals as { userId?: string }).userId;
 
         if (useStream) {
             res.setHeader("Content-Type", "text/event-stream");
@@ -70,7 +77,11 @@ export default class MessageController {
             const onChunk = (text: string) => {
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
             };
-            const result = await this.messageUseCase.updateMessage({ id, content }, onChunk);
+            const result = await this.messageUseCase.updateMessage(
+                { id, content },
+                onChunk,
+                userId,
+            );
             res.write(
                 `data: ${JSON.stringify({
                     success: true,
@@ -82,7 +93,11 @@ export default class MessageController {
             return;
         }
 
-        const result = await this.messageUseCase.updateMessage({ id, content });
+        const result = await this.messageUseCase.updateMessage(
+            { id, content },
+            undefined,
+            userId,
+        );
         return res.status(200).json({
             success: true,
             message: "Message updated successfully",

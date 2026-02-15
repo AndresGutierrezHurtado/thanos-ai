@@ -22,6 +22,14 @@ export default class ChatRepository implements IChatRepository {
         return chats.map((chat) => ChatMapper.toDomain(chat));
     }
 
+    public async findByUserId(userId: Identifier): Promise<Chat[]> {
+        const chats = await this.collection
+            .find({ userId: userId.getValue() })
+            .sort({ updatedAt: -1 })
+            .toArray();
+        return chats.map((chat) => ChatMapper.toDomain(chat));
+    }
+
     public async findById(id: Identifier): Promise<Chat | null> {
         const chat = await this.collection.findOne({ id: id.getValue() });
         if (!chat) return null;

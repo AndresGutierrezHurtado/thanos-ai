@@ -11,6 +11,7 @@ import { errorHandlerMiddleware, notFoundMiddleware, generalRateLimiter } from "
 
 // Routes
 import healthRoutes from "./presentation/http/routes/healthRoutes";
+import authRoutes from "./presentation/http/routes/authRoutes";
 import messageRoutes from "./presentation/http/routes/messageRoutes";
 import chatRoutes from "./presentation/http/routes/chatRoutes";
 import driveRoutes from "./presentation/http/routes/driveRoutes";
@@ -37,6 +38,7 @@ app.use("/api/v1", generalRateLimiter);
 
 // API Routes
 app.use("/api/v1", healthRoutes);
+app.use("/api/v1", authRoutes);
 app.use("/api/v1", chatRoutes);
 app.use("/api/v1", messageRoutes);
 app.use("/api/v1", driveRoutes);

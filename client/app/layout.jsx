@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 
-// Hooks
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useApi } from "../hooks/useApi";
 import { PeerProvider } from "@/components/Peer";
 
@@ -25,22 +25,32 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
-export default function RootLayout({ children }) {
+function LayoutContent({ children }) {
     const [chats, setChats] = useState([]);
     const [loadingChats, setLoadingChats] = useState(true);
-
+    const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
 
+    useEffect(() => {
+        if (!isAuthenticated && pathname !== "/login") {
+            router.replace("/login");
+            return;
+        }
+    }, [isAuthenticated, pathname, router]);
+
     const fetchChats = useCallback(async () => {
+        if (!isAuthenticated) {
+            setChats([]);
+            setLoadingChats(false);
+            return;
+        }
         try {
             const response = await useApi("GET", "/chats");
-
             if (!response?.success) {
                 setChats([]);
                 return;
             }
-
             setChats(response.data ?? []);
         } catch (error) {
             console.error("Failed to load chats", error);
@@ -48,11 +58,16 @@ export default function RootLayout({ children }) {
         } finally {
             setLoadingChats(false);
         }
-    }, [pathname]);
+    }, [pathname, isAuthenticated]);
 
     useEffect(() => {
-        fetchChats();
-    }, [pathname, fetchChats]);
+        if (isAuthenticated) {
+            fetchChats();
+        } else {
+            setLoadingChats(false);
+            setChats([]);
+        }
+    }, [pathname, isAuthenticated, fetchChats]);
 
     const handleDeleteChat = async (e, chat) => {
         e.preventDefault();
@@ -83,6 +98,37 @@ export default function RootLayout({ children }) {
 
         fetchChats();
     };
+
+    if (authLoading || (!isAuthenticated && pathname !== "/login")) {
+        return (
+            <html lang="en">
+                <head>
+                    <title>Thanos AI | Gestor de documentos</title>
+                    <link rel="icon" href="/assistant.png" />
+                </head>
+                <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+                    <div className="min-h-screen flex items-center justify-center bg-base-100">
+                        <span className="loading loading-spinner loading-lg text-primary" />
+                    </div>
+                </body>
+            </html>
+        );
+    }
+
+    if (pathname === "/login") {
+        return (
+            <html lang="en">
+                <head>
+                    <title>Thanos AI | Iniciar sesión</title>
+                    <link rel="icon" href="/assistant.png" />
+                </head>
+                <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+                    <ToastContainer />
+                    {children}
+                </body>
+            </html>
+        );
+    }
 
     return (
         <html lang="en">
@@ -198,6 +244,28 @@ export default function RootLayout({ children }) {
                                     </ul>
                                 )}
                             </div>
+
+                            {user && (
+                                <div className="p-3 border-t border-neutral-content/10 flex items-center justify-between gap-2">
+                                    <span
+                                        className="text-sm truncate opacity-90"
+                                        title={user.email}
+                                    >
+                                        {user.email}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => {
+                                            logout();
+                                            router.replace("/login");
+                                        }}
+                                        title="Cerrar sesión"
+                                    >
+                                        Salir
+                                    </button>
+                                </div>
+                            )}
                         </aside>
                     </div>
                 </div>
@@ -205,5 +273,13 @@ export default function RootLayout({ children }) {
                 <ToastContainer />
             </body>
         </html>
+    );
+}
+
+export default function RootLayout({ children }) {
+    return (
+        <AuthProvider>
+            <LayoutContent>{children}</LayoutContent>
+        </AuthProvider>
     );
 }

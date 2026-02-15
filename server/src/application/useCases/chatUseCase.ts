@@ -32,16 +32,21 @@ export default class ChatUseCase {
         private readonly processorFactory: ProcessorFactory,
     ) {}
 
-    public async getChats(): Promise<ChatResource[]> {
-        const chats = await this.chatRepository.findAll();
+    public async getChats(userId?: string): Promise<ChatResource[]> {
+        const chats = userId
+            ? await this.chatRepository.findByUserId(new Identifier(userId))
+            : await this.chatRepository.findAll();
 
         return toChatResourceArray(chats);
     }
 
-    public async getChatById(id: string): Promise<ChatResource | null> {
+    public async getChatById(id: string, userId?: string): Promise<ChatResource | null> {
         const chat = await this.chatRepository.findById(new Identifier(id));
 
         if (!chat) {
+            throw new Error("Chat not found");
+        }
+        if (userId && chat.getUserId()?.getValue() !== userId) {
             throw new Error("Chat not found");
         }
 
@@ -51,6 +56,7 @@ export default class ChatUseCase {
     public async createChat(
         dto: SendMessageDto,
         onChunk?: (text: string) => void,
+        userId?: string,
     ): Promise<MessageResource> {
         const { content, mediaContent } = dto;
 
@@ -66,10 +72,11 @@ export default class ChatUseCase {
             }
         }
 
+        const userIdentifier = userId ? new Identifier(userId) : null;
         const chat = await this.chatRepository.create(
             new Chat(
                 null,
-                null,
+                userIdentifier,
                 (await this.messageService.generateTitle(content)).replaceAll("\"", ""),
                 new DateTimeValue(),
                 new DateTimeValue(),
@@ -81,6 +88,7 @@ export default class ChatUseCase {
             new Message(
                 null,
                 chat.getId() as Identifier,
+                chat.getUserId(),
                 MessageRole.USER,
                 content,
                 new DateTimeValue(),
@@ -115,7 +123,13 @@ export default class ChatUseCase {
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }
 
-    public async deleteChat(id: string): Promise<void> {
+    public async deleteChat(id: string, userId?: string): Promise<void> {
+        if (userId) {
+            const chat = await this.chatRepository.findById(new Identifier(id));
+            if (!chat || chat.getUserId()?.getValue() !== userId) {
+                throw new Error("Chat not found");
+            }
+        }
         return this.chatRepository.delete(new Identifier(id));
     }
 }

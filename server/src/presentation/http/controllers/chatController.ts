@@ -16,7 +16,8 @@ export default class ChatController {
     ) {}
 
     public async getChats(req: Request, res: Response): Promise<Response> {
-        const chats = await this.chatUseCase.getChats();
+        const userId = (res.locals as { userId?: string }).userId;
+        const chats = await this.chatUseCase.getChats(userId);
         return res.status(200).json({
             success: true,
             message: "Chats fetched successfully",
@@ -26,7 +27,8 @@ export default class ChatController {
 
     public async getMessagesByChatId(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
-        const messages = await this.messageUseCase.getMessagesByChatId(id as string);
+        const userId = (res.locals as { userId?: string }).userId;
+        const messages = await this.messageUseCase.getMessagesByChatId(id as string, userId);
         return res.status(200).json({
             success: true,
             message: "Messages fetched successfully",
@@ -36,7 +38,8 @@ export default class ChatController {
 
     public async getChatById(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
-        const chat = await this.chatUseCase.getChatById(id as string);
+        const userId = (res.locals as { userId?: string }).userId;
+        const chat = await this.chatUseCase.getChatById(id as string, userId);
 
         return res.status(200).json({
             success: true,
@@ -73,6 +76,7 @@ export default class ChatController {
             mediaContent: normalizedMedia ?? null,
         };
 
+        const userId = (res.locals as { userId?: string }).userId;
         if (useStream) {
             res.setHeader("Content-Type", "text/event-stream");
             res.setHeader("Cache-Control", "no-cache");
@@ -81,7 +85,7 @@ export default class ChatController {
             const onChunk = (text: string) => {
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
             };
-            const chat = await this.chatUseCase.createChat(dto, onChunk);
+            const chat = await this.chatUseCase.createChat(dto, onChunk, userId);
             res.write(
                 `data: ${JSON.stringify({
                     success: true,
@@ -93,7 +97,7 @@ export default class ChatController {
             return;
         }
 
-        const chat = await this.chatUseCase.createChat(dto);
+        const chat = await this.chatUseCase.createChat(dto, undefined, userId);
         return res.status(200).json({
             success: true,
             message: "Chat created successfully",
@@ -103,7 +107,8 @@ export default class ChatController {
 
     public async deleteChat(req: Request, res: Response): Promise<Response> {
         const { id } = req.params;
-        await this.chatUseCase.deleteChat(id as string);
+        const userId = (res.locals as { userId?: string }).userId;
+        await this.chatUseCase.deleteChat(id as string, userId);
         return res.status(200).json({
             success: true,
             message: "Chat deleted successfully",

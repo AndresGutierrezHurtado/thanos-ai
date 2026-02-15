@@ -5,10 +5,12 @@ import MessageController from "../../presentation/http/controllers/messageContro
 import DriveController from "../../presentation/http/controllers/driveController";
 import ChatController from "../../presentation/http/controllers/chatController";
 import HealthController from "../../presentation/http/controllers/healthController";
+import AuthController from "../../presentation/http/controllers/authController";
 
 // Application
 import MessageUseCase from "../../application/useCases/MessageUseCase";
 import ChatUseCase from "../../application/useCases/chatUseCase";
+import AuthUseCase from "../../application/useCases/AuthUseCase";
 import InformationUseCase from "../../application/useCases/informationUseCase";
 import SpeechUseCase from "../../application/useCases/SpeechUseCase";
 import ProcessFileService from "../../application/services/ProcessFileService";
@@ -20,6 +22,7 @@ import IDocumentRepository from "../../application/ports/repositories/IDocumentR
 import ISourceRepository from "../../application/ports/repositories/ISourceRepository";
 import IMediaContentRepository from "../../application/ports/repositories/IMediaContentRepository";
 import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
+import IUserRepository from "../../application/ports/repositories/IUserRepository";
 import ILlmProvider from "../../application/ports/services/ILlmProvider";
 import IDriveProvider from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
@@ -31,6 +34,7 @@ import DocumentRepository from "../persistence/repositories/DocumentRepository";
 import SourceRepository from "../persistence/repositories/SourceRepository";
 import TransactionRepository from "../persistence/repositories/TransactionRepository";
 import MediaContentRepository from "../persistence/repositories/MediaContentRepository";
+import UserRepository from "../persistence/repositories/UserRepository";
 import Database from "../persistence/Database";
 import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
@@ -71,6 +75,10 @@ export default class DIContainer {
         return new HealthController(this.getLogger());
     }
 
+    public getAuthController(): AuthController {
+        return new AuthController(this.getAuthUseCase());
+    }
+
     // Use Cases
     private getMessageUseCase(): MessageUseCase {
         return new MessageUseCase(
@@ -92,6 +100,10 @@ export default class DIContainer {
             this.getMessageService(),
             this.getProcessorFactory(),
         );
+    }
+
+    private getAuthUseCase(): AuthUseCase {
+        return new AuthUseCase(this.getUserRepository());
     }
 
     public getInformationUseCase(): InformationUseCase {
@@ -132,6 +144,10 @@ export default class DIContainer {
 
     private getMediaContentRepository(): IMediaContentRepository {
         return new MediaContentRepository(this.db);
+    }
+
+    private getUserRepository(): IUserRepository {
+        return new UserRepository(this.db);
     }
 
     // Application Services

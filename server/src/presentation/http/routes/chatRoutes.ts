@@ -1,12 +1,13 @@
 import { Router } from "express";
 
-// DI Container
 import diContainer from "../../../infrastructure/config/DIContainer";
+import { optionalAuth } from "../middlewares/authMiddleware";
 
 const container = await diContainer.getInstance();
 const chatController = container.getChatController();
 
 const routes = Router();
+routes.use(optionalAuth);
 
 routes.get("/chats", chatController.getChats.bind(chatController));
 routes.get("/chats/:id", chatController.getChatById.bind(chatController));

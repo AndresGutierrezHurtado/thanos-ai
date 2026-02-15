@@ -1,21 +1,24 @@
+import { getToken } from "@/lib/authStorage";
+
 /**
  * Realiza una petición con streaming SSE.
- * No modifica useApi; solo consume el stream y llama onChunk / onFinal.
- * @param {string} method - GET, POST, PUT, etc.
- * @param {string} endpoint - ej. "/chats", "/messages"
- * @param {object} body - cuerpo (se añade stream: true internamente)
- * @param {{ onChunk?: (text: string) => void, onFinal?: (data: unknown) => void }} handlers
+ * Incluye Authorization Bearer si hay token.
  */
 export async function streamRequest(method, endpoint, body, { onChunk, onFinal }) {
     const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
     const payload = { ...body, stream: true };
+    const headers = {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+    };
+    const token = typeof getToken === "function" ? getToken() : null;
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
 
     const response = await fetch(url, {
         method,
-        headers: {
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-        },
+        headers,
         credentials: "include",
         body: JSON.stringify(payload),
     });

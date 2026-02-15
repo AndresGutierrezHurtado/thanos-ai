@@ -40,11 +40,15 @@ export default class MessageUseCase {
     public async sendMessage(
         messageDto: SendMessageDto,
         onChunk?: (text: string) => void,
+        userId?: string,
     ): Promise<MessageResource> {
         const { chatId, content, mediaContent } = messageDto;
 
         const chat = await this.chatRepository.findById(new Identifier(chatId as string));
         if (!chat) throw new Error("Chat not found");
+        if (userId && chat.getUserId()?.getValue() !== userId) {
+            throw new Error("Chat not found");
+        }
 
         // Process media content and extract text if exists
         let extractedText: string | undefined;
@@ -63,6 +67,7 @@ export default class MessageUseCase {
             new Message(
                 null,
                 chat.getId() as Identifier,
+                chat.getUserId(),
                 MessageRole.USER,
                 content,
                 new DateTimeValue(),
@@ -100,6 +105,7 @@ export default class MessageUseCase {
     public async updateMessage(
         dto: UpdateMessageDto,
         onChunk?: (text: string) => void,
+        userId?: string,
     ): Promise<MessageResource> {
         // Get the message to update
         let message = await this.messageRepository.findById(new Identifier(dto.id));
@@ -107,6 +113,9 @@ export default class MessageUseCase {
 
         const chat = await this.chatRepository.findById(message.getChatId());
         if (!chat) throw new Error("Chat not found");
+        if (userId && chat.getUserId()?.getValue() !== userId) {
+            throw new Error("Message not found");
+        }
 
         // Update the message content and timestamp
         message.setContent(dto.content);
@@ -131,7 +140,12 @@ export default class MessageUseCase {
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
     }
 
-    public async getMessagesByChatId(chatId: string): Promise<MessageResource[]> {
+    public async getMessagesByChatId(chatId: string, userId?: string): Promise<MessageResource[]> {
+        const chat = await this.chatRepository.findById(new Identifier(chatId));
+        if (!chat) return [];
+        if (userId && chat.getUserId()?.getValue() !== userId) {
+            return [];
+        }
         const messages = await this.messageRepository.findByChatId(new Identifier(chatId));
 
         const messagesList: MessageResource[] = await Promise.all(

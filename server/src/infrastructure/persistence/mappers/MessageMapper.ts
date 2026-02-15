@@ -6,6 +6,7 @@ import MessageRole from "../../../domain/valueObjects/MessageRole";
 export interface MessageDocument {
     id: string;
     chatId: string;
+    userId: string | null;
     role: MessageRole;
     content: string;
     timestamp: Date;
@@ -16,10 +17,12 @@ export default class MessageMapper {
     public static toDomain(doc: MessageDocument): Message {
         const id = doc.id ? new Identifier(doc.id) : null;
         const chatId = new Identifier(doc.chatId);
+        const userId = doc.userId ? new Identifier(doc.userId) : null;
 
         return new Message(
             id,
             chatId,
+            userId,
             doc.role,
             doc.content,
             new DateTimeValue(doc.timestamp),
@@ -34,9 +37,11 @@ export default class MessageMapper {
             throw new Error("Message id is required to persist");
         }
 
+        const userId = entity.getUserId();
         return {
             id: id.getValue(),
             chatId: entity.getChatId().getValue(),
+            userId: userId ? userId.getValue() : null,
             role: entity.getRole(),
             content: entity.getContent(),
             timestamp: entity.getTimestamp().getValue(),

@@ -34,6 +34,7 @@ export default class SpeechUseCase {
             new Message(
                 null,
                 chat.getId() as Identifier,
+                chat.getUserId(),
                 MessageRole.USER,
                 text,
                 new DateTimeValue(),

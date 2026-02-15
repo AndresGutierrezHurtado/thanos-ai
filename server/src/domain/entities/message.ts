@@ -9,6 +9,7 @@ import MediaContent from "./mediaContent";
 export default class Message {
     private id: Identifier | null;
     private chatId: Identifier;
+    private userId: Identifier | null;
     private role: MessageRole;
     private content: string;
     private timestamp: DateTimeValue;
@@ -20,6 +21,7 @@ export default class Message {
     constructor(
         id: Identifier | null,
         chatId: Identifier,
+        userId: Identifier | null,
         role: MessageRole,
         content: string,
         timestamp: DateTimeValue,
@@ -27,6 +29,7 @@ export default class Message {
     ) {
         this.id = id;
         this.chatId = chatId;
+        this.userId = userId;
         this.role = role;
         this.content = content;
         this.timestamp = timestamp;
@@ -40,6 +43,10 @@ export default class Message {
 
     public getChatId(): Identifier {
         return this.chatId;
+    }
+
+    public getUserId(): Identifier | null {
+        return this.userId;
     }
 
     public getRole(): MessageRole {
@@ -73,6 +80,10 @@ export default class Message {
 
     public setChatId(chatId: Identifier): void {
         this.chatId = chatId;
+    }
+
+    public setUserId(userId: Identifier | null): void {
+        this.userId = userId;
     }
 
     public setRole(role: MessageRole): void {
