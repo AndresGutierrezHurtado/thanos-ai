@@ -82,7 +82,7 @@ export default function LoginPage() {
                 toast.error(data?.message || "Error al iniciar sesión");
                 return;
             }
-            setAuth(token, data.data.user);
+            if (tab === "login") setAuth(token, data.data.user);
             toast.success(tab === "login" ? "Sesión iniciada" : "Cuenta creada");
             router.replace("/");
         } catch (err) {
