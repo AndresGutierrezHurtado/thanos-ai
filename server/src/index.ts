@@ -27,6 +27,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cors({
     origin: process.env.APP_URL,
     credentials: true,
+    exposedHeaders: ["Authorization"],
 }));
 
 // Static files from server/public

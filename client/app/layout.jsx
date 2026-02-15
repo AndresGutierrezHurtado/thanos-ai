@@ -247,16 +247,32 @@ function LayoutContent({ children }) {
 
                             {user && (
                                 <div className="p-3 border-t border-neutral-content/10 flex items-center justify-between gap-2">
-                                    <span
-                                        className="text-sm truncate opacity-90"
-                                        title={user.email}
-                                    >
-                                        {user.email}
-                                    </span>
+                                    <div className="flex flex-col flex-1">
+                                        <p
+                                            className="text-sm truncate opacity-90"
+                                            title={user.email}
+                                        >
+                                            {user.name?.trim() || user.email}
+                                        </p>
+                                        <p className="text-xs opacity-60 truncate">{user.email}</p>
+                                    </div>
                                     <button
                                         type="button"
                                         className="btn btn-ghost btn-sm"
-                                        onClick={() => {
+                                        onClick={async () => {
+                                            const result = await Swal.fire({
+                                                title: "¿Cerrar sesión?",
+                                                text: "Se cerrará tu sesión en Thanos AI.",
+                                                icon: "question",
+                                                showCancelButton: true,
+                                                background: "var(--color-base-100)",
+                                                color: "var(--color-base-content)",
+                                                cancelButtonColor: "var(--color-primary)",
+                                                confirmButtonColor: "var(--color-neutral)",
+                                                confirmButtonText: "Sí, salir",
+                                                cancelButtonText: "Cancelar",
+                                            });
+                                            if (!result.isConfirmed) return;
                                             logout();
                                             router.replace("/login");
                                         }}

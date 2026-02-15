@@ -32,4 +32,12 @@ export default class UserRepository implements IUserRepository {
         await this.collection.insertOne(doc);
         return user;
     }
+
+    public async update(user: User): Promise<User> {
+        const id = user.getId();
+        if (!id) throw new Error("Cannot update user without id");
+        const doc = UserMapper.toPersistence(user);
+        await this.collection.updateOne({ id: id.getValue() }, { $set: doc });
+        return user;
+    }
 }

@@ -23,6 +23,9 @@ import ISourceRepository from "../../application/ports/repositories/ISourceRepos
 import IMediaContentRepository from "../../application/ports/repositories/IMediaContentRepository";
 import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
 import IUserRepository from "../../application/ports/repositories/IUserRepository";
+import IPasswordHasher from "../../application/ports/services/IPasswordHasher";
+import ITokenProvider from "../../application/ports/services/ITokenProvider";
+import IEmailSender from "../../application/ports/services/IEmailSender";
 import ILlmProvider from "../../application/ports/services/ILlmProvider";
 import IDriveProvider from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
@@ -35,6 +38,10 @@ import SourceRepository from "../persistence/repositories/SourceRepository";
 import TransactionRepository from "../persistence/repositories/TransactionRepository";
 import MediaContentRepository from "../persistence/repositories/MediaContentRepository";
 import UserRepository from "../persistence/repositories/UserRepository";
+import BcryptPasswordHasher from "../services/BcryptPasswordHasher";
+import JwtTokenProvider from "../services/JwtTokenProvider";
+import ConsoleEmailSender from "../services/ConsoleEmailSender";
+import NodemailerEmailSender from "../services/NodemailerEmailSender";
 import Database from "../persistence/Database";
 import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
@@ -103,7 +110,12 @@ export default class DIContainer {
     }
 
     private getAuthUseCase(): AuthUseCase {
-        return new AuthUseCase(this.getUserRepository());
+        return new AuthUseCase(
+            this.getUserRepository(),
+            this.getPasswordHasher(),
+            this.getTokenProvider(),
+            this.getEmailSender(),
+        );
     }
 
     public getInformationUseCase(): InformationUseCase {
@@ -148,6 +160,21 @@ export default class DIContainer {
 
     private getUserRepository(): IUserRepository {
         return new UserRepository(this.db);
+    }
+
+    private getPasswordHasher(): IPasswordHasher {
+        return new BcryptPasswordHasher();
+    }
+
+    private getTokenProvider(): ITokenProvider {
+        return new JwtTokenProvider();
+    }
+
+    private getEmailSender(): IEmailSender {
+        if (process.env.SMTP_HOST) {
+            return new NodemailerEmailSender();
+        }
+        return new ConsoleEmailSender();
     }
 
     // Application Services

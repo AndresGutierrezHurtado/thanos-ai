@@ -1,11 +1,16 @@
 import User from "../../../domain/entities/user";
 import Identifier from "../../../domain/valueObjects/Identifier";
 import DateTimeValue from "../../../domain/valueObjects/DateTimeValue";
+import Email from "../../../domain/valueObjects/Email";
 
 export interface UserDocument {
     id: string;
     email: string;
+    name: string;
     passwordHash: string;
+    validatedEmail: boolean;
+    otpCode: string | null;
+    otpExpiresAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -13,10 +18,15 @@ export interface UserDocument {
 export default class UserMapper {
     public static toDomain(doc: UserDocument): User {
         const id = doc.id ? new Identifier(doc.id) : null;
+        const email = new Email(doc.email);
         return new User(
             id,
-            doc.email,
+            email,
+            doc.name ?? "",
             doc.passwordHash,
+            doc.validatedEmail !== false,
+            doc.otpCode ?? null,
+            doc.otpExpiresAt ?? null,
             new DateTimeValue(doc.createdAt),
             new DateTimeValue(doc.updatedAt),
         );
@@ -29,8 +39,12 @@ export default class UserMapper {
         }
         return {
             id: id.getValue(),
-            email: entity.getEmail(),
+            email: entity.getEmail().getValue(),
+            name: entity.getName(),
             passwordHash: entity.getPasswordHash(),
+            validatedEmail: entity.getValidatedEmail(),
+            otpCode: entity.getOtpCode(),
+            otpExpiresAt: entity.getOtpExpiresAt(),
             createdAt: entity.getCreatedAt().getValue(),
             updatedAt: entity.getUpdatedAt().getValue(),
         };

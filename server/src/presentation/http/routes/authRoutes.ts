@@ -9,5 +9,6 @@ const routes = Router();
 
 routes.post("/auth/register", authController.register.bind(authController));
 routes.post("/auth/login", authController.login.bind(authController));
+routes.post("/auth/verify-email", authController.verifyEmail.bind(authController));
 
 export default routes;

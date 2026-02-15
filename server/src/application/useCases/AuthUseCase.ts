@@ -1,14 +1,23 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-
 import User from "../../domain/entities/user";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
+import Email from "../../domain/valueObjects/Email";
 import IUserRepository from "../ports/repositories/IUserRepository";
+import IPasswordHasher from "../ports/services/IPasswordHasher";
+import ITokenProvider from "../ports/services/ITokenProvider";
+import IEmailSender from "../ports/services/IEmailSender";
 import RegisterDTO from "../ports/dtos/RegisterDTO";
 import LoginDTO from "../ports/dtos/LoginDTO";
 import { UserResource, toUserResource } from "../ports/resources/UserResource";
 
-const SALT_ROUNDS = 10;
+export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
+const OTP_EXPIRY_MINUTES = 10;
+const OTP_LENGTH = 6;
+
+function generateOtp(): string {
+    const min = 10 ** (OTP_LENGTH - 1);
+    const max = 10 ** OTP_LENGTH - 1;
+    return String(Math.floor(min + Math.random() * (max - min + 1)));
+}
 
 export interface AuthResult {
     user: UserResource;
@@ -16,21 +25,34 @@ export interface AuthResult {
 }
 
 export default class AuthUseCase {
-    constructor(private readonly userRepository: IUserRepository) {}
+    constructor(
+        private readonly userRepository: IUserRepository,
+        private readonly passwordHasher: IPasswordHasher,
+        private readonly tokenProvider: ITokenProvider,
+        private readonly emailSender: IEmailSender,
+    ) {}
 
     public async register(dto: RegisterDTO): Promise<AuthResult> {
-        const existing = await this.userRepository.findByEmail(dto.email);
+        const email = new Email(dto.email);
+        if (!email.isCorporate()) {
+            throw new Error("Solo se permiten correos corporativos @plataforma.com.co");
+        }
+
+        const existing = await this.userRepository.findByEmail(email.getValue());
         if (existing) {
             throw new Error("Email already registered");
         }
 
-        const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+        const passwordHash = await this.passwordHasher.hash(dto.password);
         const now = new DateTimeValue();
+        const name = (dto.name ?? "").trim() || "";
         const user = await this.userRepository.create(
-            new User(null, dto.email.toLowerCase(), passwordHash, now, now),
+            new User(null, email, name, passwordHash, false, null, null, now, now),
         );
 
-        const token = this.createToken(user);
+        const id = user.getId();
+        if (!id) throw new Error("User must have id");
+        const token = this.tokenProvider.sign(id.getValue(), user.getEmail().getValue());
         return { user: toUserResource(user), token };
     }
 
@@ -40,23 +62,47 @@ export default class AuthUseCase {
             throw new Error("Invalid email or password");
         }
 
-        const valid = await bcrypt.compare(dto.password, user.getPasswordHash());
+        const valid = await this.passwordHasher.compare(dto.password, user.getPasswordHash());
         if (!valid) {
             throw new Error("Invalid email or password");
         }
 
-        const token = this.createToken(user);
+        if (!user.getValidatedEmail()) {
+            const code = generateOtp();
+            const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+            user.setOtpCode(code);
+            user.setOtpExpiresAt(expiresAt);
+            user.setUpdatedAt(new DateTimeValue());
+            await this.userRepository.update(user);
+            await this.emailSender.sendVerificationCode(user.getEmail().getValue(), code);
+            throw new Error(EMAIL_NOT_VERIFIED);
+        }
+
+        const id = user.getId();
+        if (!id) throw new Error("User must have id");
+        const token = this.tokenProvider.sign(id.getValue(), user.getEmail().getValue());
         return { user: toUserResource(user), token };
     }
 
-    private createToken(user: User): string {
-        const secret = process.env.JWT_SECRET ?? "default-secret-change-in-production";
+    public async verifyEmail(email: string, code: string): Promise<AuthResult> {
+        const user = await this.userRepository.findByEmail(email);
+        if (!user) {
+            throw new Error("Código inválido o expirado");
+        }
+        const storedCode = user.getOtpCode();
+        const expiresAt = user.getOtpExpiresAt();
+        if (!storedCode || !expiresAt || expiresAt < new Date() || storedCode !== code.trim()) {
+            throw new Error("Código inválido o expirado");
+        }
+        user.setValidatedEmail(true);
+        user.setOtpCode(null);
+        user.setOtpExpiresAt(null);
+        user.setUpdatedAt(new DateTimeValue());
+        await this.userRepository.update(user);
+
         const id = user.getId();
-        if (!id) throw new Error("User must have id to create token");
-        return jwt.sign(
-            { userId: id.getValue(), email: user.getEmail() },
-            secret,
-            { expiresIn: "7d" },
-        );
+        if (!id) throw new Error("User must have id");
+        const token = this.tokenProvider.sign(id.getValue(), user.getEmail().getValue());
+        return { user: toUserResource(user), token };
     }
 }
