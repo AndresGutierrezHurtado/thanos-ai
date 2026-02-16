@@ -61,12 +61,12 @@ export default class AuthUseCase {
     public async login(dto: LoginDTO): Promise<AuthResult> {
         const user = await this.userRepository.findByEmail(dto.email);
         if (!user) {
-            throw new Error("Invalid email or password");
+            throw new Error("El correo o contraseña están incorrectos.");
         }
 
         const valid = await this.passwordHasher.compare(dto.password, user.getPasswordHash());
         if (!valid) {
-            throw new Error("Invalid email or password");
+            throw new Error("El correo o contraseña están incorrectos.");
         }
 
         if (!user.getValidatedEmail()) {

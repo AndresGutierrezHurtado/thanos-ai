@@ -69,7 +69,7 @@ export default class AuthController {
             });
         } catch (err) {
             const message = err instanceof Error ? err.message : "Login failed";
-            if (message === "Invalid email or password") {
+            if (message === "El correo o contraseña están incorrectos.") {
                 return res.status(401).json({ success: false, message });
             }
             if (message === EMAIL_NOT_VERIFIED) {

@@ -8,7 +8,7 @@ interface ILlmProvider {
         temperature?: number,
         extractedText?: string,
         onChunk?: (text: string) => void,
-    ): Promise<{ response: string; sources: Source[] }>;
+    orma sources: Source[] }>;
     generateConversationalResponse(
         messages: Message[],
         maxTokens?: number,

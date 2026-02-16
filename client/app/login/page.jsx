@@ -342,6 +342,9 @@ export default function LoginPage() {
                                             className="w-full bg-transparent border-0 border-b border-base-300 py-3 px-0 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-0 transition-colors duration-200"
                                         />
                                     </div>
+                                    {(resetNewPassword !== resetConfirmPassword) && (
+                                        <p className="text-xs text-error">Las contraseñas no coinciden</p>
+                                    )}
                                     <button
                                         type="submit"
                                         disabled={
