@@ -26,7 +26,6 @@ import IUserRepository from "../../application/ports/repositories/IUserRepositor
 import IPasswordHasher from "../../application/ports/services/IPasswordHasher";
 import ITokenProvider from "../../application/ports/services/ITokenProvider";
 import IEmailSender from "../../application/ports/services/IEmailSender";
-import ILlmProvider from "../../application/ports/services/ILlmProvider";
 import IDriveProvider from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
 
@@ -47,7 +46,7 @@ import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import LoggerAdapter from "../services/LoggerAdapter";
-import GptLlmProvider from "../ai/GptLlmProvider";
+import LlmFactory from "../ai/LlmFactory";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
 import MessageService from "../../application/services/MessageService";
 
@@ -131,7 +130,7 @@ export default class DIContainer {
         return new SpeechUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
-            this.getLlmProvider(),
+            this.getLlmFactory(),
             this.getMessageService(),
             this.getLogger(),
         );
@@ -180,7 +179,7 @@ export default class DIContainer {
     // Application Services
     private getMessageService(): MessageService {
         return new MessageService(
-            this.getLlmProvider(),
+            this.getLlmFactory(),
             this.getMessageRepository(),
             this.getSourceRepository(),
         );
@@ -219,8 +218,8 @@ export default class DIContainer {
         return new ChromaVectorStore(this.getDocumentRepository());
     }
 
-    private getLlmProvider(): ILlmProvider {
-        return new GptLlmProvider(this.getVectorStore());
+    private getLlmFactory(): LlmFactory {
+        return new LlmFactory(this.getVectorStore());
     }
 
     public getDriveProvider(): IDriveProvider {
