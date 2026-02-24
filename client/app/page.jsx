@@ -11,6 +11,7 @@ export default function Page() {
     const router = useRouter();
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
+    const [provider, setProvider] = useState("gpt");
     const [isCreating, setIsCreating] = useState(false);
     const [streamingText, setStreamingText] = useState("");
 
@@ -42,7 +43,7 @@ export default function Page() {
             await streamRequest(
                 "POST",
                 "/chats",
-                { content: trimmedContent, mediaContent },
+                { content: trimmedContent, mediaContent, provider },
                 {
                     onChunk: (chunk) => setStreamingText((prev) => prev + chunk),
                     onFinal: (data) => {
@@ -155,6 +156,8 @@ export default function Page() {
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
                     onSubmit={handleSubmit}
+                    provider={provider}
+                    onProviderChange={setProvider}
                     disabled={isCreating}
                     file={file}
                     onChangeFile={handleFileChange}

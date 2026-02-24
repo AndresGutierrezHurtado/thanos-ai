@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { useApi } from "@/hooks/useApi";
+import { useApi as apiRequest } from "@/hooks/useApi";
 import { streamRequest } from "@/lib/streamRequest";
 import ChatInput from "@/components/ChatInput";
 import ChatMessageList from "@/components/ChatMessageList";
@@ -25,12 +25,30 @@ export default function ChatByIdPage() {
     const [messagesLoading, setMessagesLoading] = useState(true);
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
+    const [provider, setProvider] = useState("gpt");
     const [isSending, setIsSending] = useState(false);
 
     // Effects
+    const loadMessages = useCallback(async () => {
+        if (!chatId) return;
+        try {
+            const response = await apiRequest("GET", `/chats/${chatId}/messages`);
+            if (!response?.success) {
+                setMessages([]);
+                return;
+            }
+            setMessages(response.data ?? []);
+        } catch (error) {
+            console.error("Failed to load messages", error);
+            setMessages([]);
+        } finally {
+            setMessagesLoading(false);
+        }
+    }, [chatId]);
+
     useEffect(() => {
         loadMessages();
-    }, [chatId]);
+    }, [loadMessages]);
 
     useEffect(() => {
         if (containerRef.current) {
@@ -122,23 +140,6 @@ export default function ChatByIdPage() {
         [chatId]
     );
 
-    const loadMessages = useCallback(async () => {
-        if (!chatId) return;
-        try {
-            const response = await useApi("GET", `/chats/${chatId}/messages`);
-            if (!response?.success) {
-                setMessages([]);
-                return;
-            }
-            setMessages(response.data ?? []);
-        } catch (error) {
-            console.error("Failed to load messages", error);
-            setMessages([]);
-        } finally {
-            setMessagesLoading(false);
-        }
-    }, [chatId]);
-
     // Handlers
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -189,7 +190,7 @@ export default function ChatByIdPage() {
             await streamRequest(
                 "POST",
                 "/messages",
-                { chatId, content: trimmedContent, mediaContent },
+                { chatId, content: trimmedContent, mediaContent, provider },
                 {
                     onChunk: appendToLastAssistantMessage,
                     onFinal: () => {
@@ -230,7 +231,7 @@ export default function ChatByIdPage() {
                 await streamRequest(
                     "PUT",
                     `/messages/${messageId}`,
-                    { content },
+                    { content, provider },
                     {
                         onChunk: appendToLastAssistantMessage,
                         onFinal: () => {
@@ -266,6 +267,8 @@ export default function ChatByIdPage() {
             chatId,
             prepareForStreamingAfterUserMessage,
             appendToLastAssistantMessage,
+            loadMessages,
+            provider,
         ]
     );
 
@@ -288,6 +291,8 @@ export default function ChatByIdPage() {
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
                     onSubmit={handleSubmit}
+                    provider={provider}
+                    onProviderChange={setProvider}
                     disabled={isSending}
                     file={file}
                     onChangeFile={handleFileChange}
