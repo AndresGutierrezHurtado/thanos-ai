@@ -1,13 +1,15 @@
 "use client";
 import { FileIcon, Loader2Icon, MicIcon, PhoneIcon, SendIcon, Square, XIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useApi } from "@/hooks/useApi";
+import { useApi as apiRequest } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 
 export default function ChatInput({
     value,
     onChange,
     onSubmit,
+    provider = "gpt",
+    onProviderChange,
     disabled = false,
     withVoice = false,
     chatId = null,
@@ -24,7 +26,7 @@ export default function ChatInput({
     const chunksRef = useRef([]);
 
     // Auto-resize function
-    const adjustHeight = () => {
+    const adjustHeight = useCallback(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
 
@@ -34,17 +36,17 @@ export default function ChatInput({
         // Set new height based on scrollHeight
         const newHeight = Math.min(textarea.scrollHeight, 200); // Max 200px
         textarea.style.height = `${newHeight}px`;
-    };
+    }, [textareaRef]);
 
     // Adjust height when value changes
     useEffect(() => {
         adjustHeight();
-    }, [value]);
+    }, [value, adjustHeight]);
 
     // Adjust height on mount
     useEffect(() => {
         adjustHeight();
-    }, []);
+    }, [adjustHeight]);
 
     const handleChange = (e) => {
         onChange(e);
@@ -98,7 +100,7 @@ export default function ChatInput({
                     reader.onerror = reject;
                     reader.readAsDataURL(blob);
                 });
-                const response = await useApi("POST", "/speech-to-text", { audio: base64 });
+                const response = await apiRequest("POST", "/speech-to-text", { audio: base64 });
                 if (response?.success && response?.data) {
                     onChange({
                         target: { value: value ? `${value} ${response.data}` : response.data },
@@ -132,6 +134,7 @@ export default function ChatInput({
             encType="multipart/form-data"
             className="mt-6 rounded-xl bg-base-200 border border-base-300 p-2 shadow-sm max-w-3xl mx-auto flex flex-col gap-2"
         >
+
             {file && (
                 <article className="w-30 aspect-square bg-base-300 border border-base-content/20 rounded-lg p-2 text-sm group relative flex flex-col">
                     <button
@@ -153,24 +156,7 @@ export default function ChatInput({
                 </article>
             )}
 
-            <div className="flex items-center gap-0.5">
-                <label
-                    tabIndex={2}
-                    className="btn btn-ghost w-10 h-10 rounded-lg p-0 self-end mb-0.5"
-                >
-                    <FileIcon size={20} />
-                    <input
-                        name="mediaContent"
-                        type="file"
-                        className="hidden"
-                        multiple={false}
-                        accept="application/pdf,document/docx,document/doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/html"
-                        onChange={onChangeFile}
-                        disabled={disabled}
-                    />
-                </label>
-
-                <div className="flex-1 min-w-0">
+            <div className="w-full py-2">
                     <textarea
                         ref={textareaRef}
                         tabIndex={1}
@@ -187,9 +173,34 @@ export default function ChatInput({
                         }}
                         rows={1}
                     />
-                </div>
+            </div>
 
-                <div className="flex gap-2 items-center">
+            <div className="flex items-center justify-between gap-2 px-1">
+                <label
+                    tabIndex={2}
+                    className="btn btn-ghost w-10 h-10 rounded-lg p-0 self-end mb-0.5"
+                >
+                    <FileIcon size={20} />
+                    <input
+                        name="mediaContent"
+                        type="file"
+                        className="hidden"
+                        multiple={false}
+                        accept="application/pdf,document/docx,document/doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/html"
+                        onChange={onChangeFile}
+                        disabled={disabled}
+                    />
+                </label>
+                <div className="flex items-center gap-2">
+                    <select
+                        value={provider}
+                        onChange={(event) => onProviderChange?.(event.target.value)}
+                        className="select select-bordered select-sm w-32 rounded-lg h-10"
+                        disabled={disabled}
+                    >
+                        <option value="gpt">GPT</option>
+                        <option value="ollama">Ollama</option>
+                    </select>
                     <button
                         tabIndex={3}
                         type="button"
