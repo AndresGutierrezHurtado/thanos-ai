@@ -58,7 +58,7 @@ export default class ChatUseCase {
         onChunk?: (text: string) => void,
         userId?: string,
     ): Promise<MessageResource> {
-        const { content, mediaContent } = dto;
+        const { content, mediaContent, provider = "gpt" } = dto;
 
         // Process media content and extract text if exists
         let extractedText: string | undefined;
@@ -77,7 +77,7 @@ export default class ChatUseCase {
             new Chat(
                 null,
                 userIdentifier,
-                (await this.messageService.generateTitle(content)).replaceAll("\"", ""),
+                (await this.messageService.generateTitle(content, provider)).replaceAll("\"", ""),
                 new DateTimeValue(),
                 new DateTimeValue(),
             ),
@@ -116,6 +116,7 @@ export default class ChatUseCase {
         const aiResponse = await this.messageService.generateResponse(
             chat,
             [userMessage],
+            provider,
             extractedText,
             onChunk,
         );
