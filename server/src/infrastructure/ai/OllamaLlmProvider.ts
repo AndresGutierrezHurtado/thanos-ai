@@ -1,5 +1,4 @@
 import { ChatOllama } from "@langchain/ollama";
-import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { createAgent, tool } from "langchain";
 import OpenAI from "openai";
 import { z } from "zod";
@@ -59,6 +58,29 @@ FORMATO RESPUESTA:
 export default class OllamaLlmProvider implements ILlmProvider {
     constructor(private readonly vectorStore: IVectorStore) {}
 
+    private getTextFromContent(content: unknown): string {
+        if (typeof content === "string") return content.trim();
+
+        if (Array.isArray(content)) {
+            return content
+                .map((part) => {
+                    if (typeof part === "string") return part;
+                    if (part && typeof part === "object" && "text" in part) {
+                        return String(part.text ?? "");
+                    }
+                    return "";
+                })
+                .join("")
+                .trim();
+        }
+
+        if (content && typeof content === "object" && "text" in content) {
+            return String(content.text ?? "").trim();
+        }
+
+        return "";
+    }
+
     // LLM AND AGENTS PROVIDERS
     private getAgent(sources: Source[], maxTokens: number = 500, temperature: number = 0.3) {
         return createAgent({
@@ -76,11 +98,12 @@ export default class OllamaLlmProvider implements ILlmProvider {
         }) as any;
     }
 
-    private getTextModel(temperature: number = 0.3, maxTokens: number = 500) {
+    private getTextModel(temperature: number = 0.3, maxTokens: number = 500, reasoning: boolean = true) {
         return new ChatOllama({
             model: process.env.OLLAMA_MODEL ?? "qwen3.5:4b",
             temperature,
             numPredict: maxTokens,
+            think: reasoning,
         });
     }
 
@@ -213,16 +236,13 @@ export default class OllamaLlmProvider implements ILlmProvider {
     }
 
     public async generateSimpleResponse(message: string): Promise<string> {
-        const textModel = this.getTextModel();
+        const textModel = this.getTextModel(0.7, 1000, false);
+        const response = await textModel.invoke(
+            `Responde en una sola linea, sin comillas y lo mas breve posible.\n\n${message}`,
+        );
 
-        const response = await textModel.invoke([
-            new SystemMessage("responde lo mas breve posible"),
-            new HumanMessage(message),
-        ]);
-
-        const text = response.content?.toString() ?? "";
-
-        return text;
+        console.log(response);
+        return this.getTextFromContent(response.content);
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
@@ -255,4 +275,3 @@ export default class OllamaLlmProvider implements ILlmProvider {
         return Buffer.from(await response.arrayBuffer());
     }
 }
-
