@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useApi as apiRequest } from "@/hooks/useApi";
 import { streamRequest } from "@/lib/streamRequest";
-import ChatInput from "@/components/ChatInput";
+import ChatInput, { DEFAULT_PROVIDER_STORAGE_KEY } from "@/components/ChatInput";
 import ChatMessageList from "@/components/ChatMessageList";
 import toBase64 from "@/lib/toBase64";
 
@@ -27,6 +27,13 @@ export default function ChatByIdPage() {
     const [file, setFile] = useState(null);
     const [provider, setProvider] = useState("gpt");
     const [isSending, setIsSending] = useState(false);
+
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(DEFAULT_PROVIDER_STORAGE_KEY);
+            if (stored === "gpt" || stored === "ollama") setProvider(stored);
+        } catch (_) {}
+    }, []);
 
     // Effects
     const loadMessages = useCallback(async () => {

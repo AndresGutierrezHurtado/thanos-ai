@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import ChatInput from "@/components/ChatInput";
+import ChatInput, { DEFAULT_PROVIDER_STORAGE_KEY } from "@/components/ChatInput";
 import { toast } from "react-toastify";
 import { streamRequest } from "@/lib/streamRequest";
 import toBase64 from "@/lib/toBase64";
@@ -12,6 +12,13 @@ export default function Page() {
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
     const [provider, setProvider] = useState("gpt");
+
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(DEFAULT_PROVIDER_STORAGE_KEY);
+            if (stored === "gpt" || stored === "ollama") setProvider(stored);
+        } catch (_) {}
+    }, []);
     const [isCreating, setIsCreating] = useState(false);
     const [streamingText, setStreamingText] = useState("");
 

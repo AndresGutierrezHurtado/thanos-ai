@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi as apiRequest } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
 
+export const DEFAULT_PROVIDER_STORAGE_KEY = "thanos-ai-default-provider";
+
 export default function ChatInput({
     value,
     onChange,
@@ -194,7 +196,13 @@ export default function ChatInput({
                 <div className="flex items-center gap-2">
                     <select
                         value={provider}
-                        onChange={(event) => onProviderChange?.(event.target.value)}
+                        onChange={(event) => {
+                            const v = event.target.value;
+                            try {
+                                localStorage.setItem(DEFAULT_PROVIDER_STORAGE_KEY, v);
+                            } catch (_) {}
+                            onProviderChange?.(v);
+                        }}
                         className="select select-bordered select-sm w-32 rounded-lg h-10"
                         disabled={disabled}
                     >
