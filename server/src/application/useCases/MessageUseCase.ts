@@ -42,7 +42,7 @@ export default class MessageUseCase {
         onChunk?: (text: string) => void,
         userId?: string,
     ): Promise<MessageResource> {
-        const { chatId, content, mediaContent, provider = "gpt" } = messageDto;
+        const { chatId, content, mediaContent } = messageDto;
 
         const chat = await this.chatRepository.findById(new Identifier(chatId as string));
         if (!chat) throw new Error("Chat not found");
@@ -95,7 +95,6 @@ export default class MessageUseCase {
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
-            provider,
             extractedText,
             onChunk,
         );
@@ -111,7 +110,6 @@ export default class MessageUseCase {
         // Get the message to update
         let message = await this.messageRepository.findById(new Identifier(dto.id));
         if (!message) throw new Error("Message not found");
-        const provider = dto.provider ?? "gpt";
 
         const chat = await this.chatRepository.findById(message.getChatId());
         if (!chat) throw new Error("Chat not found");
@@ -135,7 +133,6 @@ export default class MessageUseCase {
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
-            provider,
             undefined,
             onChunk,
         );

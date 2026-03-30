@@ -1,8 +1,6 @@
 import Message from "../../../domain/entities/message";
 import Source from "../../../domain/entities/source";
 
-export type LlmProviderName = "gpt" | "ollama";
-
 interface ILlmProvider {
     generateResponse(
         messages: Message[],
@@ -10,7 +8,7 @@ interface ILlmProvider {
         temperature?: number,
         extractedText?: string,
         onChunk?: (text: string) => void,
-    ): Promise<{ response: string; sources: Source[] }>;
+    orma sources: Source[] }>;
     generateConversationalResponse(
         messages: Message[],
         maxTokens?: number,

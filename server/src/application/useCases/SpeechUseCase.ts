@@ -1,6 +1,8 @@
 // Ports
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
+import ISourceRepository from "../ports/repositories/ISourceRepository";
+import ILlmProvider from "../ports/services/ILlmProvider";
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
 // Domain
@@ -9,13 +11,12 @@ import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Identifier from "../../domain/valueObjects/Identifier";
 import MessageRole from "../../domain/valueObjects/MessageRole";
 import MessageService from "../services/MessageService";
-import LlmFactory from "../../infrastructure/ai/LlmFactory";
 
 export default class SpeechUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
-        private readonly llmFactory: LlmFactory,
+        private readonly llmProvider: ILlmProvider,
         private readonly messageService: MessageService,
         private readonly logger: ILogger,
     ) {}
@@ -28,8 +29,7 @@ export default class SpeechUseCase {
 
         // CONVERT THE AUDIO TO TEXT
         this.logger.log(SyslogSeverity.DEBUG, "Speech to text", { audio });
-        const llmProvider = this.llmFactory.getAudioProvider();
-        const text = await llmProvider.speechToText(audio);
+        const text = await this.llmProvider.speechToText(audio);
         await this.messageRepository.create(
             new Message(
                 null,
@@ -55,10 +55,10 @@ export default class SpeechUseCase {
 
         // CONVERT THE TEXT TO SPEECH AND RETURN IT
         this.logger.log(SyslogSeverity.DEBUG, "Text to speech", { responseText });
-        return await llmProvider.textToSpeech(responseText);
+        return await this.llmProvider.textToSpeech(responseText);
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
-        return await this.llmFactory.getAudioProvider().speechToText(audio);
+        return await this.llmProvider.speechToText(audio);
     }
 }

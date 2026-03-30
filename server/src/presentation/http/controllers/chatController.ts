@@ -6,14 +6,9 @@ import MessageUseCase from "../../../application/useCases/MessageUseCase";
 
 // DTOs
 import SendMessageDto from "../../../application/ports/dtos/SendMessageDTO";
-import { LlmProviderName } from "../../../application/ports/services/ILlmProvider";
 
 export default class ChatController {
     private readonly MAX_MEDIA_CONTENT_SIZE = 7 * 1024 * 1024; // 7MB
-
-    private normalizeProvider(provider: unknown): LlmProviderName {
-        return provider === "ollama" ? "ollama" : "gpt";
-    }
 
     constructor(
         private readonly chatUseCase: ChatUseCase,
@@ -54,7 +49,7 @@ export default class ChatController {
     }
 
     public async createChat(req: Request, res: Response): Promise<Response | void> {
-        const { content, mediaContent, provider, stream: useStream } = req.body;
+        const { content, mediaContent, stream: useStream } = req.body;
 
         if (mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
             throw new Error(
@@ -78,7 +73,6 @@ export default class ChatController {
         const dto: SendMessageDto = {
             chatId: null,
             content: content ?? "",
-            provider: this.normalizeProvider(provider),
             mediaContent: normalizedMedia ?? null,
         };
 

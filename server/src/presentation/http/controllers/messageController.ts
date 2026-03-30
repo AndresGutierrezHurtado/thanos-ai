@@ -3,14 +3,9 @@ import { Request, Response } from "express";
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
 import SpeechUseCase from "../../../application/useCases/SpeechUseCase";
-import { LlmProviderName } from "../../../application/ports/services/ILlmProvider";
 
 export default class MessageController {
     private readonly MAX_MEDIA_CONTENT_SIZE = 7 * 1024 * 1024; // 7MB
-
-    private normalizeProvider(provider: unknown): LlmProviderName {
-        return provider === "ollama" ? "ollama" : "gpt";
-    }
 
     constructor(
         private readonly messageUseCase: MessageUseCase,
@@ -18,7 +13,7 @@ export default class MessageController {
     ) {}
 
     public async sendMessage(req: Request, res: Response): Promise<Response | void> {
-        const { chatId, content, mediaContent, provider, stream: useStream } = req.body;
+        const { chatId, content, mediaContent, stream: useStream } = req.body;
         const userId = (res.locals as { userId?: string }).userId;
 
         if (mediaContent?.size > this.MAX_MEDIA_CONTENT_SIZE) {
@@ -40,7 +35,7 @@ export default class MessageController {
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
             };
             const message = await this.messageUseCase.sendMessage(
-                { chatId, content, mediaContent, provider: this.normalizeProvider(provider) },
+                { chatId, content, mediaContent },
                 onChunk,
                 userId,
             );
@@ -56,7 +51,7 @@ export default class MessageController {
         }
 
         const message = await this.messageUseCase.sendMessage(
-            { chatId, content, mediaContent, provider: this.normalizeProvider(provider) },
+            { chatId, content, mediaContent },
             undefined,
             userId,
         );
@@ -71,7 +66,7 @@ export default class MessageController {
     public async updateMessage(req: Request, res: Response): Promise<Response | void> {
         const idRaw = req.params.id;
         const id = Array.isArray(idRaw) ? idRaw[0] : (idRaw ?? "");
-        const { content, provider, stream: useStream } = req.body;
+        const { content, stream: useStream } = req.body;
         const userId = (res.locals as { userId?: string }).userId;
 
         if (useStream) {
@@ -83,7 +78,7 @@ export default class MessageController {
                 res.write(`data: ${JSON.stringify({ text })}\n\n`);
             };
             const result = await this.messageUseCase.updateMessage(
-                { id, content, provider: this.normalizeProvider(provider) },
+                { id, content },
                 onChunk,
                 userId,
             );
@@ -99,7 +94,7 @@ export default class MessageController {
         }
 
         const result = await this.messageUseCase.updateMessage(
-            { id, content, provider: this.normalizeProvider(provider) },
+            { id, content },
             undefined,
             userId,
         );
