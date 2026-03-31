@@ -9,17 +9,44 @@ services:
         environment:
             - IS_PERSISTENT=TRUE
             - ANONYMIZED_TELEMETRY=FALSE
-    
+
     mongodb:
         image: mongo:latest
         container_name: mongodb_thanos
         ports:
-        - "27017:27017"
+            - "27017:27017"
         volumes:
-        - mongodb-data:/data/db
+            - mongodb-data:/data/db
         environment:
-        - MONGO_INITDB_ROOT_USERNAME=thanos
-        - MONGO_INITDB_ROOT_PASSWORD=thanos
+            - MONGO_INITDB_ROOT_USERNAME=thanos
+            - MONGO_INITDB_ROOT_PASSWORD=thanos
+
+    client:
+        build: ./client
+        container_name: client_thanos
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./client:/app
+            - /app/node_modules
+        environment:
+            - CHOKIDAR_USEPOLLING=true
+        depends_on:
+            - server
+
+    server:
+        build: ./server
+        container_name: server_thanos
+        ports:
+            - "3001:3001"
+        volumes:
+            - ./server:/app
+            - /app/node_modules
+        environment:
+            - CHOKIDAR_USEPOLLING=true
+        depends_on:
+            - mongodb
+            - chroma
 
 volumes:
     chroma-data:
