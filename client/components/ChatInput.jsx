@@ -154,7 +154,7 @@ export default function ChatInput({
             )}
 
             <div className="flex items-center gap-0.5">
-                <label
+                {/* <label
                     tabIndex={2}
                     className="btn btn-ghost w-10 h-10 rounded-lg p-0 self-end mb-0.5"
                 >
@@ -168,7 +168,7 @@ export default function ChatInput({
                         onChange={onChangeFile}
                         disabled={disabled}
                     />
-                </label>
+                </label> */}
 
                 <div className="flex-1 min-w-0">
                     <textarea
@@ -190,7 +190,7 @@ export default function ChatInput({
                 </div>
 
                 <div className="flex gap-2 items-center">
-                    <button
+                    {/* <button
                         tabIndex={3}
                         type="button"
                         onClick={handleMicClick}
@@ -205,7 +205,7 @@ export default function ChatInput({
                         ) : (
                             <MicIcon size={20} />
                         )}
-                    </button>
+                    </button> */}
 
                     {withVoice && (
                         <button
