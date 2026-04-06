@@ -5,10 +5,7 @@ import { io } from "socket.io-client";
 
 const PeerContext = createContext(null);
 
-const socketUrl =
-    typeof window !== "undefined" && process.env.NEXT_PUBLIC_WS_URL
-        ? process.env.NEXT_PUBLIC_WS_URL.replace(/^ws/, "http")
-        : "http://localhost:4000";
+const socketUrl = process.env.NEXT_PUBLIC_WS_URL;
 
 export function usePeer() {
     const ctx = useContext(PeerContext);
@@ -42,11 +39,11 @@ export function PeerProvider({ children }) {
         s.on("disconnect", (reason) => {
             console.warn("Socket desconectado:", reason);
         });
-    
+
         s.io.on("reconnect_attempt", (attempt) => {
             console.log("Intentando reconectar:", attempt);
         });
-    
+
         s.io.on("reconnect_failed", () => {
             console.log("No se pudo reconectar");
         });
@@ -104,7 +101,7 @@ export function PeerProvider({ children }) {
             speechError,
             isConnected: socket?.connected ?? false,
         }),
-        [socket, speechResponseAudio, speechError]
+        [socket, speechResponseAudio, speechError],
     );
 
     return <PeerContext.Provider value={value}>{children}</PeerContext.Provider>;
