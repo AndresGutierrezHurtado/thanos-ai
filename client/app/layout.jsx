@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,10 +10,12 @@ import Swal from "sweetalert2";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useApi } from "../hooks/useApi";
 import { PeerProvider } from "@/components/Peer";
+import UserSettingsModal from "@/components/organisms/UserSettingsModal";
 
 // Styles
 import "./globals.css";
-import { TrashIcon } from "lucide-react";
+import { LogOutIcon, MenuIcon, SettingsIcon, TrashIcon } from "lucide-react";
+import Button from "@/components/atoms/Button";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -26,6 +28,7 @@ const geistMono = Geist_Mono({
 });
 
 function LayoutContent({ children }) {
+    const settingsModalRef = useRef(null);
     const [chats, setChats] = useState([]);
     const [loadingChats, setLoadingChats] = useState(true);
     const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
@@ -123,7 +126,6 @@ function LayoutContent({ children }) {
                     <link rel="icon" href="/assistant.png" />
                 </head>
                 <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                    <ToastContainer />
                     {children}
                 </body>
             </html>
@@ -150,19 +152,7 @@ function LayoutContent({ children }) {
                                     aria-label="open sidebar"
                                     className="btn btn-square btn-ghost"
                                 >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        className="inline-block h-6 w-6 stroke-current"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M4 6h16M4 12h16M4 18h16"
-                                        ></path>
-                                    </svg>
+                                    <MenuIcon size={20} />
                                 </label>
                             </div>
                             <div className="mx-2 flex-1 px-2">
@@ -228,16 +218,16 @@ function LayoutContent({ children }) {
                                                                 : "transparent",
                                                     }}
                                                 >
-                                                    <span className="font-medium w-full line-clamp-2">
+                                                    <span   className="font-medium w-full line-clamp-2">
                                                         {chat.title ?? "Chat sin título"}
                                                     </span>
-                                                    <button
-                                                        className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom lg:opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                                        data-tip="Eliminar conversación"
+                                                    <Button
+                                                        type="button"
+                                                        className="w-8 h-8 p-0 tooltip-left opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                                        tooltip="Eliminar conversación"
                                                         onClick={(e) => handleDeleteChat(e, chat)}
-                                                    >
-                                                        <TrashIcon size={15} />
-                                                    </button>
+                                                        rightIcon={<TrashIcon size={15} />}
+                                                    />
                                                 </Link>
                                             </li>
                                         ))}
@@ -256,37 +246,44 @@ function LayoutContent({ children }) {
                                         </p>
                                         <p className="text-xs opacity-60 truncate">{user.email}</p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm"
-                                        onClick={async () => {
-                                            const result = await Swal.fire({
-                                                title: "¿Cerrar sesión?",
-                                                text: "Se cerrará tu sesión en Thanos AI.",
-                                                icon: "question",
-                                                showCancelButton: true,
-                                                background: "var(--color-base-100)",
-                                                color: "var(--color-base-content)",
-                                                cancelButtonColor: "var(--color-primary)",
-                                                confirmButtonColor: "var(--color-neutral)",
-                                                confirmButtonText: "Sí, salir",
-                                                cancelButtonText: "Cancelar",
-                                            });
-                                            if (!result.isConfirmed) return;
-                                            logout();
-                                            router.replace("/login");
-                                        }}
-                                        title="Cerrar sesión"
-                                    >
-                                        Salir
-                                    </button>
+                                    <div className="flex flex-col justify-center items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            className="w-9 h-9 p-0 bg-base-content/10"
+                                            tooltip="Configuración"
+                                            onClick={() => settingsModalRef.current?.show()}
+                                            rightIcon={<SettingsIcon size={16} />}
+                                        />
+                                        <Button
+                                            type="button"
+                                            className="w-9 h-9 p-0 text-red-500 bg-red-500/10"
+                                            tooltip="Cerrar sesión"
+                                            onClick={async () => {
+                                                const result = await Swal.fire({
+                                                    title: "¿Cerrar sesión?",
+                                                    text: "Se cerrará tu sesión en Thanos AI.",
+                                                    icon: "question",
+                                                    showCancelButton: true,
+                                                    background: "var(--color-base-100)",
+                                                    color: "var(--color-base-content)",
+                                                    cancelButtonColor: "var(--color-primary)",
+                                                    confirmButtonColor: "var(--color-neutral)",
+                                                    confirmButtonText: "Sí, salir",
+                                                    cancelButtonText: "Cancelar",
+                                                });
+                                                if (!result.isConfirmed) return;
+                                                logout();
+                                                router.replace("/login");
+                                            }}
+                                            rightIcon={<LogOutIcon size={16} />}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </aside>
                     </div>
+                    <UserSettingsModal modalRef={settingsModalRef} />
                 </div>
-
-                <ToastContainer />
             </body>
         </html>
     );
@@ -296,6 +293,7 @@ export default function RootLayout({ children }) {
     return (
         <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
+            <ToastContainer />
         </AuthProvider>
     );
 }
