@@ -12,6 +12,7 @@ export default class User {
     private otpExpiresAt: Date | null;
     private createdAt: DateTimeValue;
     private updatedAt: DateTimeValue;
+    private systemPrompt: string | null;
 
     constructor(
         id: Identifier | null,
@@ -23,6 +24,7 @@ export default class User {
         otpExpiresAt: Date | null,
         createdAt: DateTimeValue,
         updatedAt: DateTimeValue,
+        systemPrompt: string | null = null,
     ) {
         this.id = id;
         this.email = email;
@@ -33,6 +35,7 @@ export default class User {
         this.otpExpiresAt = otpExpiresAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.systemPrompt = systemPrompt;
     }
 
     public getId(): Identifier | null {
@@ -105,5 +108,13 @@ export default class User {
 
     public setUpdatedAt(updatedAt: DateTimeValue): void {
         this.updatedAt = updatedAt;
+    }
+
+    public getSystemPrompt(): string | null {
+        return this.systemPrompt;
+    }
+
+    public setSystemPrompt(systemPrompt: string | null): void {
+        this.systemPrompt = systemPrompt;
     }
 }

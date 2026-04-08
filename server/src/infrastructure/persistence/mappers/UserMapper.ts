@@ -13,6 +13,7 @@ export interface UserDocument {
     otpExpiresAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    systemPrompt?: string | null;
 }
 
 export default class UserMapper {
@@ -29,6 +30,7 @@ export default class UserMapper {
             doc.otpExpiresAt ?? null,
             new DateTimeValue(doc.createdAt),
             new DateTimeValue(doc.updatedAt),
+            doc.systemPrompt ?? null,
         );
     }
 
@@ -47,6 +49,7 @@ export default class UserMapper {
             otpExpiresAt: entity.getOtpExpiresAt(),
             createdAt: entity.getCreatedAt().getValue(),
             updatedAt: entity.getUpdatedAt().getValue(),
+            systemPrompt: entity.getSystemPrompt(),
         };
     }
 }

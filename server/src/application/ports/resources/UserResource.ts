@@ -4,6 +4,7 @@ export interface UserResource {
     id: string;
     name: string;
     email: string;
+    systemPrompt: string | null;
 }
 
 export function toUserResource(user: User): UserResource {
@@ -11,5 +12,6 @@ export function toUserResource(user: User): UserResource {
         id: user.getId()?.getValue() ?? "",
         name: user.getName(),
         email: user.getEmail().getValue(),
+        systemPrompt: user.getSystemPrompt(),
     };
 }
