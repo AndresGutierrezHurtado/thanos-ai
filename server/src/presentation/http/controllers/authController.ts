@@ -6,6 +6,7 @@ import LoginDTO from "../../../application/ports/dtos/LoginDTO";
 import VerifyEmailDTO from "../../../application/ports/dtos/VerifyEmailDTO";
 import ForgotPasswordDTO from "../../../application/ports/dtos/ForgotPasswordDTO";
 import ResetPasswordDTO from "../../../application/ports/dtos/ResetPasswordDTO";
+import UpdateUserDTO from "../../../application/ports/dtos/UpdateUserDTO";
 
 export default class AuthController {
     constructor(private readonly authUseCase: AuthUseCase) {}
@@ -166,6 +167,38 @@ export default class AuthController {
             if (message === "Código inválido o expirado" || message === "Las contraseñas no coinciden") {
                 return res.status(400).json({ success: false, message });
             }
+            throw err;
+        }
+    }
+
+    public async update(req: Request, res: Response): Promise<Response> {
+        const userId = (res.locals as { userId?: string }).userId;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "No autorizado",
+            });
+        }
+        const { name, systemPrompt } = req.body;
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: "El nombre es obligatorio",
+            });
+        }
+        try {
+            const dto: UpdateUserDTO = {
+                userId,
+                name: String(name).trim(),
+                systemPrompt: systemPrompt ? String(systemPrompt).trim() : "",
+            };
+            const result = await this.authUseCase.update(dto);
+            return res.status(200).json({
+                success: true,
+                message: "Usuario actualizado exitosamente",
+                data: { user: result.user },
+            });
+        } catch (err) {
             throw err;
         }
     }
