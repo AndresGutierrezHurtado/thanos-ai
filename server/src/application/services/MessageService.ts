@@ -22,14 +22,16 @@ export default class MessageService {
         messages: Message[],
         extractedText?: string,
         onChunk?: (text: string) => void,
+        userSystemPrompt?: string | null,
     ): Promise<Chat> {
         // Generate the AI response
         const { response: llmResponse, sources } = await this.llmProvider.generateResponse(
             messages,
-            500,
+            1500,
             0.3,
             extractedText,
             onChunk,
+            userSystemPrompt,
         );
 
         const assistantMessage = await this.messageRepository.create(

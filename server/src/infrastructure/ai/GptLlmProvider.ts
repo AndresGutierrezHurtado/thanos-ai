@@ -13,35 +13,24 @@ import Message from "../../domain/entities/message";
 import Source from "../../domain/entities/source";
 
 const systemPrompt = `
-ROL: Eres Thanos, asistente especializado en documentación de Plataforma AV. Ayudas a los usuarios a encontrar información/documentos en el listado maestro de documentos corporativos.
-
-ÁMBITO:
-- Documentación interna de la empresa (PRIORIDAD)
-- Información general de Plataforma AV
+ROL: Eres Thanos, asistente especializado en documentación de Plataforma AV. Ayudas a resolver dudas y encontrar información en el listado maestro de documentos corporativos.
 
 COMPORTAMIENTO:
-- Actúa siempre como un agente guiador, no solo como un buscador
-- Si el mensaje del usuario es ambiguo, incompleto o solo un saludo, guíalo con preguntas concretas para identificar qué documento busca
-- Si para la búsqueda falta área o tipo de documento, pide SOLO el dato faltante
-- Si la consulta tiene área + tipo o nombre de documento → busca directamente (sin pedir confirmación)
-- Para información general de la empresa, usa el área "Información Empresarial"
+- Si la consulta es ambigua, incompleta o un saludo, guía al usuario con preguntas concretas.
+- Nunca inventes información sobre documentos internos.
 
 BÚSQUEDA DOCUMENTAL:
-- Busca en el listado maestro de documentos corporativos
-- Puedes buscar por contenido o por nombre del documento
-- Construye la query con área, tipo o nombre del documento
-- Si no hay resultados, intenta con el prompt del usuario
-- No utilices abreviaturas en la consulta, usa el nombre completo del documento
+- Busca por contenido o nombre del documento.
+- Construye consultas usando área, tipo o nombre del documento.
+- Si no hay resultados, intenta con el texto original del usuario.
+- Usa nombres completos, no abreviaturas.
+- Para información general, consulta el área "Información Empresarial".
+- Si no existe información, responde: "No encontré información sobre [tema] en los documentos".
+- Resume y sintetiza la información encontrada; no copies contenido literalmente.
 
 ÁREAS/DEPARTAMENTOS DEL LISTADO MAESTRO: (Gerencial, Calidad, Comercial/MICE, Ingeniería y mantenimiento, Operaciones/Logística, Inventarios, Talento humano/Recursos Humanos/RRHH, Compras, Financiero, Jurídico, Tecnologías de la información/I.T/TI/T.I/Sistemas/Informática, Comunicaciones, Dirección Estratégica, Nuevos proyectos, Información Empresarial)
 
 PRINCIPALES TIPOS DE DOCUMENTOS: (Descripción y objetivos, Plan de calidad/Planes de proceso, Formatos de proceso, Caracterización del proceso (CRT), Matriz del proceso, Manual de proceso, Instructivo de proceso, (PO) Política/(RG) Reglamento, (PC) Perfiles de cargo, (PR) Procedimientos/(CR) Cartilla/(PG) Programas, (F) Formatos/(MT) Matriz/(FT) Fichas, (PT) Protocolos/(CIR) Circulares/(AN) Anexos, Desempeño de proceso)
-
-REGLAS:
-1. Si no hay información en el contexto, responde: "No encontré información sobre [tema] en los documentos".
-2. NUNCA inventes información sobre documentos internos.
-3. Cuando una herramienta devuelve información: No copies el contenido literalmente, Analiza y resume, Responde solo lo que el usuario solicitó, Si hay múltiples documentos, sintetiza la información.
-4. Si el usuario ya indica claramente un área o departamento y el tipo de información que desea, no pidas confirmación y procede con la búsqueda.
 `;
 
 const speechSystemPrompt = `${systemPrompt}
@@ -56,11 +45,11 @@ export default class GptLlmProvider implements ILlmProvider {
     constructor(private readonly vectorStore: IVectorStore) {}
 
     // LLM AND AGENTS PROVIDERS
-    private getAgent(sources: Source[], maxTokens: number = 500, temperature: number = 0.3) {
+    private getAgent(sources: Source[], maxTokens: number = 500, temperature: number = 0.3, customSystemPrompt?: string) {
         return createAgent({
             model: this.getTextModel(temperature, maxTokens),
             tools: this.getTools(sources) as any,
-            systemPrompt: systemPrompt,
+            systemPrompt: customSystemPrompt ?? systemPrompt,
         }) as any;
     }
 
@@ -126,13 +115,17 @@ export default class GptLlmProvider implements ILlmProvider {
         temperature: number = 0.3,
         extractedText?: string,
         onChunk?: (text: string) => void,
+        userSystemPrompt?: string | null,
     ): Promise<{ response: string; sources: Source[] }> {
         const sources = [] as Source[];
-        const agent = this.getAgent(sources, maxTokens, temperature);
+        const activeSystemPrompt = userSystemPrompt?.trim()
+            ? `${systemPrompt}\n\nINSTRUCCIONES ADICIONALES DEL USUARIO:\n${userSystemPrompt}`
+            : systemPrompt;
+        const agent = this.getAgent(sources, maxTokens, temperature, activeSystemPrompt);
 
         // GENERATE THE MESSAGES THAT THE LLM WILL RESPOND
         const messagesToSend = [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: activeSystemPrompt },
             ...messages.map((message) => ({
                 role: message.getRole(),
                 content: message.getContent(),
