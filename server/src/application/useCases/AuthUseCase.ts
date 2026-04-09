@@ -1,6 +1,7 @@
 import User from "../../domain/entities/user";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 import Email from "../../domain/valueObjects/Email";
+import Identifier from "../../domain/valueObjects/Identifier";
 import IUserRepository from "../ports/repositories/IUserRepository";
 import IPasswordHasher from "../ports/services/IPasswordHasher";
 import ITokenProvider from "../ports/services/ITokenProvider";
@@ -9,6 +10,7 @@ import RegisterDTO from "../ports/dtos/RegisterDTO";
 import LoginDTO from "../ports/dtos/LoginDTO";
 import ForgotPasswordDTO from "../ports/dtos/ForgotPasswordDTO";
 import ResetPasswordDTO from "../ports/dtos/ResetPasswordDTO";
+import UpdateUserDTO from "../ports/dtos/UpdateUserDTO";
 import { UserResource, toUserResource } from "../ports/resources/UserResource";
 
 export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
@@ -139,5 +141,21 @@ export default class AuthUseCase {
         user.setOtpExpiresAt(null);
         user.setUpdatedAt(new DateTimeValue());
         await this.userRepository.update(user);
+    }
+
+    public async update(dto: UpdateUserDTO): Promise<{ user: UserResource }> {
+        const id = new Identifier(dto.userId);
+        const user = await this.userRepository.findById(id);
+        if (!user) {
+            throw new Error("Usuario no encontrado");
+        }
+
+        user.setName(dto.name);
+        user.setSystemPrompt(dto.systemPrompt);
+        user.setUpdatedAt(new DateTimeValue());
+
+        await this.userRepository.update(user);
+
+        return { user: toUserResource(user) };
     }
 }
