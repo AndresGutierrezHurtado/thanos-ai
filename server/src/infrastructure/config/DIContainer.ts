@@ -96,6 +96,7 @@ export default class DIContainer {
             this.getMediaContentRepository(),
             this.getMessageService(),
             this.getProcessorFactory(),
+            this.getUserRepository(),
         );
     }
 
@@ -106,6 +107,7 @@ export default class DIContainer {
             this.getMediaContentRepository(),
             this.getMessageService(),
             this.getProcessorFactory(),
+            this.getUserRepository(),
         );
     }
 

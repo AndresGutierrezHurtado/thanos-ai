@@ -4,6 +4,7 @@ import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
+import IUserRepository from "../ports/repositories/IUserRepository";
 
 // DTOs and Resources
 import SendMessageDto from "../ports/dtos/SendMessageDTO";
@@ -35,6 +36,7 @@ export default class MessageUseCase {
         private readonly mediaContentRepository: IMediaContentRepository,
         private readonly messageService: MessageService,
         private readonly processorFactory: ProcessorFactory,
+        private readonly userRepository: IUserRepository,
     ) {}
 
     public async sendMessage(
@@ -92,11 +94,18 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(chat.getId() as Identifier);
 
         // Generate the assistant message and save it and its sources
+        let userSystemPrompt: string | null = null;
+        if (userId) {
+            const user = await this.userRepository.findById(new Identifier(userId));
+            userSystemPrompt = user?.getSystemPrompt() || null;
+        }
+
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
             extractedText,
             onChunk,
+            userSystemPrompt,
         );
 
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
@@ -130,11 +139,18 @@ export default class MessageUseCase {
         const messages = await this.messageRepository.findByChatId(message.getChatId());
 
         // Generate the assistant message and save it and its sources
+        let userSystemPrompt: string | null = null;
+        if (userId) {
+            const user = await this.userRepository.findById(new Identifier(userId));
+            userSystemPrompt = user?.getSystemPrompt() || null;
+        }
+
         const aiResponse = await this.messageService.generateResponse(
             chat,
             messages,
             undefined,
             onChunk,
+            userSystemPrompt,
         );
 
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);

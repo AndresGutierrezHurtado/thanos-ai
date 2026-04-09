@@ -16,6 +16,7 @@ import { ChatResource, toChatResource, toChatResourceArray } from "../ports/reso
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import IMediaContentRepository from "../ports/repositories/IMediaContentRepository";
+import IUserRepository from "../ports/repositories/IUserRepository";
 
 // Application Services
 import MessageService from "../services/MessageService";
@@ -30,6 +31,7 @@ export default class ChatUseCase {
         private readonly mediaContentRepository: IMediaContentRepository,
         private readonly messageService: MessageService,
         private readonly processorFactory: ProcessorFactory,
+        private readonly userRepository: IUserRepository,
     ) {}
 
     public async getChats(userId?: string): Promise<ChatResource[]> {
@@ -113,11 +115,18 @@ export default class ChatUseCase {
         }
 
         // Generate the assistant message and save it and its sources
+        let userSystemPrompt: string | null = null;
+        if (userId) {
+            const user = await this.userRepository.findById(new Identifier(userId));
+            userSystemPrompt = user?.getSystemPrompt() || null;
+        }
+
         const aiResponse = await this.messageService.generateResponse(
             chat,
             [userMessage],
             extractedText,
             onChunk,
+            userSystemPrompt,
         );
 
         return toMessageResource(aiResponse.getLastAssistantMessage() as Message);
