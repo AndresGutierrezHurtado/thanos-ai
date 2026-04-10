@@ -3,6 +3,7 @@ import { FileIcon, Loader2Icon, MicIcon, PhoneIcon, SendIcon, Square, XIcon } fr
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
+import Button from "./atoms/Button";
 
 export default function ChatInput({
     value,
@@ -134,14 +135,14 @@ export default function ChatInput({
         >
             {file && (
                 <article className="w-30 aspect-square bg-base-300 border border-base-content/20 rounded-lg p-2 text-sm group relative flex flex-col">
-                    <button
+                    <Button
                         type="button"
-                        className="btn bg-base-300 w-7 h-7 border border-base-content/20 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip tooltip-bottom"
-                        data-tip="Eliminar archivo"
+                        className="bg-base-300 w-7 h-7 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip-bottom"
+                        tooltip="Eliminar archivo"
                         onClick={() => onChangeFile({ target: { files: [] } })}
                     >
                         <XIcon size={15} />
-                    </button>
+                    </Button>
                     <div className="flex-1">
                         <p className="text-sm font-medium leading-tight line-clamp-3">
                             {file.name}
@@ -190,47 +191,41 @@ export default function ChatInput({
                 </div>
 
                 <div className="flex gap-2 items-center">
-                    {/* <button
+                    <Button
                         tabIndex={3}
                         type="button"
                         onClick={handleMicClick}
-                        className={`btn w-10 h-10 focus:outline-offset-3 rounded-lg p-0 self-end mb-0.5 ${isRecording ? "btn-error" : "btn-primary focus:btn-primary/80"}`}
+                        className={`w-10 h-10 rounded-lg p-0 ${isRecording ? "btn-error" : "btn-primary focus:btn-primary/80"}`}
                         disabled={disabled || isTranscribing}
-                        title={isRecording ? "Detener grabación" : "Grabar voz"}
+                        tooltip={isRecording ? "Detener grabación" : "Grabar voz"}
+                        loading={isTranscribing}
                     >
-                        {isTranscribing ? (
-                            <Loader2Icon size={20} className="animate-spin" />
-                        ) : isRecording ? (
+                        {isRecording ? (
                             <Square size={20} fill="currentColor" />
                         ) : (
                             <MicIcon size={20} />
                         )}
-                    </button> */}
+                    </Button>
 
-                    {withVoice && (
-                        <button
+                    {withVoice && false && (
+                        <Button
                             tabIndex={4}
                             type="button"
                             onClick={() => router.push(`/chat/${chatId}/call`)}
-                            className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
+                            className="btn-primary w-10 h-10 p-0 rounded-lg"
                             disabled={disabled || isTranscribing}
-                        >
-                            <PhoneIcon size={20} />
-                        </button>
+                            leftIcon={<PhoneIcon size={20} />}
+                        />
                     )}
 
-                    <button
+                    <Button
                         tabIndex={4}
                         type="submit"
-                        className="btn btn-primary w-10 h-10 focus:outline-offset-3 focus:btn-primary/80 rounded-lg p-0 self-end mb-0.5"
+                        className="btn-primary w-10 h-10 p-0 rounded-lg"
                         disabled={disabled}
-                    >
-                        {disabled ? (
-                            <Loader2Icon size={20} className="animate-spin" />
-                        ) : (
-                            <SendIcon size={20} />
-                        )}
-                    </button>
+                        loading={disabled}
+                        leftIcon={<SendIcon size={20} />}
+                    />
                 </div>
             </div>
         </form>
