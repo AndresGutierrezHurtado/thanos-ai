@@ -42,6 +42,11 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: var(--color-base-content) !important;
 }
 
+/* TOOLTIPS */
+.tooltip:before {
+    border-radius: 0.75rem;
+}
+
 /* MARKDOWN */
 
 .markdown * {
