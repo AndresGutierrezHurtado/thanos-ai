@@ -25,7 +25,7 @@ export default function TextareaField({
     ...props
 }) {
     return (
-        <fieldset className={`fieldset space-y-2 ${className}`.trim()}>
+        <fieldset className={`fieldset space-y-1 ${className}`.trim()}>
             {label && (
                 <Label htmlFor={id} leftIcon={labelIcon} info={labelInfo}>
                     {label}
@@ -48,6 +48,9 @@ export default function TextareaField({
                 {...props}
             />
             {error ? <p className="label text-error">{error}</p> : null}
+            {maxLength && (
+                <p className="label text-xs text-base-content/60 justify-end">{`${value?.length || defaultValue?.length || 0}/${maxLength}`}</p>
+            )}
         </fieldset>
     );
 }

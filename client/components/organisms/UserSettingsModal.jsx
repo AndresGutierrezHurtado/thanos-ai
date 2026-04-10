@@ -68,6 +68,7 @@ export default function UserSettingsModal({ modalRef, onClose }) {
                     labelIcon={Sparkles}
                     labelInfo="Modifica el comportamiento, tono y límites del asistente de inteligencia artificial."
                     rows={6}
+                    maxLength={2500}
                     className="mb-5"
                 />
 
