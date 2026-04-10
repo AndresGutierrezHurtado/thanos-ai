@@ -14,6 +14,7 @@ export default function Textarea({
     rows = 4,
     minLength = null,
     maxLength = null,
+    resize = false,
     ...props
 }) {
     const isControlled = value !== undefined;
@@ -31,6 +32,7 @@ export default function Textarea({
             minLength={minLength ?? undefined}
             maxLength={maxLength ?? undefined}
             className={`textarea textarea-bordered w-full rounded-lg ${className}`.trim()}
+            style={{ resize: resize ? "both" : "none" }}
             {...(isControlled ? { value } : { defaultValue })}
             onChange={handleChange}
             {...props}

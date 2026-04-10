@@ -11,6 +11,7 @@ export default function Button({
     disabled = false,
     loading = false,
     tooltip = "",
+    ...props
 }) {
     return (
         <button
@@ -20,6 +21,7 @@ export default function Button({
             disabled={disabled}
             data-tip={tooltip}
             className={`btn flex items-center gap-1 rounded-lg ${className} ${tooltip ? "tooltip" : ""}`}
+            {...props}
         >
             {loading && <span className="loading loading-spinner loading-sm"></span>}
             {leftIcon && !loading && leftIcon}
