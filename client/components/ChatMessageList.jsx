@@ -72,23 +72,51 @@ export default function ChatMessageList({
 
 function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [previewModal, setPreviewModal] = useState({ isOpen: false, driveId: null, documentTitle: null });
+    const [previewModal, setPreviewModal] = useState({
+isOpen: false,
+driveId: null,
+documentTitle: null,
+});
 
-    const handlePlayStop = () => {
+    const contentRef = useRef();
+
+    const handlePlayStop = useCallback(() => {
         if (isSpeaking) {
-            speechSynthesis.cancel();
+window.speechSynthesis.cancel();
             setIsSpeaking(false);
             return;
         }
-        const text = message.content.text.replaceAll("**", "");
-        if (!text.trim()) return;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = "es-ES";
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        speechSynthesis.speak(utterance);
-        setIsSpeaking(true);
+        const text = contentRef.current.innerText.trim();
+
+        if (!text.trim()) return console.log("no hay texto");
+
+        if (window.speechSynthesis.getVoices().length === 0) {
+            return toast.error("No se han cargado las voces del navegador");
+        }
+
+        const fragments = text.match(/[^.!?]+[.!?]+(\s|$)|.+?(\s|$)/g) || [text];
+
+        fragments.forEach((fragment, index) => {
+            const cleanText = fragment.trim();
+            if (cleanText.length === 0) return;
+
+            const utter = new window.SpeechSynthesisUtterance(cleanText);
+
+        utter.lang = "es-ES";
+        utter.onstart = () => setIsSpeaking(true);
+            utter.onend = () => setIsSpeaking(false);
+        utter.onerror = () => setIsSpeaking(false);
+
+            window.speechSynthesis.speak(utter);
+        });
+    }, [isSpeaking]);
+
+    useEffect(() => {
+        return () => {
+            window.speechSynthesis.cancel();
+        setIsSpeaking(false);
     };
+}, []);
 
     const components = {
         a: ({ href, children }) => (
@@ -104,8 +132,10 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
             </div>
             <div className="flex flex-col gap-2 w-full">
                 <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
-                    <div className="markdown prose">
-                        <Markdown remarkPlugins={[remarkGfm]} components={components} >{message.content.text}</Markdown>
+                    <div className="markdown prose" ref={contentRef}>
+                        <Markdown remarkPlugins={[remarkGfm]} components={components}>
+{message.content.text}
+</Markdown>
                     </div>
                     {!message.streaming && (message.content.sources ?? []).length > 0 && (
                         <div className="collapse collapse-arrow bg-base-200 border-base-300 border">
