@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "react-toastify";
@@ -18,6 +18,7 @@ import {
 
 // COMPONENTS
 import PreviewDocumentModal from "./PreviewDocumentModal";
+import Button from "./atoms/Button";
 
 export default function ChatMessageList({
     messages = [],
@@ -73,16 +74,16 @@ export default function ChatMessageList({
 function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResponse }) {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [previewModal, setPreviewModal] = useState({
-isOpen: false,
-driveId: null,
-documentTitle: null,
-});
+        isOpen: false,
+        driveId: null,
+        documentTitle: null,
+    });
 
     const contentRef = useRef();
 
     const handlePlayStop = useCallback(() => {
         if (isSpeaking) {
-window.speechSynthesis.cancel();
+            window.speechSynthesis.cancel();
             setIsSpeaking(false);
             return;
         }
@@ -102,10 +103,10 @@ window.speechSynthesis.cancel();
 
             const utter = new window.SpeechSynthesisUtterance(cleanText);
 
-        utter.lang = "es-ES";
-        utter.onstart = () => setIsSpeaking(true);
+            utter.lang = "es-ES";
+            utter.onstart = () => setIsSpeaking(true);
             utter.onend = () => setIsSpeaking(false);
-        utter.onerror = () => setIsSpeaking(false);
+            utter.onerror = () => setIsSpeaking(false);
 
             window.speechSynthesis.speak(utter);
         });
@@ -114,13 +115,15 @@ window.speechSynthesis.cancel();
     useEffect(() => {
         return () => {
             window.speechSynthesis.cancel();
-        setIsSpeaking(false);
-    };
-}, []);
+            setIsSpeaking(false);
+        };
+    }, []);
 
     const components = {
         a: ({ href, children }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+            <a href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+            </a>
         ),
     };
 
@@ -134,13 +137,15 @@ window.speechSynthesis.cancel();
                 <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
                     <div className="markdown prose" ref={contentRef}>
                         <Markdown remarkPlugins={[remarkGfm]} components={components}>
-{message.content.text}
-</Markdown>
+                            {message.content.text}
+                        </Markdown>
                     </div>
                     {!message.streaming && (message.content.sources ?? []).length > 0 && (
                         <div className="collapse collapse-arrow bg-base-200 border-base-300 border">
                             <input type="checkbox" defaultChecked />
-                            <div className="collapse-title font-semibold">Documentos del listado maestro:</div>
+                            <div className="collapse-title font-semibold">
+                                Documentos del listado maestro:
+                            </div>
                             <div className="collapse-content text-sm">
                                 <div className="w-full grid grid-cols-2 gap-2">
                                     {(message.content.sources ?? []).map((source, index) => (
@@ -157,7 +162,8 @@ window.speechSynthesis.cancel();
                                                     setPreviewModal({
                                                         isOpen: true,
                                                         driveId: source.document.driveId,
-                                                        documentTitle: source.document?.title || "Documento",
+                                                        documentTitle:
+                                                            source.document?.title || "Documento",
                                                     });
                                                 }
                                             }}
@@ -181,30 +187,30 @@ window.speechSynthesis.cancel();
                 </div>
             </div>
             <div className="flex gap-2">
-                <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
-                    data-tip="Copiar respuesta"
+                <Button
+                    className="btn-ghost w-9 h-9 rounded p-0 tooltip-bottom hover:bg-base-content/10"
+                    tooltip="Copiar respuesta"
                     onClick={() => {
                         navigator.clipboard.writeText(message.content.text);
                         toast.success("Respuesta copiada al portapapeles");
                     }}
-                >
-                    <CopyIcon size={15} />
-                </button>
-                <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom"
-                    data-tip={isSpeaking ? "Detener" : "Reproducir audio"}
+                    leftIcon={<CopyIcon size={15} />}
+                />
+                <Button
+                    className="btn-ghost w-8 h-8 rounded p-0 tooltip-bottom"
+                    tooltip={isSpeaking ? "Detener" : "Reproducir audio"}
                     onClick={handlePlayStop}
-                >
-                    {isSpeaking ? (
-                        <Square size={15} className="fill-current" />
-                    ) : (
-                        <Volume2Icon size={15} />
-                    )}
-                </button>
-                <button
-                    className="btn btn-ghost w-8 h-8 rounded p-0 tooltip tooltip-bottom disabled:opacity-50 disabled:pointer-events-none"
-                    data-tip="Recargar respuesta"
+                    leftIcon={
+                        isSpeaking ? (
+                            <Square size={15} className="fill-current" />
+                        ) : (
+                            <Volume2Icon size={15} />
+                        )
+                    }
+                />
+                <Button
+                    className="btn-ghost w-8 h-8 rounded p-0 tooltip-bottom"
+                    tooltip="Recargar respuesta"
                     disabled={disabled}
                     onClick={() => {
                         if (onRegenerateResponse)
@@ -213,13 +219,14 @@ window.speechSynthesis.cancel();
                                 prevUserMessage.content.text,
                             );
                     }}
-                >
-                    <RefreshCcwIcon size={15} />
-                </button>
+                    leftIcon={<RefreshCcwIcon size={15} />}
+                />
             </div>
             <PreviewDocumentModal
                 isOpen={previewModal.isOpen}
-                onClose={() => setPreviewModal({ isOpen: false, driveId: null, documentTitle: null })}
+                onClose={() =>
+                    setPreviewModal({ isOpen: false, driveId: null, documentTitle: null })
+                }
                 driveId={previewModal.driveId}
                 documentTitle={previewModal.documentTitle}
             />
