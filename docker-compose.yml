@@ -21,29 +21,18 @@ services:
             - MONGO_INITDB_ROOT_USERNAME=thanos
             - MONGO_INITDB_ROOT_PASSWORD=thanos
 
-    client:
-        build: ./client
-        container_name: client_thanos
+    app:
+        build: .
+        container_name: app_thanos
+        env_file: .env
         ports:
             - "3000:3000"
-        volumes:
-            - ./client:/app
-            - /app/node_modules
         environment:
-            - CHOKIDAR_USEPOLLING=true
-        depends_on:
-            - server
-
-    server:
-        build: ./server
-        container_name: server_thanos
-        ports:
-            - "3001:3001"
-        volumes:
-            - ./server:/app
-            - /app/node_modules
-        environment:
-            - CHOKIDAR_USEPOLLING=true
+            # Inside the compose network the services are reached by name
+            - NODE_ENV=production
+            - PORT=3000
+            - MONGODB_URI=mongodb://thanos:thanos@mongodb:27017
+            - CHROMA_URL=http://chroma:8000
         depends_on:
             - mongodb
             - chroma

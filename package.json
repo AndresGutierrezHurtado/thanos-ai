@@ -1,15 +1,20 @@
 {
     "name": "thanos_ai",
     "version": "1.0.0",
+    "private": true,
     "description": "AI assistant for Platform Software Documentation",
-    "main": "index.js",
+    "workspaces": [
+        "client",
+        "server"
+    ],
     "scripts": {
-        "download": "npm install --prefix server && npm install --prefix client",
-        "server": "clear && npm start --prefix server",
-        "client": "clear && npm run dev --prefix client",
-        "sync:documents": "clear && npm run sync:documents --prefix server",
-        "chroma:query": "clear && npm run chroma:query --prefix server",
-        "docker:up": "clear && npm run docker:up --prefix server",
-        "docker:down": "clear && npm run docker:down --prefix server"
+        "dev": "clear && npm run dev -w server",
+        "build": "npm run build -w client",
+        "start": "npm start -w server",
+        "lint": "npm run lint -w client",
+        "sync:documents": "clear && npm run sync:documents -w server",
+        "chroma:query": "clear && npm run chroma:query -w server",
+        "docker:up": "clear && docker compose up -d --build",
+        "docker:down": "clear && docker compose down"
     }
 }

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { DownloadIcon, SquareArrowOutUpRightIcon, XIcon } from "lucide-react";
 import { toast } from "react-toastify";
+import { API_URL } from "@/lib/api";
 
 export default function PreviewDocumentModal({ isOpen, onClose, driveId, documentTitle }) {
     const modalRef = React.useRef(null);
@@ -22,7 +23,7 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
         if (!driveId) return;
         setDownloading(true);
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/drive/files/${driveId}/download`;
+            const url = `${API_URL}/drive/files/${driveId}/download`;
             const res = await fetch(url, { credentials: "include" });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));

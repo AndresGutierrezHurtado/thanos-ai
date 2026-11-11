@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
+import { API_URL } from "@/lib/api";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -51,7 +52,7 @@ export default function LoginPage() {
         setPendingVerifyEmail(null);
         try {
             const endpoint = tab === "login" ? "/auth/login" : "/auth/register";
-            const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+            const url = `${API_URL}${endpoint}`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -102,7 +103,7 @@ export default function LoginPage() {
         if (!pendingVerifyEmail) return;
         setOtpLoading(true);
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/verify-email`;
+            const url = `${API_URL}/auth/verify-email`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -139,7 +140,7 @@ export default function LoginPage() {
         }
         setForgotLoading(true);
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`;
+            const url = `${API_URL}/auth/forgot-password`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -179,7 +180,7 @@ export default function LoginPage() {
         }
         setResetLoading(true);
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`;
+            const url = `${API_URL}/auth/reset-password`;
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Accept: "application/json" },

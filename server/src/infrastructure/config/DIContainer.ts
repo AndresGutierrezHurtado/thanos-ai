@@ -26,7 +26,9 @@ import IUserRepository from "../../application/ports/repositories/IUserRepositor
 import IPasswordHasher from "../../application/ports/services/IPasswordHasher";
 import ITokenProvider from "../../application/ports/services/ITokenProvider";
 import IEmailSender from "../../application/ports/services/IEmailSender";
-import ILlmProvider from "../../application/ports/services/ILlmProvider";
+import IChatProvider from "../../application/ports/services/IChatProvider";
+import ISpeechProvider from "../../application/ports/services/ISpeechProvider";
+import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
 import IDriveProvider from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
 
@@ -47,7 +49,7 @@ import ChromaVectorStore from "../ai/ChromaVectorStore";
 import ProcessorFactory from "../services/ProcessorFactory";
 import HierarchicalChunker from "../services/HierarchicalChunker";
 import LoggerAdapter from "../services/LoggerAdapter";
-import GptLlmProvider from "../ai/GptLlmProvider";
+import AiProviderFactory from "../ai/AiProviderFactory";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
 import MessageService from "../../application/services/MessageService";
 
@@ -58,7 +60,6 @@ export default class DIContainer {
 
     static async getInstance(): Promise<DIContainer> {
         if (!this.instance) {
-            process.loadEnvFile();
             const db = await Database.getInstance().getDb();
             this.instance = new DIContainer(db);
         }
@@ -133,7 +134,7 @@ export default class DIContainer {
         return new SpeechUseCase(
             this.getChatRepository(),
             this.getMessageRepository(),
-            this.getLlmProvider(),
+            this.getSpeechProvider(),
             this.getMessageService(),
             this.getLogger(),
         );
@@ -182,7 +183,8 @@ export default class DIContainer {
     // Application Services
     private getMessageService(): MessageService {
         return new MessageService(
-            this.getLlmProvider(),
+            this.getChatProvider(),
+            this.getVectorStore(),
             this.getMessageRepository(),
             this.getSourceRepository(),
         );
@@ -193,18 +195,21 @@ export default class DIContainer {
     }
 
     // Infrastructure Services
-    private getTransactionRepository(): ITransactionRepository {
-        return new TransactionRepository(Database.getInstance(), this.getVectorStore());
+    private getTransactionRepository(vectorStore: ChromaVectorStore): ITransactionRepository {
+        return new TransactionRepository(Database.getInstance(), vectorStore);
     }
 
     private getProcessFileService(): ProcessFileService {
+        // The transaction must track the same vector store instance that writes,
+        // otherwise rollback never sees the ids that were added.
+        const vectorStore = this.getVectorStore();
         return new ProcessFileService(
             this.getDriveProvider(),
             this.getDocumentRepository(),
             this.getProcessorFactory(),
             this.getChunker(),
-            this.getVectorStore(),
-            this.getTransactionRepository(),
+            vectorStore,
+            this.getTransactionRepository(vectorStore),
             this.getLogger(),
         );
     }
@@ -218,11 +223,19 @@ export default class DIContainer {
     }
 
     private getVectorStore(): ChromaVectorStore {
-        return new ChromaVectorStore(this.getDocumentRepository());
+        return new ChromaVectorStore(this.getDocumentRepository(), this.getEmbeddingProvider());
     }
 
-    private getLlmProvider(): ILlmProvider {
-        return new GptLlmProvider(this.getVectorStore());
+    private getChatProvider(): IChatProvider {
+        return AiProviderFactory.createChatProvider();
+    }
+
+    private getEmbeddingProvider(): IEmbeddingProvider {
+        return AiProviderFactory.createEmbeddingProvider();
+    }
+
+    private getSpeechProvider(): ISpeechProvider {
+        return AiProviderFactory.createSpeechProvider();
     }
 
     public getDriveProvider(): IDriveProvider {

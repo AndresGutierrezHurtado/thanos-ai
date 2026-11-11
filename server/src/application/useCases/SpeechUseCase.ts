@@ -2,7 +2,7 @@
 import IChatRepository from "../ports/repositories/IChatRepository";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
-import ILlmProvider from "../ports/services/ILlmProvider";
+import ISpeechProvider from "../ports/services/ISpeechProvider";
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
 // Domain
@@ -16,7 +16,7 @@ export default class SpeechUseCase {
     constructor(
         private readonly chatRepository: IChatRepository,
         private readonly messageRepository: IMessageRepository,
-        private readonly llmProvider: ILlmProvider,
+        private readonly speechProvider: ISpeechProvider,
         private readonly messageService: MessageService,
         private readonly logger: ILogger,
     ) {}
@@ -29,7 +29,7 @@ export default class SpeechUseCase {
 
         // CONVERT THE AUDIO TO TEXT
         this.logger.log(SyslogSeverity.DEBUG, "Speech to text", { audio });
-        const text = await this.llmProvider.speechToText(audio);
+        const text = await this.speechProvider.speechToText(audio);
         await this.messageRepository.create(
             new Message(
                 null,
@@ -55,10 +55,10 @@ export default class SpeechUseCase {
 
         // CONVERT THE TEXT TO SPEECH AND RETURN IT
         this.logger.log(SyslogSeverity.DEBUG, "Text to speech", { responseText });
-        return await this.llmProvider.textToSpeech(responseText);
+        return await this.speechProvider.textToSpeech(responseText);
     }
 
     public async speechToText(audio: Buffer): Promise<string> {
-        return await this.llmProvider.speechToText(audio);
+        return await this.speechProvider.speechToText(audio);
     }
 }

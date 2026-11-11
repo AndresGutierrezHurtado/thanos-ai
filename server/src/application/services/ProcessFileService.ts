@@ -19,7 +19,7 @@ export default class ProcessFileService {
     ) {}
 
     public async execute(file: DriveFile): Promise<Boolean> {
-        await this.transactionRepository.begin();
+        let inTransaction = false;
 
         try {
             // CHECK IF FILE ALREADY EXISTS
@@ -43,19 +43,11 @@ export default class ProcessFileService {
                 return false;
             }
 
+            await this.transactionRepository.begin();
+            inTransaction = true;
+
             // DELETING EXISTING DOCUMENTS FROM THE VECTOR STORE
             await this.vectorStore.deleteByDriveId("iso-docs", file.id);
-
-            // SAVING THE DOCUMENT TO THE DATABASE
-            await this.documentRepository.save({
-                driveId: metadata.driveId,
-                title: metadata.name,
-                mimeType: file.mimeType,
-                version: metadata.documentVersion,
-                checksum: checksum as string,
-                normCode: metadata.code ?? null,
-                path: metadata.path,
-            });
 
             // ADDING THE DOCUMENTS TO THE VECTOR STORE
             await this.vectorStore.addDocuments(
@@ -67,12 +59,24 @@ export default class ProcessFileService {
                 })),
             );
 
+            // SAVING THE DOCUMENT (AND ITS CHECKSUM) LAST: if indexing failed, the old
+            // checksum is kept and the next sync retries this file instead of skipping it
+            await this.documentRepository.save({
+                driveId: metadata.driveId,
+                title: metadata.name,
+                mimeType: file.mimeType,
+                version: metadata.documentVersion,
+                checksum: checksum as string,
+                normCode: metadata.code ?? null,
+                path: metadata.path,
+            });
+
             // COMMITTING THE TRANSACTION
             await this.transactionRepository.commit();
 
             return true;
         } catch (err: unknown) {
-            await this.transactionRepository.rollback();
+            if (inTransaction) await this.transactionRepository.rollback();
             this.logger.log(
                 SyslogSeverity.ERROR,
                 `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}): ${err instanceof Error ? err.message : "Unknown error"}`,

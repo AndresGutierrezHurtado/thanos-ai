@@ -33,6 +33,22 @@ export default function errorHandlerMiddleware(
         },
     });
 
+    // Streaming (SSE) responses already sent their headers: report the error
+    // as a final event and close, instead of trying to send a JSON response.
+    if (res.headersSent) {
+        if (!res.writableEnded) {
+            const contentType = String(res.getHeader("Content-Type") ?? "");
+            if (contentType.startsWith("text/event-stream")) {
+                res.write(`data: ${JSON.stringify({
+                    success: false,
+                    message: error.message || "An error occurred",
+                })}\n\n`);
+            }
+            res.end();
+        }
+        return;
+    }
+
     // Validation error or other known errors
     if (error instanceof Error) {
         return res.status(500).json({

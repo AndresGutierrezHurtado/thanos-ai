@@ -1,11 +1,12 @@
 import { getToken } from "@/lib/authStorage";
+import { API_URL } from "@/lib/api";
 
 /**
  * Realiza una petición con streaming SSE.
  * Incluye Authorization Bearer si hay token.
  */
 export async function streamRequest(method, endpoint, body, { onChunk, onFinal }) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_URL}${endpoint}`;
     const payload = { ...body, stream: true };
     const headers = {
         "Content-Type": "application/json",
@@ -41,16 +42,20 @@ export async function streamRequest(method, endpoint, body, { onChunk, onFinal }
 
         for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
+            let json;
             try {
-                const json = JSON.parse(line.slice(6));
-                if (json.text !== undefined && onChunk) {
-                    onChunk(json.text);
-                }
-                if (json.success === true && json.data !== undefined && onFinal) {
-                    onFinal(json.data);
-                }
+                json = JSON.parse(line.slice(6));
             } catch (_) {
-                // ignorar líneas no JSON
+                continue; // ignorar líneas no JSON
+            }
+            if (json.success === false) {
+                throw new Error(json.message || "Error en la petición");
+            }
+            if (json.text !== undefined && onChunk) {
+                onChunk(json.text);
+            }
+            if (json.success === true && json.data !== undefined && onFinal) {
+                onFinal(json.data);
             }
         }
     }

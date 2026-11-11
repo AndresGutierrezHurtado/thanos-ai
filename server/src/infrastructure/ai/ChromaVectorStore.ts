@@ -1,5 +1,4 @@
-import { ChromaClient } from "chromadb";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { ChromaClient, Collection } from "chromadb";
 import BusinessTermNormalizer from "./BusinessTermNormalizer";
 
 // DOMAIN
@@ -9,44 +8,61 @@ import Document from "../../domain/entities/document";
 // PORTS
 import IVectorStore, { VectorDocument } from "../../application/ports/services/IVectorStore";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
+import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
 import LoggerAdapter from "../services/LoggerAdapter";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
+// Collections created before the model was recorded were always indexed with this one.
+const LEGACY_EMBEDDING_MODEL = "openai:text-embedding-3-small";
+
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
-    private readonly documentRepository: IDocumentRepository;
     private inTransaction = false;
     private readonly pendingIdsByCollection = new Map<string, string[]>();
 
-    constructor(documentRepository: IDocumentRepository) {
+    constructor(
+        private readonly documentRepository: IDocumentRepository,
+        private readonly embeddingProvider: IEmbeddingProvider,
+    ) {
         const url = process.env.CHROMA_URL ?? "http://localhost:8000";
         const parsed = new URL(url);
         this.client = new ChromaClient({
             host: parsed.hostname,
             port: parseInt(parsed.port || "8000", 10),
         });
-
-        // Dependencies
-        this.documentRepository = documentRepository;
     }
 
-    public async embed(texts: string[]): Promise<number[][]> {
-        const embeddingModel = new OpenAIEmbeddings({
-            model: "text-embedding-3-small",
-            apiKey: process.env.OPENAI_API_KEY,
+    /**
+     * Gets (or creates) a collection tagged with the embedding model. Vectors from
+     * different models are not comparable, so using a collection indexed with another
+     * model fails loudly instead of returning meaningless search results.
+     */
+    private async getCollection(name: string): Promise<Collection> {
+        const modelId = this.embeddingProvider.modelId;
+        const col = await this.client.getOrCreateCollection({
+            name,
+            metadata: { embeddingModel: modelId },
         });
-        return embeddingModel.embedDocuments(texts);
+        const indexedWith = (col.metadata?.embeddingModel as string | undefined) ?? LEGACY_EMBEDDING_MODEL;
+        if (indexedWith !== modelId) {
+            throw new Error(
+                `Chroma collection "${name}" was indexed with "${indexedWith}" but the configured ` +
+                `embedding model is "${modelId}". Delete the collection and re-run sync:documents, ` +
+                `or set AI_EMBEDDING_PROVIDER/AI_EMBEDDING_MODEL back.`,
+            );
+        }
+        return col;
     }
 
     async addDocuments(collection: string, documents: VectorDocument[]): Promise<void> {
         if (documents.length === 0) return;
 
         // GETTING THE COLLECTION
-        const col = await this.client.getOrCreateCollection({ name: collection });
+        const col = await this.getCollection(collection);
 
         // GETTING THE CONTENTS, EMBEDDINGS AND METADATAS
         const contents = documents.map((d) => d.content);
-        const embeddings = await this.embed(contents);
+        const embeddings = await this.embeddingProvider.embedDocuments(contents);
         const metadatas = documents.map((d) => {
             const m: Record<string, string | number | boolean> = {};
             for (const [k, v] of Object.entries(d.metadata)) {
@@ -73,9 +89,7 @@ export default class ChromaVectorStore implements IVectorStore {
 
     async deleteByDriveId(collection: string, driveId: string): Promise<void> {
         try {
-            const col = await this.client.getOrCreateCollection({
-                name: collection,
-            });
+            const col = await this.getCollection(collection);
             await col.delete({ where: { driveId: { $eq: driveId } } });
         } catch {
             /* collection may not exist */
@@ -85,8 +99,8 @@ export default class ChromaVectorStore implements IVectorStore {
     async query(collection: string, queryText: string, nCandidates = 20): Promise<Source[]> {
         const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
 
-        const col = await this.client.getOrCreateCollection({ name: collection });
-        const [embedding] = await this.embed([normalizedText]);
+        const col = await this.getCollection(collection);
+        const embedding = await this.embeddingProvider.embedQuery(normalizedText);
 
         const result = await col.query({
             queryEmbeddings: [embedding],
@@ -143,7 +157,7 @@ export default class ChromaVectorStore implements IVectorStore {
         for (const [collectionName, ids] of this.pendingIdsByCollection) {
             if (ids.length === 0) continue;
             try {
-                const col = await this.client.getOrCreateCollection({ name: collectionName });
+                const col = await this.getCollection(collectionName);
                 await col.delete({ ids });
             } catch {
                 /* best-effort rollback */

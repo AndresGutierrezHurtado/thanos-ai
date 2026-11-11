@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { getToken } from "@/lib/authStorage";
+import { API_URL } from "@/lib/api";
 
 async function fetchApi(method, endpoint, body) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_URL}${endpoint}`;
     const headers = {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -46,7 +47,7 @@ export async function useApi(method, endpoint, body, notify = false) {
 }
 
 export async function useApiStream(method, endpoint, body) {
-    const url = `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`;
+    const url = `${API_URL}${endpoint}`;
 
     const response = await fetch(url, {
         method,

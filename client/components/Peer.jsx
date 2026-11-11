@@ -5,7 +5,6 @@ import { io } from "socket.io-client";
 
 const PeerContext = createContext(null);
 
-const socketUrl = process.env.NEXT_PUBLIC_WS_URL;
 
 export function usePeer() {
     const ctx = useContext(PeerContext);
@@ -20,7 +19,7 @@ export function PeerProvider({ children }) {
 
     // Conectar socket
     useEffect(() => {
-        const s = io(socketUrl, {
+        const s = io({
             autoConnect: true,
             transports: ["websocket", "polling"],
             timeout: 3000,
