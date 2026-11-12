@@ -48,16 +48,19 @@ services:
         container_name: app_thanos
         restart: unless-stopped
         init: true
-        env_file: .env
         ports:
             - "${PORT:-3000}:3000"
         environment:
-            # Overrides for values in .env that differ inside the compose network
+            # Overrides for values in .env that differ inside the compose network.
+            # Real env vars take precedence over the mounted .env (node --env-file).
             NODE_ENV: production
             PORT: 3000
             MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017
             CHROMA_URL: http://chroma:8000
         volumes:
+            # Single .env, read by the app and the CLI scripts (tsx --env-file=../.env).
+            # Mounted, not baked into the image; Node parses quotes/comments correctly.
+            - ./.env:/app/.env:ro
             - media-data:/app/server/public/media
             - logs-data:/app/server/logs
         depends_on:
