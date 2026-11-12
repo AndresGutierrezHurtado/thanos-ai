@@ -1,6 +1,7 @@
-# Production stack: `docker compose up -d --build` (or `npm run docker:up`)
+# Production stack: `docker-compose up -d --build`
 # Everything is configured from the single root .env file.
-name: thanos-ai
+# Format 2.3 keeps it compatible with old docker-compose (>= 1.16) and with Compose v2.
+version: "2.3"
 
 services:
     mongodb:
@@ -14,8 +15,8 @@ services:
             - mongodb-data:/data/db
         environment:
             # Only applied the first time the volume is initialised
-            MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?MONGO_USERNAME is required in .env}
-            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required in .env}
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
         healthcheck:
             test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
             interval: 10s
