@@ -1,4 +1,4 @@
-FROM node:24
+FROM node:24-slim
 
 WORKDIR /app
 
@@ -10,9 +10,17 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build
+# Build the Next.js client, then drop build-only dependencies
+RUN npm run build \
+    && npm prune --omit=dev \
+    && npm cache clean --force
+
+# Writable dirs (mounted as volumes) owned by the unprivileged user
+RUN mkdir -p server/public/media server/logs \
+    && chown -R node:node server/public server/logs client/.next
 
 ENV NODE_ENV=production
+USER node
 EXPOSE 3000
 
 CMD ["npm", "start"]
