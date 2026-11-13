@@ -481,3 +481,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/dotenv,node,jetbrains,phpstorm,intellij,windows,linux,macos
+
+# Documents uploaded from the app
+uploads/

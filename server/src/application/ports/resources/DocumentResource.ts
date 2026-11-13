@@ -1,4 +1,4 @@
-import Document from "../../../domain/entities/document";
+import Document, { DocumentSourceName } from "../../../domain/entities/document";
 
 export interface DocumentResource {
     id: string;
@@ -9,6 +9,8 @@ export interface DocumentResource {
     version: string;
     checksum: string;
     processedAt: Date;
+    path: string | null;
+    source: DocumentSourceName;
 }
 
 export function toDocumentResource(document: Document): DocumentResource {
@@ -21,6 +23,8 @@ export function toDocumentResource(document: Document): DocumentResource {
         version: document.getVersion(),
         checksum: document.getChecksum(),
         processedAt: document.getProcessedAt().getValue(),
+        path: document.getPath() ?? null,
+        source: document.getSource(),
     };
 }
 

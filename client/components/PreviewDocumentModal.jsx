@@ -3,11 +3,17 @@
 import React, { useEffect, useState } from "react";
 import { DownloadIcon, SquareArrowOutUpRightIcon, XIcon } from "lucide-react";
 import { toast } from "react-toastify";
-import { API_URL } from "@/lib/api";
+import { downloadDocument, fetchDocumentFile } from "@/lib/documents";
 
-export default function PreviewDocumentModal({ isOpen, onClose, driveId, documentTitle }) {
+export default function PreviewDocumentModal({ isOpen, onClose, driveId, documentTitle, source, mimeType }) {
     const modalRef = React.useRef(null);
     const [downloading, setDownloading] = useState(false);
+    const [localPreviewUrl, setLocalPreviewUrl] = useState(null);
+
+    // Drive files are previewed by Google. Uploaded files have no public URL: PDFs are
+    // fetched with the session token and shown from memory; other types are download-only
+    const isLocal = source === "local";
+    const canPreviewLocal = isLocal && mimeType === "application/pdf";
 
     useEffect(() => {
         if (modalRef.current) {
@@ -19,29 +25,31 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen || !driveId || !canPreviewLocal) return;
+
+        let url = null;
+        let cancelled = false;
+        fetchDocumentFile(driveId)
+            .then(({ blob }) => {
+                if (cancelled) return;
+                url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+                setLocalPreviewUrl(url);
+            })
+            .catch((e) => toast.error(e.message || "No se pudo cargar la vista previa"));
+
+        return () => {
+            cancelled = true;
+            if (url) URL.revokeObjectURL(url);
+            setLocalPreviewUrl(null);
+        };
+    }, [isOpen, driveId, canPreviewLocal]);
+
     const handleDownload = async () => {
         if (!driveId) return;
         setDownloading(true);
         try {
-            const url = `${API_URL}/drive/files/${driveId}/download`;
-            const res = await fetch(url, { credentials: "include" });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.message || "Error al descargar");
-            }
-            const blob = await res.blob();
-            const disposition = res.headers.get("Content-Disposition");
-            let filename = documentTitle || "documento";
-            if (disposition) {
-                const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i)
-                    || disposition.match(/filename=["']?([^"';]+)["']?/i);
-                if (match) filename = decodeURIComponent(match[1].trim());
-            }
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(a.href);
+            await downloadDocument(driveId, documentTitle || "documento");
             toast.success("Descarga iniciada");
         } catch (e) {
             toast.error(e.message || "No se pudo descargar el documento");
@@ -52,7 +60,7 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
 
     if (!driveId) return null;
 
-    const previewUrl = `https://drive.google.com/file/d/${driveId}/preview`;
+    const previewUrl = isLocal ? localPreviewUrl : `https://drive.google.com/file/d/${driveId}/preview`;
     const viewUrl = `https://drive.google.com/file/d/${driveId}/view`;
 
     return (
@@ -64,22 +72,27 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
                     </h3>
                     <div className="flex items-center gap-2">
                         <button
-                            className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0 tooltip tooltip-left disabled:opacity-50"
+                            className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0 disabled:opacity-50"
+                            data-tip-placement="left"
                             data-tip="Descargar documento"
                             onClick={handleDownload}
                             disabled={downloading}
                         >
                             <DownloadIcon size={20} className={downloading ? "animate-pulse" : ""} />
                         </button>
+                        {!isLocal && (
+                            <button
+                                className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0"
+                                data-tip-placement="left"
+                                data-tip="Ver documento en Google Drive"
+                                onClick={() => window.open(viewUrl, "_blank")}
+                            >
+                                <SquareArrowOutUpRightIcon size={20} />
+                            </button>
+                        )}
                         <button
-                            className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0 tooltip tooltip-left"
-                            data-tip="Ver documento en Google Drive"
-                            onClick={() => window.open(viewUrl, "_blank")}
-                        >
-                            <SquareArrowOutUpRightIcon size={20} />
-                        </button>
-                        <button
-                            className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0 tooltip tooltip-left"
+                            className="btn btn-sm rounded-lg border-base-300 w-10 h-10 p-0"
+                            data-tip-placement="left"
                             data-tip="Cerrar"
                             onClick={onClose}
                         >
@@ -88,12 +101,20 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
                     </div>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                    <iframe
-                        src={previewUrl}
-                        className="w-full h-full border-0"
-                        title="Vista previa del documento"
-                        allow="autoplay"
-                    />
+                    {previewUrl ? (
+                        <iframe
+                            src={previewUrl}
+                            className="w-full h-full border-0"
+                            title="Vista previa del documento"
+                            allow="autoplay"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm opacity-70 p-4 text-center">
+                            {canPreviewLocal
+                                ? "Cargando vista previa…"
+                                : "Vista previa no disponible para este tipo de archivo. Puedes descargarlo."}
+                        </div>
+                    )}
                 </div>
             </div>
             <form method="dialog" className="modal-backdrop">

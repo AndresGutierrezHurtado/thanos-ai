@@ -314,7 +314,8 @@ export default function CallPage() {
                         type="button"
                         onClick={cancelRecording}
                         disabled={isLoading}
-                        className="btn btn-primary p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom"
+                        className="btn btn-primary p-0 w-12 h-12 rounded-lg"
+                        data-tip-placement="bottom"
                         data-tip="Cancelar mensaje"
                     >
                         <XIcon size={25} />
@@ -324,9 +325,10 @@ export default function CallPage() {
                     type="button"
                     onClick={toggleRecording}
                     disabled={isLoading}
-                    className={`btn p-0 w-12 h-12 rounded-lg tooltip tooltip-bottom ${
+                    className={`btn p-0 w-12 h-12 rounded-lg ${
                         isRecording ? "btn-info animate-pulse" : "btn-primary"
                     } ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                    data-tip-placement="bottom"
                     data-tip={isRecording ? "Enviar mensaje" : "Grabar voz"}
                 >
                     {isRecording ? <MicOffIcon size={25} /> : <MicIcon size={25} />}
@@ -338,8 +340,9 @@ export default function CallPage() {
                             router.push(`/chat/${chatId}`);
                         }
                     }}
-                    className="btn btn-error bg-error/20 text-error w-12 h-12 rounded-lg p-0 tooltip tooltip-bottom"
+                    className="btn btn-error bg-error/20 text-error w-12 h-12 rounded-lg p-0"
                     disabled={isLoading}
+                    data-tip-placement="bottom"
                     data-tip={isLoading ? "Espera a que se termine la llamada" : "Cancelar llamada"}
                 >
                     {/* hang off icon */}

@@ -1,8 +1,9 @@
+import path from "path";
 import { Db } from "mongodb";
 
 // Presentation
 import MessageController from "../../presentation/http/controllers/messageController";
-import DriveController from "../../presentation/http/controllers/driveController";
+import DocumentController from "../../presentation/http/controllers/documentController";
 import ChatController from "../../presentation/http/controllers/chatController";
 import HealthController from "../../presentation/http/controllers/healthController";
 import AuthController from "../../presentation/http/controllers/authController";
@@ -21,7 +22,6 @@ import IMessageRepository from "../../application/ports/repositories/IMessageRep
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import ISourceRepository from "../../application/ports/repositories/ISourceRepository";
 import IMediaContentRepository from "../../application/ports/repositories/IMediaContentRepository";
-import ITransactionRepository from "../../application/ports/repositories/ITransactionRepository";
 import IUserRepository from "../../application/ports/repositories/IUserRepository";
 import IPasswordHasher from "../../application/ports/services/IPasswordHasher";
 import ITokenProvider from "../../application/ports/services/ITokenProvider";
@@ -29,7 +29,7 @@ import IEmailSender from "../../application/ports/services/IEmailSender";
 import IChatProvider from "../../application/ports/services/IChatProvider";
 import ISpeechProvider from "../../application/ports/services/ISpeechProvider";
 import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
-import IDriveProvider from "../../application/ports/services/IDriveProvider";
+import IDriveProvider, { IWritableDriveProvider } from "../../application/ports/services/IDriveProvider";
 import ILogger from "../../application/ports/services/ILogger";
 
 // Infrastructure
@@ -37,7 +37,6 @@ import ChatRepository from "../persistence/repositories/ChatRepository";
 import MessageRepository from "../persistence/repositories/MessageRepository";
 import DocumentRepository from "../persistence/repositories/DocumentRepository";
 import SourceRepository from "../persistence/repositories/SourceRepository";
-import TransactionRepository from "../persistence/repositories/TransactionRepository";
 import MediaContentRepository from "../persistence/repositories/MediaContentRepository";
 import UserRepository from "../persistence/repositories/UserRepository";
 import BcryptPasswordHasher from "../services/BcryptPasswordHasher";
@@ -51,10 +50,13 @@ import HierarchicalChunker from "../services/HierarchicalChunker";
 import LoggerAdapter from "../services/LoggerAdapter";
 import AiProviderFactory from "../ai/AiProviderFactory";
 import GoogleDriveProvider from "../drive/googleDriveProvider";
+import LocalFileSystemProvider from "../drive/LocalFileSystemProvider";
 import MessageService from "../../application/services/MessageService";
 
 export default class DIContainer {
     private static instance: DIContainer;
+    // Holds the in-process sync state: everyone must share the same instance
+    private informationUseCase: InformationUseCase | null = null;
 
     private constructor(private readonly db: Db) {}
 
@@ -75,8 +77,8 @@ export default class DIContainer {
         return new ChatController(this.getChatUseCase(), this.getMessageUseCase());
     }
 
-    public getDriveController(): DriveController {
-        return new DriveController(this.getInformationUseCase());
+    public getDocumentController(): DocumentController {
+        return new DocumentController(this.getInformationUseCase());
     }
 
     public getHealthController(): HealthController {
@@ -122,12 +124,15 @@ export default class DIContainer {
     }
 
     public getInformationUseCase(): InformationUseCase {
-        return new InformationUseCase(
-            this.getDriveProvider(),
+        this.informationUseCase ??= new InformationUseCase(
+            this.getDriveSource(),
+            this.getLocalSource(),
+            this.getDocumentRepository(),
             this.getVectorStore(),
             this.getProcessFileService(),
             this.getLogger(),
         );
+        return this.informationUseCase;
     }
 
     public getSpeechUseCase(): SpeechUseCase {
@@ -195,22 +200,12 @@ export default class DIContainer {
     }
 
     // Infrastructure Services
-    private getTransactionRepository(vectorStore: ChromaVectorStore): ITransactionRepository {
-        return new TransactionRepository(Database.getInstance(), vectorStore);
-    }
-
     private getProcessFileService(): ProcessFileService {
-        // The transaction must track the same vector store instance that writes,
-        // otherwise rollback never sees the ids that were added.
-        const vectorStore = this.getVectorStore();
         return new ProcessFileService(
-            this.getDriveProvider(),
             this.getDocumentRepository(),
             this.getProcessorFactory(),
             this.getChunker(),
-            vectorStore,
-            this.getTransactionRepository(vectorStore),
-            this.getLogger(),
+            this.getVectorStore(),
         );
     }
 
@@ -238,7 +233,14 @@ export default class DIContainer {
         return AiProviderFactory.createSpeechProvider();
     }
 
-    public getDriveProvider(): IDriveProvider {
+    /** Google Drive is optional: without its credentials only uploaded files are used. */
+    private getDriveSource(): IDriveProvider | null {
+        if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) return null;
         return new GoogleDriveProvider(this.getLogger());
+    }
+
+    /** Files uploaded from the app (a Docker volume in production). */
+    private getLocalSource(): IWritableDriveProvider {
+        return new LocalFileSystemProvider(path.join(process.cwd(), "uploads"));
     }
 }

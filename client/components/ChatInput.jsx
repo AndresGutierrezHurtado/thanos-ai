@@ -137,7 +137,8 @@ export default function ChatInput({
                 <article className="w-30 aspect-square bg-base-300 border border-base-content/20 rounded-lg p-2 text-sm group relative flex flex-col">
                     <Button
                         type="button"
-                        className="bg-base-300 w-7 h-7 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 tooltip-bottom"
+                        className="bg-base-300 w-7 h-7 rounded-lg p-0 absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        tooltipPlacement="bottom"
                         tooltip="Eliminar archivo"
                         onClick={() => onChangeFile({ target: { files: [] } })}
                     >

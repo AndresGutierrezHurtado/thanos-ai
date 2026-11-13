@@ -16,7 +16,7 @@ import healthRoutes from "./presentation/http/routes/healthRoutes";
 import authRoutes from "./presentation/http/routes/authRoutes";
 import messageRoutes from "./presentation/http/routes/messageRoutes";
 import chatRoutes from "./presentation/http/routes/chatRoutes";
-import driveRoutes from "./presentation/http/routes/driveRoutes";
+import documentRoutes from "./presentation/http/routes/documentRoutes";
 
 // Next.js frontend (client workspace) is served by this same process and port
 const dev = process.env.NODE_ENV !== "production";
@@ -32,6 +32,9 @@ const app = express();
 // REST API: everything Express-specific stays scoped to /api/v1 so Next.js
 // receives its requests untouched (raw body, its own 404 pages, etc.)
 const api = express.Router();
+// Document uploads arrive as batches of base64 files (up to 25 MB each): parsed here first,
+// the general parser below then skips the already-read body
+api.use("/documents/upload", bodyParser.json({ limit: "40mb" }));
 api.use(bodyParser.json({ limit: "10mb" }));
 api.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 api.use(cors({
@@ -44,7 +47,7 @@ api.use(healthRoutes);
 api.use(authRoutes);
 api.use(chatRoutes);
 api.use(messageRoutes);
-api.use(driveRoutes);
+api.use(documentRoutes);
 api.use(errorHandlerMiddleware);
 api.use(notFoundMiddleware);
 app.use("/api/v1", api);

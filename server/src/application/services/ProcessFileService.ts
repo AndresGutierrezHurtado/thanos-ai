@@ -1,57 +1,58 @@
-import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 import IDriveProvider, { DriveFile } from "../ports/services/IDriveProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IChunker, { ChunkData, ChunkMetadata } from "../ports/services/IChunker";
 import IVectorStore from "../ports/services/IVectorStore";
-import ITransactionRepository from "../ports/repositories/ITransactionRepository";
 import resolveFileType from "../../domain/services/resolveFileType";
+import { DocumentSourceName } from "../../domain/entities/document";
+
+export const DOCUMENTS_COLLECTION = "iso-docs";
+
+/** "processed": (re)indexed now. "unchanged": already indexed with the same checksum. */
+export type ProcessFileResult = "processed" | "unchanged";
 
 export default class ProcessFileService {
     constructor(
-        private readonly driveProvider: IDriveProvider,
         private readonly documentRepository: IDocumentRepository,
         private readonly processorFactory: ProcessorFactory,
         private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore,
-        private readonly transactionRepository: ITransactionRepository,
-        private readonly logger: ILogger,
     ) {}
 
-    public async execute(file: DriveFile): Promise<Boolean> {
-        let inTransaction = false;
+    /** Indexes one file of a source. Throws when the file cannot be indexed. */
+    public async execute(
+        file: DriveFile,
+        source: DocumentSourceName,
+        provider: IDriveProvider,
+    ): Promise<ProcessFileResult> {
+        // CHECK IF FILE ALREADY EXISTS
+        const exists = await this.documentRepository.findByDriveId(file.id);
+        const checksum = file.md5Checksum ?? file.modifiedTime;
+
+        if (exists && exists.getChecksum() === checksum) {
+            return "unchanged";
+        }
+
+        // INFORMATION EXTRACTION FROM FILE
+        const buffer = await provider.downloadFile(file.id, file.mimeType);
+        const processor = this.processorFactory.get(file.mimeType);
+        const extracted = await processor.extract(buffer, file.mimeType);
+        const metadata: ChunkMetadata = this.extractMetadata(file, extracted.text);
+
+        // CHUNKING THE DOCUMENT
+        const chunks = this.chunker.createChunks(extracted, metadata);
+
+        if (chunks.length === 0) {
+            throw new Error("No se pudo extraer texto del archivo");
+        }
+
+        // DELETING EXISTING CHUNKS FROM THE VECTOR STORE
+        await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
         try {
-            // CHECK IF FILE ALREADY EXISTS
-            const exists = await this.documentRepository.findByDriveId(file.id);
-            const checksum = file.md5Checksum ?? file.modifiedTime;
-
-            if (exists && exists.getChecksum() === (checksum as string)) {
-                return false;
-            }
-
-            // INFORMATION EXTRACTION FROM FILE
-            const buffer = await this.driveProvider.downloadFile(file.id, file.mimeType);
-            const processor = this.processorFactory.get(file.mimeType);
-            const extracted = await processor.extract(buffer, file.mimeType);
-            const metadata: ChunkMetadata = this.extractMetadata(file, extracted.text);
-
-            // CHUNKING THE DOCUMENT
-            const chunks = this.chunker.createChunks(extracted, metadata);
-
-            if (chunks.length === 0) {
-                return false;
-            }
-
-            await this.transactionRepository.begin();
-            inTransaction = true;
-
-            // DELETING EXISTING DOCUMENTS FROM THE VECTOR STORE
-            await this.vectorStore.deleteByDriveId("iso-docs", file.id);
-
-            // ADDING THE DOCUMENTS TO THE VECTOR STORE
+            // ADDING THE CHUNKS TO THE VECTOR STORE
             await this.vectorStore.addDocuments(
-                "iso-docs",
+                DOCUMENTS_COLLECTION,
                 chunks.map((chunk: ChunkData) => ({
                     id: chunk.id,
                     content: chunk.content,
@@ -69,21 +70,15 @@ export default class ProcessFileService {
                 checksum: checksum as string,
                 normCode: metadata.code ?? null,
                 path: metadata.path,
+                source,
             });
-
-            // COMMITTING THE TRANSACTION
-            await this.transactionRepository.commit();
-
-            return true;
         } catch (err: unknown) {
-            if (inTransaction) await this.transactionRepository.rollback();
-            this.logger.log(
-                SyslogSeverity.ERROR,
-                `[InformationUseCase:processFile] Error processing ${file.name} (${file.id}): ${err instanceof Error ? err.message : "Unknown error"}`,
-                { error: err as Error },
-            );
-            return false;
+            // Only this file's chunks: other files are indexed concurrently
+            await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id).catch(() => {});
+            throw err;
         }
+
+        return "processed";
     }
 
     private extractMetadata(file: DriveFile, content: string): ChunkMetadata {

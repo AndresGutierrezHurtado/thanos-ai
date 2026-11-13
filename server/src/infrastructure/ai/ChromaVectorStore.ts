@@ -17,8 +17,6 @@ const LEGACY_EMBEDDING_MODEL = "openai:text-embedding-3-small";
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
-    private inTransaction = false;
-    private readonly pendingIdsByCollection = new Map<string, string[]>();
 
     constructor(
         private readonly documentRepository: IDocumentRepository,
@@ -81,19 +79,13 @@ export default class ChromaVectorStore implements IVectorStore {
             embeddings,
             metadatas,
         });
-        if (this.inTransaction) {
-            const pending = this.pendingIdsByCollection.get(collection) ?? [];
-            this.pendingIdsByCollection.set(collection, [...pending, ...ids]);
-        }
     }
 
     async deleteByDriveId(collection: string, driveId: string): Promise<void> {
-        try {
-            const col = await this.getCollection(collection);
-            await col.delete({ where: { driveId: { $eq: driveId } } });
-        } catch {
-            /* collection may not exist */
-        }
+        // Errors propagate: callers delete the document row only once its chunks are gone,
+        // otherwise orphan chunks would keep answering in chat with no way to remove them
+        const col = await this.getCollection(collection);
+        await col.delete({ where: { driveId: { $eq: driveId } } });
     }
 
     async query(collection: string, queryText: string, nCandidates = 20): Promise<Source[]> {
@@ -141,29 +133,5 @@ export default class ChromaVectorStore implements IVectorStore {
         logger.log(SyslogSeverity.DEBUG, `Vectorial search done '${queryText}' with ${sources.length} results`, { sources });
 
         return sources;
-    }
-
-    async beginTransaction(): Promise<void> {
-        this.inTransaction = true;
-        this.pendingIdsByCollection.clear();
-    }
-
-    async commitTransaction(): Promise<void> {
-        this.inTransaction = false;
-        this.pendingIdsByCollection.clear();
-    }
-
-    async rollback(): Promise<void> {
-        for (const [collectionName, ids] of this.pendingIdsByCollection) {
-            if (ids.length === 0) continue;
-            try {
-                const col = await this.getCollection(collectionName);
-                await col.delete({ ids });
-            } catch {
-                /* best-effort rollback */
-            }
-        }
-        this.inTransaction = false;
-        this.pendingIdsByCollection.clear();
     }
 }

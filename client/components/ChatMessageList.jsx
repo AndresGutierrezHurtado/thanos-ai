@@ -77,6 +77,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
         isOpen: false,
         driveId: null,
         documentTitle: null,
+        source: null,
+        mimeType: null,
     });
 
     const contentRef = useRef();
@@ -151,7 +153,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                                     {(message.content.sources ?? []).map((source, index) => (
                                         <div
                                             key={source.chunkId + "-" + index}
-                                            className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer tooltip tooltip-bottom group"
+                                            className="border border-base-content/20 hover:border-primary/20 hover:bg-primary/10 transition-colors duration-300 rounded-md p-2 space-y-2 cursor-pointer group"
+                                            data-tip-placement="bottom"
                                             data-tip={
                                                 source.document?.driveId
                                                     ? "Ver documento"
@@ -164,6 +167,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                                                         driveId: source.document.driveId,
                                                         documentTitle:
                                                             source.document?.title || "Documento",
+                                                        source: source.document.source,
+                                                        mimeType: source.document.mimeType,
                                                     });
                                                 }
                                             }}
@@ -188,7 +193,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
             </div>
             <div className="flex gap-2">
                 <Button
-                    className="btn-ghost w-9 h-9 rounded p-0 tooltip-bottom hover:bg-base-content/10"
+                    className="btn-ghost w-9 h-9 rounded p-0 hover:bg-base-content/10"
+                    tooltipPlacement="bottom"
                     tooltip="Copiar respuesta"
                     onClick={() => {
                         navigator.clipboard.writeText(message.content.text);
@@ -197,7 +203,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     leftIcon={<CopyIcon size={15} />}
                 />
                 <Button
-                    className="btn-ghost w-8 h-8 rounded p-0 tooltip-bottom"
+                    className="btn-ghost w-8 h-8 rounded p-0"
+                    tooltipPlacement="bottom"
                     tooltip={isSpeaking ? "Detener" : "Reproducir audio"}
                     onClick={handlePlayStop}
                     leftIcon={
@@ -209,7 +216,8 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                     }
                 />
                 <Button
-                    className="btn-ghost w-8 h-8 rounded p-0 tooltip-bottom"
+                    className="btn-ghost w-8 h-8 rounded p-0"
+                    tooltipPlacement="bottom"
                     tooltip="Recargar respuesta"
                     disabled={disabled}
                     onClick={() => {
@@ -225,10 +233,18 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
             <PreviewDocumentModal
                 isOpen={previewModal.isOpen}
                 onClose={() =>
-                    setPreviewModal({ isOpen: false, driveId: null, documentTitle: null })
+                    setPreviewModal({
+                        isOpen: false,
+                        driveId: null,
+                        documentTitle: null,
+                        source: null,
+                        mimeType: null,
+                    })
                 }
                 driveId={previewModal.driveId}
                 documentTitle={previewModal.documentTitle}
+                source={previewModal.source}
+                mimeType={previewModal.mimeType}
             />
         </div>
     );

@@ -63,6 +63,8 @@ services:
             - ./.env:/app/.env:ro
             - media-data:/app/server/public/media
             - logs-data:/app/server/logs
+            # Documents uploaded from the app
+            - uploads-data:/app/server/uploads
         depends_on:
             mongodb:
                 condition: service_healthy
@@ -74,3 +76,4 @@ volumes:
     mongodb-data:
     media-data:
     logs-data:
+    uploads-data:

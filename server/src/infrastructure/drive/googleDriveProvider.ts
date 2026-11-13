@@ -40,41 +40,46 @@ export default class GoogleDriveProvider implements IDriveProvider {
     ): Promise<DriveFile[]> {
         if (limit && files.length >= limit) return files;
 
-        // Get folders
-        const response = await this.drive.files.list({
-            q: `'${
-                folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID
-            }' in parents and trashed=false and mimeType != 'image/*'`,
-            fields: "files(id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink)",
-            pageSize: 1000,
-        });
+        // Every page must be read: a sync removes from the index whatever is not listed
+        let pageToken: string | undefined;
+        do {
+            const response = await this.drive.files.list({
+                q: `'${
+                    folderId ?? process.env.GOOGLE_DRIVE_FOLDER_ID
+                }' in parents and trashed=false and not mimeType contains 'image/'`,
+                fields: "nextPageToken, files(id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink)",
+                pageSize: 1000,
+                pageToken,
+            });
+            pageToken = response.data.nextPageToken ?? undefined;
 
-        // Extract files in the subfolders
-        for (const file of response.data.files || []) {
-            if (file.mimeType === "application/vnd.google-apps.folder") {
-                await this.listFiles(limit, file.id, files, currentPath + file.name + "/");
-            } else {
-                const driveFile: DriveFile = {
-                    ...(file as DriveFile),
-                    path: currentPath + file.name,
-                };
+            // Extract files in the subfolders
+            for (const file of response.data.files || []) {
+                if (file.mimeType === "application/vnd.google-apps.folder") {
+                    await this.listFiles(limit, file.id, files, currentPath + file.name + "/");
+                } else {
+                    const driveFile: DriveFile = {
+                        ...(file as DriveFile),
+                        path: currentPath + file.name,
+                    };
 
-                files.push(driveFile);
-                if (files.length % this.logSize === 0 || files.length === 1) {
-                    const now = Date.now();
-                    const seconds = Number(((now - this.lastLogTime) / 1000).toFixed(3));
+                    files.push(driveFile);
+                    if (files.length % this.logSize === 0 || files.length === 1) {
+                        const now = Date.now();
+                        const seconds = Number(((now - this.lastLogTime) / 1000).toFixed(3));
 
-                    this.logger.log(
-                        SyslogSeverity.DEBUG,
-                        `pulled ${files.length} files from drive in ${seconds}s`,
-                    );
+                        this.logger.log(
+                            SyslogSeverity.DEBUG,
+                            `pulled ${files.length} files from drive in ${seconds}s`,
+                        );
 
-                    this.lastLogTime = now;
+                        this.lastLogTime = now;
+                    }
                 }
-            }
 
-            if (limit && files.length >= limit) return files;
-        }
+                if (limit && files.length >= limit) return files;
+            }
+        } while (pageToken);
 
         return files;
     }

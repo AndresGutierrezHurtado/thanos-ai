@@ -16,8 +16,8 @@ RUN npm run build \
     && npm cache clean --force
 
 # Writable dirs (mounted as volumes) owned by the unprivileged user
-RUN mkdir -p server/public/media server/logs \
-    && chown -R node:node server/public server/logs client/.next
+RUN mkdir -p server/public/media server/logs server/uploads \
+    && chown -R node:node server/public server/logs server/uploads client/.next
 
 ENV NODE_ENV=production
 USER node

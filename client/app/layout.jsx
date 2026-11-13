@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import Swal from "sweetalert2";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { useApi } from "../hooks/useApi";
 import { PeerProvider } from "@/components/Peer";
-import UserSettingsModal from "@/components/organisms/UserSettingsModal";
+import TooltipProvider from "@/components/TooltipProvider";
 
 // Styles
 import "./globals.css";
@@ -28,7 +28,6 @@ const geistMono = Geist_Mono({
 });
 
 function LayoutContent({ children }) {
-    const settingsModalRef = useRef(null);
     const [chats, setChats] = useState([]);
     const [loadingChats, setLoadingChats] = useState(true);
     const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
@@ -36,11 +35,13 @@ function LayoutContent({ children }) {
     const router = useRouter();
 
     useEffect(() => {
+        // Wait for the stored token to load: redirecting before it bounces every deep link
+        if (authLoading) return;
         if (!isAuthenticated && pathname !== "/login") {
             router.replace("/login");
             return;
         }
-    }, [isAuthenticated, pathname, router]);
+    }, [authLoading, isAuthenticated, pathname, router]);
 
     const fetchChats = useCallback(async () => {
         if (!isAuthenticated) {
@@ -182,7 +183,8 @@ function LayoutContent({ children }) {
                         <aside className="w-72 lg:w-80 h-screen border-r border-neutral-content/10 bg-neutral text-neutral-content flex flex-col">
                             <Link
                                 href="/"
-                                className="p-4 border-b border-neutral-content/10 tooltip tooltip-right"
+                                className="p-4 border-b border-neutral-content/10"
+                                data-tip-placement="right"
                                 data-tip="Crear nueva conversación"
                             >
                                 <p className="text-3xl font-extrabold">
@@ -223,7 +225,8 @@ function LayoutContent({ children }) {
                                                     </span>
                                                     <Button
                                                         type="button"
-                                                        className="w-8 h-8 p-0 tooltip-left opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                                        className="w-8 h-8 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                                        tooltipPlacement="left"
                                                         tooltip="Eliminar conversación"
                                                         onClick={(e) => handleDeleteChat(e, chat)}
                                                         rightIcon={<TrashIcon size={15} />}
@@ -249,9 +252,9 @@ function LayoutContent({ children }) {
                                     <div className="flex flex-col justify-center items-center gap-2">
                                         <Button
                                             type="button"
-                                            className="w-9 h-9 p-0 bg-base-content/10"
+                                            className={`w-9 h-9 p-0 ${pathname === "/settings" ? "bg-primary/20 text-primary" : "bg-base-content/10"}`}
                                             tooltip="Configuración"
-                                            onClick={() => settingsModalRef.current?.show()}
+                                            onClick={() => router.push("/settings")}
                                             rightIcon={<SettingsIcon size={16} />}
                                         />
                                         <Button
@@ -282,7 +285,6 @@ function LayoutContent({ children }) {
                             )}
                         </aside>
                     </div>
-                    <UserSettingsModal modalRef={settingsModalRef} />
                 </div>
             </body>
         </html>
@@ -294,6 +296,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
             <ToastContainer />
+            <TooltipProvider />
         </AuthProvider>
     );
 }

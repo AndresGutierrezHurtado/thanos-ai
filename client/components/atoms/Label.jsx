@@ -20,7 +20,7 @@ export default function Label({
             {Icon && <Icon size={14} />}
             <span className={requiredClass}>{children}</span>
             {info && (
-                <span className="tooltip tooltip-right cursor-pointer before:normal-case" data-tip={info}>
+                <span className="cursor-pointer" data-tip={info} data-tip-placement="right">
                     <CircleQuestionMark size={14} className="text-info" />
                 </span>
             )}

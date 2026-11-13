@@ -16,7 +16,8 @@
         "react-toastify": "^11.0.5",
         "remark-gfm": "^4.0.1",
         "socket.io-client": "^4.8.3",
-        "sweetalert2": "^11.26.18"
+        "sweetalert2": "^11.26.18",
+        "tippy.js": "^6.3.7"
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.1.18",

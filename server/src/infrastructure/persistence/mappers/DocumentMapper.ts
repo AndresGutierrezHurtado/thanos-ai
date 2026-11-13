@@ -1,7 +1,7 @@
 import type { DocumentRecord } from "../../../application/ports/repositories/IDocumentRepository";
 import Identifier from "../../../domain/valueObjects/Identifier";
 import DateTimeValue from "../../../domain/valueObjects/DateTimeValue";
-import Document from "../../../domain/entities/document";
+import Document, { DocumentSourceName } from "../../../domain/entities/document";
 
 export interface DocumentMongoDoc {
     _id?: string;
@@ -13,6 +13,8 @@ export interface DocumentMongoDoc {
     checksum: string;
     updatedAt: Date;
     path?: string;
+    /** Missing on documents indexed before uploads existed: those all came from Drive */
+    source?: DocumentSourceName;
 }
 
 export default class DocumentMapper {
@@ -27,7 +29,8 @@ export default class DocumentMapper {
             doc.version,
             doc.checksum,
             new DateTimeValue(doc.updatedAt),
-            doc.path
+            doc.path,
+            doc.source ?? "drive",
         );
     }
 
@@ -41,6 +44,7 @@ export default class DocumentMapper {
             checksum: record.checksum,
             updatedAt: new Date(),
             path: record.path,
+            source: record.source,
         };
     }
 }

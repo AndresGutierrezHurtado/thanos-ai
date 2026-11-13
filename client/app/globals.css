@@ -42,9 +42,22 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: var(--color-base-content) !important;
 }
 
-/* TOOLTIPS */
-.tooltip:before {
+/* TOOLTIPS (tippy.js, components/TooltipProvider.jsx): same look as the daisyUI tooltip */
+.tippy-box[data-theme~="thanos"] {
+    background-color: var(--color-neutral);
+    color: var(--color-neutral-content);
     border-radius: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25;
+    text-transform: none;
+}
+
+.tippy-box[data-theme~="thanos"] > .tippy-content {
+    padding: 0.25rem 0.5rem;
+}
+
+.tippy-box[data-theme~="thanos"] > .tippy-arrow {
+    color: var(--color-neutral);
 }
 
 /* MARKDOWN */

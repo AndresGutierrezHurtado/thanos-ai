@@ -11,6 +11,7 @@ export default function Button({
     disabled = false,
     loading = false,
     tooltip = "",
+    tooltipPlacement = "top",
     ...props
 }) {
     return (
@@ -19,8 +20,9 @@ export default function Button({
             onClick={onClick}
             onFocus={onFocus}
             disabled={disabled}
-            data-tip={tooltip}
-            className={`btn flex items-center gap-1 rounded-lg ${className} ${tooltip ? "tooltip" : ""}`}
+            data-tip={tooltip || undefined}
+            data-tip-placement={tooltip ? tooltipPlacement : undefined}
+            className={`btn flex items-center gap-1 rounded-lg ${className}`}
             {...props}
         >
             {loading && <span className="loading loading-spinner loading-sm"></span>}

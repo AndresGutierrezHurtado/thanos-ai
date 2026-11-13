@@ -1,6 +1,10 @@
 import Identifier from "../valueObjects/Identifier";
 import DateTimeValue from "../valueObjects/DateTimeValue";
 
+/** Where a document comes from: synced from Google Drive, or uploaded from the app. */
+export type DocumentSourceName = "drive" | "local";
+export const DOCUMENT_SOURCES: DocumentSourceName[] = ["drive", "local"];
+
 export default class Document {
     private id: Identifier | null;
     private driveId: string;
@@ -11,6 +15,7 @@ export default class Document {
     private checksum: string;
     private processedAt: DateTimeValue;
     private path?: string;
+    private source: DocumentSourceName;
 
     constructor(
         id: Identifier | null,
@@ -22,6 +27,7 @@ export default class Document {
         checksum: string,
         processedAt: DateTimeValue,
         path?: string,
+        source: DocumentSourceName = "drive",
     ) {
         this.id = id;
         this.driveId = driveId;
@@ -32,6 +38,7 @@ export default class Document {
         this.checksum = checksum;
         this.processedAt = processedAt;
         this.path = path;
+        this.source = source;
     }
 
     // Getters
@@ -69,6 +76,10 @@ export default class Document {
 
     public getPath(): string | undefined {
         return this.path;
+    }
+
+    public getSource(): DocumentSourceName {
+        return this.source;
     }
 
     // Setters
