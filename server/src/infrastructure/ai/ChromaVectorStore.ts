@@ -1,12 +1,11 @@
-import { ChromaClient, Collection } from "chromadb";
-import BusinessTermNormalizer from "./BusinessTermNormalizer";
+import { ChromaClient, Collection, Where } from "chromadb";
 
 // DOMAIN
 import Source from "../../domain/entities/source";
 import Document from "../../domain/entities/document";
 
 // PORTS
-import IVectorStore, { StoredChunk, VectorDocument } from "../../application/ports/services/IVectorStore";
+import IVectorStore, { StoredChunk, VectorDocument, VectorQueryOptions } from "../../application/ports/services/IVectorStore";
 import { ChunkMetadata } from "../../application/ports/services/IChunker";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
@@ -15,6 +14,11 @@ import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
 // Collections created before the model was recorded were always indexed with this one.
 const LEGACY_EMBEDDING_MODEL = "openai:text-embedding-3-small";
+// Chunks returned per document: more would let one long document fill every result
+const MAX_CHUNKS_PER_DOCUMENT = 2;
+// Candidates fetched per requested result, so there are enough after that per-document cap
+const CANDIDATES_PER_RESULT = 4;
+const MAX_CANDIDATES = 100;
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -110,49 +114,62 @@ export default class ChromaVectorStore implements IVectorStore {
         return chunks.sort((a, b) => position(a) - position(b));
     }
 
-    async query(collection: string, queryText: string, nCandidates = 20): Promise<Source[]> {
-        const { normalizedText } = BusinessTermNormalizer.normalize(queryText);
+    async query(collection: string, queryText: string, options: VectorQueryOptions): Promise<Source[]> {
+        const { limit, driveIds, sourceType } = options;
+        if (driveIds?.length === 0) return [];
+
+        const clauses: Where[] = [];
+        if (driveIds) clauses.push({ driveId: { $in: driveIds } });
+        if (sourceType) clauses.push({ sourceType: { $eq: sourceType } });
+        const where: Where | undefined = clauses.length > 1 ? { $and: clauses } : clauses[0];
 
         const col = await this.getCollection(collection);
-        const embedding = await this.embeddingProvider.embedQuery(normalizedText);
-
+        const embedding = await this.embeddingProvider.embedQuery(queryText);
         const result = await col.query({
             queryEmbeddings: [embedding],
-            nResults: nCandidates,
+            nResults: Math.min(limit * CANDIDATES_PER_RESULT, MAX_CANDIDATES),
+            where,
             include: ["documents", "metadatas"],
         });
 
-        const documents = result.documents?.[0] ?? [];
+        const contents = result.documents?.[0] ?? [];
         const metadatas = result.metadatas?.[0] ?? [];
         const ids = result.ids?.[0] ?? [];
 
-        const sources: Source[] = [];
+        // Best matches first, at most MAX_CHUNKS_PER_DOCUMENT per document
+        const picked: number[] = [];
+        const perDocument = new Map<string, number>();
+        for (let i = 0; i < ids.length && picked.length < limit; i++) {
+            const driveId = String(metadatas[i]?.driveId ?? "");
+            const count = perDocument.get(driveId) ?? 0;
+            if (count >= MAX_CHUNKS_PER_DOCUMENT) continue;
+            perDocument.set(driveId, count + 1);
+            picked.push(i);
+        }
 
-        for (let i = 0; i < documents.length; i++) {
-            const id = ids[i] ?? "";
+        const documents = await this.documentRepository.findByDriveIds([...perDocument.keys()]);
+        const byDriveId = new Map(documents.map((document) => [document.getDriveId(), document]));
+
+        const sources = picked.map((i) => {
             const metadata = metadatas[i] ?? {};
-            const document = documents[i] ?? "";
-
-            const driveDocument = await this.documentRepository.findByDriveId(
-                metadata.driveId as string,
-            );
-
+            const document = byDriveId.get(String(metadata.driveId)) ?? null;
             const source = new Source(
-                id,
-                driveDocument?.getId() ?? null,
+                ids[i],
+                document?.getId() ?? null,
                 null,
                 metadata.documentVersion as string,
                 metadata.sourceType as string,
                 metadata.section as string,
-                document as string,
+                contents[i] ?? "",
             );
+            source.setDocument(document as Document);
+            return source;
+        });
 
-            source.setDocument(driveDocument as Document);
-            sources.push(source);
-        }
-
-        const logger = new LoggerAdapter();
-        logger.log(SyslogSeverity.DEBUG, `Vectorial search done '${queryText}' with ${sources.length} results`, { sources });
+        new LoggerAdapter().log(
+            SyslogSeverity.DEBUG,
+            `Vectorial search done '${queryText}' (limit ${limit}${driveIds ? `, ${driveIds.length} documents` : ""}${sourceType ? `, ${sourceType}` : ""}) with ${sources.length} results`,
+        );
 
         return sources;
     }

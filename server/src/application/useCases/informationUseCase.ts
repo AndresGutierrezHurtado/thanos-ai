@@ -115,7 +115,7 @@ export default class InformationUseCase {
     }
 
     public async listChromaFiles(query: string): Promise<Source[]> {
-        return await this.vectorStore.query(DOCUMENTS_COLLECTION, query, 10);
+        return await this.vectorStore.query(DOCUMENTS_COLLECTION, query, { limit: 10 });
     }
 
     /** Starts syncing a source in the background. */

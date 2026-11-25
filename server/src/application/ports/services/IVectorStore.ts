@@ -10,6 +10,15 @@ export interface VectorDocument {
     metadata: ChunkMetadata;
 }
 
+export interface VectorQueryOptions {
+    /** Chunks to return; at most 2 come from the same document */
+    limit: number;
+    /** Only chunks of these documents (an empty list matches nothing) */
+    driveIds?: string[];
+    /** Only chunks of this file type (pdf, docx, xlsx...) */
+    sourceType?: string;
+}
+
 export interface StoredChunk {
     id: string;
     content: string;
@@ -21,9 +30,5 @@ export default interface IVectorStore {
     deleteByDriveId(collection: string, driveId: string): Promise<void>;
     /** The chunks indexed for a document, in document order, at most `limit`. */
     getByDriveId(collection: string, driveId: string, limit: number): Promise<StoredChunk[]>;
-    query(
-        collection: string,
-        queryText: string,
-        nResults?: number,
-    ): Promise<Source[]>;
+    query(collection: string, queryText: string, options: VectorQueryOptions): Promise<Source[]>;
 }

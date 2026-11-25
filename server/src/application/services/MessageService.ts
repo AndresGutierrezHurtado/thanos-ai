@@ -110,7 +110,7 @@ export default class MessageService {
             execute: async (args) => {
                 const query = String(args.query ?? "");
                 const limit = typeof args.limit === "number" ? args.limit : 5;
-                const results = await this.vectorStore.query(DOCUMENTS_COLLECTION, query, limit);
+                const results = await this.vectorStore.query(DOCUMENTS_COLLECTION, query, { limit });
                 sources.push(...results);
 
                 let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
