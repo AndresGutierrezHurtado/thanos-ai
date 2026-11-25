@@ -7,12 +7,15 @@ export interface DriveFile {
     size?: number;
     webViewLink?: string;
     path?: string;
+    /** In the source's trash: no longer part of it */
+    trashed?: boolean;
 }
 
 /** A source of documents to index (Google Drive, uploaded files...). */
 export default interface IDriveProvider {
     listFiles(limit?: number): Promise<DriveFile[]>;
     downloadFile(fileId: string, mimeType: string): Promise<Buffer>;
+    /** null only when the file does not exist; other failures (network, access) throw. */
     getFileById(fileId: string): Promise<DriveFile | null>;
 }
 

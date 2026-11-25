@@ -10,6 +10,8 @@ export interface ChunkMetadata {
     area?: string | null;
     type?: string | null;
     code?: string | null;
+    /** Position of the chunk in its document (missing on chunks indexed before it existed) */
+    chunkIndex?: number;
 }
 
 export interface ChunkData {

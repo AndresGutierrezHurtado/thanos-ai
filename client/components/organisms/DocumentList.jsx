@@ -3,14 +3,26 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
-import { ChevronLeftIcon, ChevronRightIcon, DownloadIcon, SearchIcon, TrashIcon } from "lucide-react";
+import {
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    DownloadIcon,
+    EyeIcon,
+    RefreshCwIcon,
+    SearchIcon,
+    TrashIcon,
+} from "lucide-react";
 import Button from "../atoms/Button.jsx";
+import PreviewDocumentModal from "../PreviewDocumentModal.jsx";
 import { useApi } from "@/hooks/useApi";
-import { SOURCE_LABELS, downloadDocument } from "@/lib/documents";
+import { SOURCE_LABELS, downloadDocument, refreshDocument } from "@/lib/documents";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** Indexed documents, paginated. Uploaded ones can be deleted (Drive ones are deleted in Drive). */
+/**
+ * Indexed documents, paginated: detail (indexed chunks), download. Drive ones can be refreshed
+ * from Drive; uploaded ones can be deleted (Drive ones are deleted in Drive).
+ */
 export default function DocumentList({ reloadKey, onDocumentsChanged }) {
     const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
@@ -19,6 +31,9 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(new Set());
+    const [refreshing, setRefreshing] = useState(new Set());
+    // Document shown in the preview modal
+    const [preview, setPreview] = useState(null);
 
     useEffect(() => {
         const id = setTimeout(() => {
@@ -89,6 +104,27 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
         onDocumentsChanged();
     };
 
+    const handleRefresh = async (item) => {
+        setRefreshing((prev) => new Set(prev).add(item.driveId));
+        try {
+            const response = await refreshDocument(item.driveId);
+            if (response?.success) {
+                toast.success(response.message);
+                onDocumentsChanged();
+            } else {
+                toast.error(response?.message || "No se pudo actualizar el documento");
+            }
+        } catch {
+            toast.error("No se pudo actualizar el documento");
+        } finally {
+            setRefreshing((prev) => {
+                const next = new Set(prev);
+                next.delete(item.driveId);
+                return next;
+            });
+        }
+    };
+
     const handleDownload = async (item) => {
         try {
             await downloadDocument(item.driveId, item.title);
@@ -153,7 +189,7 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
                             <th>Documento</th>
                             <th>Fuente</th>
                             <th>Procesado</th>
-                            <th className="w-20"></th>
+                            <th className="w-36"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -193,6 +229,28 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
                                 </td>
                                 <td>
                                     <div className="flex justify-end gap-1">
+                                        <Button
+                                            type="button"
+                                            className="btn-ghost w-8 h-8 p-0"
+                                            tooltipPlacement="left"
+                                            tooltip="Ver contenido indexado"
+                                            aria-label={`Ver ${item.title}`}
+                                            onClick={() => setPreview(item)}
+                                            leftIcon={<EyeIcon size={15} />}
+                                        />
+                                        {item.source === "drive" && (
+                                            <Button
+                                                type="button"
+                                                className="btn-ghost w-8 h-8 p-0"
+                                                tooltipPlacement="left"
+                                                tooltip="Actualizar con la última versión de Drive"
+                                                aria-label={`Actualizar ${item.title}`}
+                                                loading={refreshing.has(item.driveId)}
+                                                disabled={refreshing.has(item.driveId)}
+                                                onClick={() => handleRefresh(item)}
+                                                leftIcon={<RefreshCwIcon size={15} />}
+                                            />
+                                        )}
                                         <Button
                                             type="button"
                                             className="btn-ghost w-8 h-8 p-0"
@@ -245,6 +303,16 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
                     />
                 </div>
             </div>
+
+            <PreviewDocumentModal
+                isOpen={preview !== null}
+                onClose={() => setPreview(null)}
+                driveId={preview?.driveId}
+                documentTitle={preview?.title}
+                source={preview?.source}
+                mimeType={preview?.mimeType}
+                view="indexed"
+            />
         </section>
     );
 }

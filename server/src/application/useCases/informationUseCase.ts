@@ -1,5 +1,5 @@
 import IDriveProvider, { DriveFile, IWritableDriveProvider } from "../ports/services/IDriveProvider";
-import IVectorStore from "../ports/services/IVectorStore";
+import IVectorStore, { StoredChunk } from "../ports/services/IVectorStore";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import Source from "../../domain/entities/source";
 import Document, { DOCUMENT_SOURCES, DocumentSourceName } from "../../domain/entities/document";
@@ -45,6 +45,19 @@ export interface UploadedFile {
  */
 export type StartSyncResult = "started" | "queued" | "running";
 
+/**
+ * "processed": re-indexed from the source. "removed": the file no longer exists in its source
+ * and was removed from the index. "busy": a sync or refresh of it is running. "not_found": no
+ * such document (or its source is not configured). "not_refreshable": an uploaded file, whose
+ * only version is the one already indexed.
+ */
+export type RefreshDocumentResult =
+    | { status: "processed"; document: Document }
+    | { status: "removed" }
+    | { status: "busy" }
+    | { status: "not_found" }
+    | { status: "not_refreshable" };
+
 interface SyncJob {
     status: SyncStatus;
     rerun: boolean;
@@ -55,6 +68,8 @@ interface SyncJob {
 export default class InformationUseCase {
     // Sync state lives in this process: one run at most per source
     private readonly jobs = new Map<DocumentSourceName, SyncJob>();
+    // Single-document refreshes in progress, by driveId
+    private readonly refreshing = new Map<string, Promise<RefreshDocumentResult>>();
 
     constructor(
         private readonly driveSource: IDriveProvider | null,
@@ -189,6 +204,58 @@ export default class InformationUseCase {
         return { deleted, rejected };
     }
 
+    /**
+     * Re-indexes one document from the current version in its source. A document whose file
+     * no longer exists there is removed from the index, as the next sync would do.
+     */
+    public async refreshDocument(driveId: string): Promise<RefreshDocumentResult> {
+        const document = await this.documentRepository.findByDriveId(driveId);
+        const provider = document ? this.findProvider(document.getSource()) : null;
+        if (!document || !provider) return { status: "not_found" };
+        if (document.getSource() === "local") return { status: "not_refreshable" };
+
+        // A running sync may be indexing this same file: both would replace its chunks at once
+        if (this.jobs.get(document.getSource())?.status.running || this.refreshing.has(driveId)) {
+            return { status: "busy" };
+        }
+
+        const run = (async (): Promise<RefreshDocumentResult> => {
+            const file = await provider.getFileById(driveId);
+            if (!file || file.trashed) {
+                await this.removeFromIndex(driveId);
+                return { status: "removed" };
+            }
+
+            // Drive does not return paths for a single file: keep the stored folder, new name
+            const path = file.path ?? renamedPath(document.getPath(), file.name);
+            await this.processFileService.execute({ ...file, path }, document.getSource(), provider, {
+                force: true,
+            });
+
+            const updated = await this.documentRepository.findByDriveId(driveId);
+            return { status: "processed", document: updated ?? document };
+        })();
+
+        this.refreshing.set(driveId, run);
+        try {
+            return await run;
+        } finally {
+            this.refreshing.delete(driveId);
+        }
+    }
+
+    /** What the assistant has indexed for a document: its chunks, in document order. */
+    public async getDocumentChunks(
+        driveId: string,
+        limit: number,
+    ): Promise<{ document: Document; chunks: StoredChunk[]; truncated: boolean } | null> {
+        const document = await this.documentRepository.findByDriveId(driveId);
+        if (!document) return null;
+
+        const chunks = await this.vectorStore.getByDriveId(DOCUMENTS_COLLECTION, driveId, limit + 1);
+        return { document, chunks: chunks.slice(0, limit), truncated: chunks.length > limit };
+    }
+
     public async downloadFileById(
         driveId: string,
     ): Promise<{ buffer: Buffer; filename: string; mimeType: string } | null> {
@@ -259,6 +326,8 @@ export default class InformationUseCase {
         const { status } = job;
 
         try {
+            // A refresh of this file started before the sync: let it finish, then compare checksums
+            await this.refreshing.get(file.id)?.catch(() => {});
             const result = await this.processFileService.execute(file, status.source, provider);
             status[result]++;
         } catch (err) {
@@ -335,6 +404,12 @@ function newStatus(source: DocumentSourceName): SyncStatus {
         error: null,
         errors: [],
     };
+}
+
+/** The stored path with its file name replaced ("a/b/old.pdf" + "new.pdf" = "a/b/new.pdf"). */
+function renamedPath(storedPath: string | undefined, name: string): string {
+    const folderEnd = storedPath?.lastIndexOf("/") ?? -1;
+    return folderEnd >= 0 ? `${storedPath!.slice(0, folderEnd + 1)}${name}` : name;
 }
 
 function errorMessage(err: unknown): string {

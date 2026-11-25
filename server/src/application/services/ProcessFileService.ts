@@ -19,17 +19,27 @@ export default class ProcessFileService {
         private readonly vectorStore: IVectorStore,
     ) {}
 
-    /** Indexes one file of a source. Throws when the file cannot be indexed. */
+    /**
+     * Indexes one file of a source. Throws when the file cannot be indexed.
+     * `force` re-indexes it even when its content and location did not change.
+     */
     public async execute(
         file: DriveFile,
         source: DocumentSourceName,
         provider: IDriveProvider,
+        options: { force?: boolean } = {},
     ): Promise<ProcessFileResult> {
         // CHECK IF FILE ALREADY EXISTS
         const exists = await this.documentRepository.findByDriveId(file.id);
         const checksum = file.md5Checksum ?? file.modifiedTime;
 
-        if (exists && exists.getChecksum() === checksum) {
+        // A renamed or moved file keeps its checksum, but its name, path and area (stored
+        // with every chunk) changed. Rows saved before paths were recorded have none: comparing
+        // those would re-index the whole source once
+        const storedPath = exists?.getPath();
+        const moved = storedPath !== undefined && storedPath !== file.path;
+
+        if (!options.force && exists && exists.getChecksum() === checksum && !moved) {
             return "unchanged";
         }
 
@@ -56,7 +66,8 @@ export default class ProcessFileService {
                 chunks.map((chunk: ChunkData) => ({
                     id: chunk.id,
                     content: chunk.content,
-                    metadata: metadata,
+                    // The chunk's own metadata: it carries its section and position
+                    metadata: chunk.metadata,
                 })),
             );
 

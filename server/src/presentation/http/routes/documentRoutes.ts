@@ -16,5 +16,7 @@ routes.post("/documents/sync", documentController.sync.bind(documentController))
 routes.post("/documents/upload", documentController.upload.bind(documentController));
 routes.delete("/documents", documentController.delete.bind(documentController));
 routes.get("/documents/:driveId/download", documentController.download.bind(documentController));
+routes.get("/documents/:driveId/chunks", documentController.chunks.bind(documentController));
+routes.post("/documents/:driveId/refresh", documentController.refresh.bind(documentController));
 
 export default routes;

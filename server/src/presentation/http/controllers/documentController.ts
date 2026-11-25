@@ -2,7 +2,10 @@ import { Request, Response } from "express";
 
 // Use Cases
 import InformationUseCase, { UploadedFile } from "../../../application/useCases/informationUseCase";
-import { toDocumentResourceArray } from "../../../application/ports/resources/DocumentResource";
+import {
+    toDocumentResource,
+    toDocumentResourceArray,
+} from "../../../application/ports/resources/DocumentResource";
 import { DOCUMENT_SOURCES, DocumentSourceName } from "../../../domain/entities/document";
 
 const PAGE_SIZE = 50;
@@ -10,6 +13,8 @@ const PAGE_SIZE = 50;
 const MAX_FILES_PER_UPLOAD = 50;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_DELETE_IDS = 500;
+// A document over this many chunks is shown truncated (one chunk is ~600 words)
+const MAX_CHUNKS = 1000;
 
 export default class DocumentController {
     constructor(private readonly informationUseCase: InformationUseCase) {}
@@ -119,6 +124,68 @@ export default class DocumentController {
         });
     }
 
+    public async refresh(req: Request, res: Response): Promise<Response> {
+        const result = await this.informationUseCase.refreshDocument(driveIdParam(req));
+
+        switch (result.status) {
+            case "processed":
+                return res.status(200).json({
+                    success: true,
+                    message: "Documento actualizado con su última versión",
+                    data: { status: result.status, document: toDocumentResource(result.document) },
+                });
+            case "removed":
+                return res.status(200).json({
+                    success: true,
+                    message: "El archivo ya no existe en su fuente: se quitó del índice",
+                    data: { status: result.status },
+                });
+            case "busy":
+                return res.status(409).json({
+                    success: false,
+                    message: "Hay una sincronización o actualización en curso. Intenta de nuevo cuando termine",
+                });
+            case "not_found":
+                return res.status(404).json({ success: false, message: "Documento no encontrado" });
+            case "not_refreshable":
+                return res.status(400).json({
+                    success: false,
+                    message: "Los archivos subidos no se pueden volver a procesar",
+                });
+        }
+    }
+
+    public async chunks(req: Request, res: Response): Promise<Response> {
+        const result = await this.informationUseCase.getDocumentChunks(driveIdParam(req), MAX_CHUNKS);
+        if (!result) {
+            return res.status(404).json({ success: false, message: "Documento no encontrado" });
+        }
+
+        // Document-level metadata is repeated in every chunk: the first one carries it
+        const first = result.chunks[0]?.metadata ?? {};
+
+        return res.status(200).json({
+            success: true,
+            message: "Fragmentos obtenidos",
+            data: {
+                document: toDocumentResource(result.document),
+                metadata: {
+                    area: first.area ?? null,
+                    type: first.type ?? null,
+                    code: first.code ?? null,
+                    sourceType: first.sourceType ?? null,
+                    documentVersion: first.documentVersion ?? null,
+                },
+                chunks: result.chunks.map((chunk) => ({
+                    id: chunk.id,
+                    section: chunk.metadata.section ?? null,
+                    content: chunk.content,
+                })),
+                truncated: result.truncated,
+            },
+        });
+    }
+
     public async download(req: Request, res: Response): Promise<Response | void> {
         const idParam = req.params.driveId;
         const id = Array.isArray(idParam) ? idParam[0] : idParam;
@@ -170,6 +237,11 @@ export default class DocumentController {
 
         return res.send(fileData.buffer);
     }
+}
+
+function driveIdParam(req: Request): string {
+    const value = req.params.driveId;
+    return (Array.isArray(value) ? value[0] : value) ?? "";
 }
 
 function parseSource(value: unknown): DocumentSourceName | null {

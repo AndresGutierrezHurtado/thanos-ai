@@ -34,6 +34,7 @@ export default class HierarchicalChunker implements IChunker {
                         area,
                         type,
                         code,
+                        chunkIndex: chunks.length,
                     },
                 });
             }

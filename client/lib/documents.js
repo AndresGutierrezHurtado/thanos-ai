@@ -112,6 +112,28 @@ export async function fetchDocumentFile(driveId) {
     return { blob: await res.blob(), filename };
 }
 
+// The download endpoint serves these as PDF (Google Docs, Sheets and Slides are exported)
+const PDF_PREVIEW_TYPES = new Set([
+    "application/pdf",
+    "application/vnd.google-apps.document",
+    "application/vnd.google-apps.spreadsheet",
+    "application/vnd.google-apps.presentation",
+]);
+
+export function canPreviewAsPdf(mimeType) {
+    return PDF_PREVIEW_TYPES.has(mimeType);
+}
+
+/** Re-indexes one document from the latest version in its source. */
+export function refreshDocument(driveId) {
+    return useApi("POST", `/documents/${encodeURIComponent(driveId)}/refresh`);
+}
+
+/** The chunks the assistant has indexed for a document. */
+export function fetchDocumentChunks(driveId) {
+    return useApi("GET", `/documents/${encodeURIComponent(driveId)}/chunks`);
+}
+
 export async function downloadDocument(driveId, fallbackName = "documento") {
     const { blob, filename } = await fetchDocumentFile(driveId);
     const a = document.createElement("a");

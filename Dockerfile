@@ -6,6 +6,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json client/
 COPY server/package.json server/
+# onnxruntime-node (via @chroma-core/default-embed) tries to download CUDA
+# binaries on linux/x64; skip them, the CPU runtime is all we need
+ENV ONNXRUNTIME_NODE_INSTALL_CUDA=skip
 RUN npm ci
 
 COPY . .

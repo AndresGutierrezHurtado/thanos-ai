@@ -117,20 +117,21 @@ export default class GoogleDriveProvider implements IDriveProvider {
         try {
             const response = await this.drive.files.get({
                 fileId,
-                fields: "id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink",
+                fields: "id, name, mimeType, modifiedTime, md5Checksum, size, webViewLink, trashed",
             });
 
-            if (!response.data) {
-                return null;
-            }
-
-            return response.data as DriveFile;
+            return (response.data as DriveFile) ?? null;
         } catch (error) {
+            // Only a missing file is "not found": callers drop missing files from the index,
+            // so a network or permission failure must not look like one
+            const status = (error as { response?: { status?: number } }).response?.status;
+            if (status === 404) return null;
+
             this.logger.log(
                 SyslogSeverity.ERROR,
                 `Error getting file ${fileId}: ${error instanceof Error ? error.message : String(error)}`,
             );
-            return null;
+            throw error;
         }
     }
 }

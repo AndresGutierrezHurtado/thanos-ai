@@ -3,17 +3,37 @@
 import React, { useEffect, useState } from "react";
 import { DownloadIcon, SquareArrowOutUpRightIcon, XIcon } from "lucide-react";
 import { toast } from "react-toastify";
-import { downloadDocument, fetchDocumentFile } from "@/lib/documents";
+import { canPreviewAsPdf, downloadDocument, fetchDocumentChunks, fetchDocumentFile } from "@/lib/documents";
 
-export default function PreviewDocumentModal({ isOpen, onClose, driveId, documentTitle, source, mimeType }) {
+const EMPTY_PDF = { driveId: null, url: null, error: null };
+const EMPTY_CHUNKS = { driveId: null, data: null, error: null };
+
+/**
+ * view "original": the file itself (chat sources). view "indexed": what the assistant has
+ * indexed for it, its metadata and chunks (document detail).
+ */
+export default function PreviewDocumentModal({
+    isOpen,
+    onClose,
+    driveId,
+    documentTitle,
+    source,
+    mimeType,
+    view = "original",
+}) {
     const modalRef = React.useRef(null);
     const [downloading, setDownloading] = useState(false);
-    const [localPreviewUrl, setLocalPreviewUrl] = useState(null);
+    const [pdf, setPdf] = useState(EMPTY_PDF);
+    const [chunks, setChunks] = useState(EMPTY_CHUNKS);
 
-    // Drive files are previewed by Google. Uploaded files have no public URL: PDFs are
-    // fetched with the session token and shown from memory; other types are download-only
+    // PDFs and Google Docs/Sheets/Slides are fetched as PDF with the session token, so they
+    // show without a Google sign-in. Other Drive files fall back to Google's own viewer
+    // (needs access to the file in Drive); other uploaded files are download-only
     const isLocal = source === "local";
-    const canPreviewLocal = isLocal && mimeType === "application/pdf";
+    const showIndexed = view === "indexed";
+    const previewAsPdf = !showIndexed && canPreviewAsPdf(mimeType);
+    const currentPdf = pdf.driveId === driveId ? pdf : EMPTY_PDF;
+    const currentChunks = chunks.driveId === driveId ? chunks : EMPTY_CHUNKS;
 
     useEffect(() => {
         if (modalRef.current) {
@@ -26,7 +46,7 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
     }, [isOpen]);
 
     useEffect(() => {
-        if (!isOpen || !driveId || !canPreviewLocal) return;
+        if (!isOpen || !driveId || !previewAsPdf) return;
 
         let url = null;
         let cancelled = false;
@@ -34,16 +54,45 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
             .then(({ blob }) => {
                 if (cancelled) return;
                 url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-                setLocalPreviewUrl(url);
+                setPdf({ driveId, url, error: null });
             })
-            .catch((e) => toast.error(e.message || "No se pudo cargar la vista previa"));
+            .catch((e) => {
+                if (!cancelled) {
+                    setPdf({ driveId, url: null, error: e.message || "No se pudo cargar la vista previa" });
+                }
+            });
 
         return () => {
             cancelled = true;
             if (url) URL.revokeObjectURL(url);
-            setLocalPreviewUrl(null);
+            setPdf(EMPTY_PDF);
         };
-    }, [isOpen, driveId, canPreviewLocal]);
+    }, [isOpen, driveId, previewAsPdf]);
+
+    // Loaded on every open, so reopening a document after a refresh shows its new chunks
+    useEffect(() => {
+        if (!isOpen || !driveId || !showIndexed) return;
+
+        const fallback = "No se pudo cargar el contenido indexado";
+        let cancelled = false;
+        fetchDocumentChunks(driveId)
+            .then((response) => {
+                if (cancelled) return;
+                setChunks(
+                    response?.success
+                        ? { driveId, data: response.data, error: null }
+                        : { driveId, data: null, error: response?.message || fallback },
+                );
+            })
+            .catch(() => {
+                if (!cancelled) setChunks({ driveId, data: null, error: fallback });
+            });
+
+        return () => {
+            cancelled = true;
+            setChunks(EMPTY_CHUNKS);
+        };
+    }, [isOpen, driveId, showIndexed]);
 
     const handleDownload = async () => {
         if (!driveId) return;
@@ -60,7 +109,6 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
 
     if (!driveId) return null;
 
-    const previewUrl = isLocal ? localPreviewUrl : `https://drive.google.com/file/d/${driveId}/preview`;
     const viewUrl = `https://drive.google.com/file/d/${driveId}/view`;
 
     return (
@@ -100,20 +148,17 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
                         </button>
                     </div>
                 </div>
+
                 <div className="flex-1 overflow-hidden">
-                    {previewUrl ? (
-                        <iframe
-                            src={previewUrl}
-                            className="w-full h-full border-0"
-                            title="Vista previa del documento"
-                            allow="autoplay"
-                        />
+                    {showIndexed ? (
+                        <IndexedContent data={currentChunks.data} error={currentChunks.error} isLocal={isLocal} />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm opacity-70 p-4 text-center">
-                            {canPreviewLocal
-                                ? "Cargando vista previa…"
-                                : "Vista previa no disponible para este tipo de archivo. Puedes descargarlo."}
-                        </div>
+                        <OriginalPreview
+                            previewAsPdf={previewAsPdf}
+                            pdfUrl={currentPdf.url}
+                            pdfError={currentPdf.error}
+                            googleUrl={isLocal ? null : `https://drive.google.com/file/d/${driveId}/preview`}
+                        />
                     )}
                 </div>
             </div>
@@ -122,4 +167,87 @@ export default function PreviewDocumentModal({ isOpen, onClose, driveId, documen
             </form>
         </dialog>
     );
+}
+
+function Placeholder({ children }) {
+    return (
+        <div className="w-full h-full flex items-center justify-center text-sm opacity-70 p-4 text-center">
+            {children}
+        </div>
+    );
+}
+
+function OriginalPreview({ previewAsPdf, pdfUrl, pdfError, googleUrl }) {
+    const src = previewAsPdf ? pdfUrl : googleUrl;
+
+    if (previewAsPdf && pdfError) return <Placeholder>{pdfError}</Placeholder>;
+    if (previewAsPdf && !pdfUrl) return <Placeholder>Cargando vista previa…</Placeholder>;
+    if (!src) {
+        return (
+            <Placeholder>Vista previa no disponible para este tipo de archivo. Puedes descargarlo.</Placeholder>
+        );
+    }
+
+    return <iframe src={src} className="w-full h-full border-0" title="Vista previa del documento" allow="autoplay" />;
+}
+
+function IndexedContent({ data, error, isLocal }) {
+    if (error) return <Placeholder>{error}</Placeholder>;
+    if (!data) return <Placeholder>Cargando contenido indexado…</Placeholder>;
+
+    const { document, metadata, chunks, truncated } = data;
+    const fields = [
+        ["Código", metadata.code ?? document.normCode],
+        ["Área", metadata.area],
+        ["Tipo", metadata.type],
+        ["Formato", metadata.sourceType],
+        ["Ruta", document.path],
+        ["Versión", formatDate(document.version)],
+        ["Procesado", formatDate(document.processedAt)],
+    ];
+
+    return (
+        <div className="h-full overflow-y-auto p-4 space-y-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                {fields.map(([label, value]) => (
+                    <div key={label} className="flex gap-2 min-w-0">
+                        <dt className="opacity-60 shrink-0">{label}:</dt>
+                        <dd className="truncate" title={value ?? ""}>
+                            {value || "—"}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+
+            <p className="text-sm opacity-70">
+                {chunks.length.toLocaleString("es-CO")} fragmento(s) que consulta el asistente
+                {truncated ? " (se muestran los primeros)" : ""}.
+            </p>
+
+            {chunks.length === 0 ? (
+                <p className="text-sm opacity-70">
+                    No hay fragmentos indexados para este documento.
+                    {isLocal ? "" : " Actualízalo para volver a procesarlo."}
+                </p>
+            ) : (
+                <ol className="space-y-3">
+                    {chunks.map((chunk, index) => (
+                        <li key={chunk.id} className="border border-base-300 rounded-lg p-3 space-y-2">
+                            <p className="text-xs opacity-60">
+                                #{index + 1}
+                                {chunk.section ? ` · ${chunk.section}` : ""}
+                            </p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{chunk.content}</p>
+                        </li>
+                    ))}
+                </ol>
+            )}
+        </div>
+    );
+}
+
+function formatDate(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("es-CO");
 }

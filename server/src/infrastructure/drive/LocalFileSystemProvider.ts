@@ -51,11 +51,22 @@ export default class LocalFileSystemProvider implements IWritableDriveProvider {
     }
 
     async getFileById(fileId: string): Promise<DriveFile | null> {
+        let absolute: string;
+        let relative: string;
         try {
-            const relative = decodeId(fileId);
-            return toDriveFile(relative, await fs.stat(this.absolute(relative)));
+            relative = decodeId(fileId);
+            absolute = this.absolute(relative);
         } catch {
+            // Not an id this source could have issued
             return null;
+        }
+
+        try {
+            return toDriveFile(relative, await fs.stat(absolute));
+        } catch (err) {
+            const code = (err as NodeJS.ErrnoException).code;
+            if (code === "ENOENT" || code === "ENOTDIR") return null;
+            throw err;
         }
     }
 

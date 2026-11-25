@@ -6,7 +6,8 @@ import Source from "../../domain/entities/source";
 import Document from "../../domain/entities/document";
 
 // PORTS
-import IVectorStore, { VectorDocument } from "../../application/ports/services/IVectorStore";
+import IVectorStore, { StoredChunk, VectorDocument } from "../../application/ports/services/IVectorStore";
+import { ChunkMetadata } from "../../application/ports/services/IChunker";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
 import LoggerAdapter from "../services/LoggerAdapter";
@@ -86,6 +87,25 @@ export default class ChromaVectorStore implements IVectorStore {
         // otherwise orphan chunks would keep answering in chat with no way to remove them
         const col = await this.getCollection(collection);
         await col.delete({ where: { driveId: { $eq: driveId } } });
+    }
+
+    async getByDriveId(collection: string, driveId: string, limit: number): Promise<StoredChunk[]> {
+        const col = await this.getCollection(collection);
+        const result = await col.get({
+            where: { driveId: { $eq: driveId } },
+            include: ["documents", "metadatas"],
+            limit,
+        });
+
+        const chunks = result.ids.map((id, i) => ({
+            id,
+            content: result.documents[i] ?? "",
+            metadata: (result.metadatas[i] ?? {}) as Partial<ChunkMetadata>,
+        }));
+
+        // Chunks indexed before chunkIndex existed keep the order Chroma returns, after the rest
+        const position = (chunk: StoredChunk) => chunk.metadata.chunkIndex ?? Number.MAX_SAFE_INTEGER;
+        return chunks.sort((a, b) => position(a) - position(b));
     }
 
     async query(collection: string, queryText: string, nCandidates = 20): Promise<Source[]> {

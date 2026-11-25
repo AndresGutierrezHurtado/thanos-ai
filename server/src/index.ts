@@ -17,6 +17,7 @@ import authRoutes from "./presentation/http/routes/authRoutes";
 import messageRoutes from "./presentation/http/routes/messageRoutes";
 import chatRoutes from "./presentation/http/routes/chatRoutes";
 import documentRoutes from "./presentation/http/routes/documentRoutes";
+import diContainer from "./infrastructure/config/DIContainer";
 
 // Next.js frontend (client workspace) is served by this same process and port
 const dev = process.env.NODE_ENV !== "production";
@@ -71,3 +72,15 @@ registerWebSocketHandler(io);
 server.listen(port, () => {
     console.log(`Server is running on port ${port} (${dev ? "development" : "production"})`);
 });
+
+// Optional periodic Drive sync, so edits made in Drive reach the index without pressing Sync.
+// Unchanged files are skipped by checksum: a run costs a listing plus the changed files
+const driveSyncMinutes = Number(process.env.DRIVE_SYNC_INTERVAL_MINUTES) || 0;
+if (driveSyncMinutes > 0) {
+    const informationUseCase = (await diContainer.getInstance()).getInformationUseCase();
+    if (informationUseCase.getConfiguredSources().includes("drive")) {
+        // A run still in progress is left alone ("running"): the next tick catches up
+        setInterval(() => informationUseCase.startSync("drive"), driveSyncMinutes * 60_000);
+        console.log(`Drive sync scheduled every ${driveSyncMinutes} minute(s)`);
+    }
+}
