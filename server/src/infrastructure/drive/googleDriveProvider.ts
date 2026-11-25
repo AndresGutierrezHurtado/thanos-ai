@@ -56,6 +56,9 @@ export default class GoogleDriveProvider implements IDriveProvider {
 
             // Extract files in the subfolders
             for (const file of response.data.files || []) {
+                // Office lock and temp files (~$doc.docx, ~WRL0003.tmp) are not documents
+                if (file.name?.startsWith("~")) continue;
+
                 if (file.mimeType === "application/vnd.google-apps.folder") {
                     await this.listFiles(limit, file.id, files, currentPath + file.name + "/", [
                         ...parents,

@@ -131,6 +131,7 @@ export default class DIContainer {
             this.getVectorStore(),
             this.getProcessFileService(),
             this.getLogger(),
+            positiveIntEnv("SYNC_CONCURRENCY", 4),
         );
         return this.informationUseCase;
     }
@@ -208,6 +209,7 @@ export default class DIContainer {
             this.getProcessorFactory(),
             this.getChunker(),
             this.getVectorStore(),
+            { maxFileBytes: positiveIntEnv("SYNC_MAX_FILE_MB", 30) * 1024 * 1024 },
         );
     }
 
@@ -245,4 +247,10 @@ export default class DIContainer {
     private getLocalSource(): IWritableDriveProvider {
         return new LocalFileSystemProvider(path.join(process.cwd(), "uploads"));
     }
+}
+
+/** A positive integer from .env, or the default when unset or invalid. */
+function positiveIntEnv(name: string, fallback: number): number {
+    const value = Number.parseInt(process.env[name]?.trim() ?? "", 10);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
 }

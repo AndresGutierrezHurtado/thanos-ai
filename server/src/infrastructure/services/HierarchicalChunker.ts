@@ -4,6 +4,9 @@ import { ExtractedDocument } from "../../application/ports/services/IDocumentPro
 // Words per chunk: smaller chunks keep each embedding about one topic
 const CHUNK_SIZE = 350;
 const CHUNK_OVERLAP = 0.15;
+// Characters per chunk at most, whatever its words: keeps it (plus its context header) well
+// under the embedding model's input limit (8192 tokens) even for text with few spaces
+const MAX_CHUNK_CHARS = 8000;
 
 export default class HierarchicalChunker implements IChunker {
     createChunks(
@@ -57,7 +60,10 @@ export default class HierarchicalChunker implements IChunker {
         const step = maxTokens - overlap;
         const chunks: string[] = [];
         for (let i = 0; i < words.length; i += step) {
-            chunks.push(words.slice(i, i + maxTokens).join(" "));
+            const chunk = words.slice(i, i + maxTokens).join(" ");
+            for (let start = 0; start < chunk.length; start += MAX_CHUNK_CHARS) {
+                chunks.push(chunk.slice(start, start + MAX_CHUNK_CHARS));
+            }
         }
         return chunks;
     }

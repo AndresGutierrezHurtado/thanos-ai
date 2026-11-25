@@ -6,7 +6,6 @@ import Document, { DOCUMENT_SOURCES, DocumentSourceName } from "../../domain/ent
 import ProcessFileService, { DOCUMENTS_COLLECTION } from "../services/ProcessFileService";
 import ILogger, { SyslogSeverity } from "../ports/services/ILogger";
 
-const CONCURRENT_FILES = 10;
 const MAX_REPORTED_ERRORS = 100;
 
 export interface SyncStatus {
@@ -78,6 +77,8 @@ export default class InformationUseCase {
         private readonly vectorStore: IVectorStore,
         private readonly processFileService: ProcessFileService,
         private readonly logger: ILogger,
+        /** Files indexed at once: each is held whole in memory while it is processed */
+        private readonly concurrentFiles: number,
     ) {}
 
     public getConfiguredSources(): DocumentSourceName[] {
@@ -307,8 +308,8 @@ export default class InformationUseCase {
                 status.total = files.length;
                 this.logger.log(SyslogSeverity.INFO, `[sync:${status.source}] ${files.length} files listed`);
 
-                for (let i = 0; i < files.length; i += CONCURRENT_FILES) {
-                    const batch = files.slice(i, i + CONCURRENT_FILES);
+                for (let i = 0; i < files.length; i += this.concurrentFiles) {
+                    const batch = files.slice(i, i + this.concurrentFiles);
                     await Promise.all(batch.map((file) => this.syncFile(job, provider, file)));
                 }
 

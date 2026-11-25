@@ -5,9 +5,16 @@ import { LoadParameters, PDFParse, VerbosityLevel } from "pdf-parse";
 import LoggerAdapter from "../services/LoggerAdapter";
 import { SyslogSeverity } from "../../application/ports/services/ILogger";
 
+const GOOGLE_NATIVE_TYPES = [
+    "application/vnd.google-apps.document",
+    "application/vnd.google-apps.spreadsheet",
+    "application/vnd.google-apps.presentation",
+];
+
 export default class PdfProcessor implements IDocumentProcessor {
     supports(mimeType: string): boolean {
-        return mimeType === "application/pdf";
+        // Google Docs, Sheets and Slides are downloaded exported as PDF
+        return mimeType === "application/pdf" || GOOGLE_NATIVE_TYPES.includes(mimeType);
     }
 
     async extract(buffer: Buffer): Promise<ExtractedDocument> {

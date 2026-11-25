@@ -18,12 +18,18 @@ export const INDEX_VERSION = 2;
 /** "processed": (re)indexed now. "unchanged": already indexed with the same checksum. */
 export type ProcessFileResult = "processed" | "unchanged";
 
+export interface ProcessFileOptions {
+    /** Larger files are not indexed: they are read whole into memory to extract their text */
+    maxFileBytes: number;
+}
+
 export default class ProcessFileService {
     constructor(
         private readonly documentRepository: IDocumentRepository,
         private readonly processorFactory: ProcessorFactory,
         private readonly chunker: IChunker,
         private readonly vectorStore: IVectorStore,
+        private readonly options: ProcessFileOptions,
     ) {}
 
     /**
@@ -52,9 +58,17 @@ export default class ProcessFileService {
             return "unchanged";
         }
 
+        // CHECKS BEFORE DOWNLOADING: supported type and size (Google Docs report no size)
+        const processor = this.processorFactory.get(file.mimeType);
+        const size = Number(file.size ?? 0);
+        if (size > this.options.maxFileBytes) {
+            throw new Error(
+                `Archivo demasiado grande (${toMb(size)} MB, máximo ${toMb(this.options.maxFileBytes)} MB)`,
+            );
+        }
+
         // INFORMATION EXTRACTION FROM FILE
         const buffer = await provider.downloadFile(file.id, file.mimeType);
-        const processor = this.processorFactory.get(file.mimeType);
         const extracted = await processor.extract(buffer, file.mimeType);
         const folders = file.folders ?? [];
         const metadata: ChunkMetadata = this.extractMetadata(file, folders);
@@ -119,4 +133,8 @@ ${chunk.content}`,
             location: folders.map((folder) => folder.name).join(" > ") || undefined,
         };
     }
+}
+
+function toMb(bytes: number): string {
+    return (bytes / 1024 / 1024).toFixed(1);
 }

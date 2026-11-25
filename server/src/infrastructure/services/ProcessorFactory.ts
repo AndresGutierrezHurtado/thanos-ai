@@ -18,11 +18,10 @@ export default class ProcessorFactory {
         new TextProcessor(),
     ];
 
+    /** Throws for types no processor reads: binaries (rar, zip...) would be indexed as garbage. */
     get(mimeType: string): IDocumentProcessor {
         const processor = this.processors.find((p) => p.supports(mimeType));
-        if (!processor) {
-            return this.processors.find((p) => p instanceof TextProcessor)!;
-        }
+        if (!processor) throw new Error(`Tipo de archivo no soportado (${mimeType})`);
         return processor;
     }
 }
