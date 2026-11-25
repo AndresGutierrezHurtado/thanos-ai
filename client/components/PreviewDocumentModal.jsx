@@ -5,35 +5,41 @@ import { DownloadIcon, SquareArrowOutUpRightIcon, XIcon } from "lucide-react";
 import { toast } from "react-toastify";
 import { canPreviewAsPdf, downloadDocument, fetchDocumentChunks, fetchDocumentFile } from "@/lib/documents";
 
+const TABS = [
+    { id: "original", label: "Original" },
+    { id: "indexed", label: "Indexado" },
+];
+
 const EMPTY_PDF = { driveId: null, url: null, error: null };
 const EMPTY_CHUNKS = { driveId: null, data: null, error: null };
 
-/**
- * view "original": the file itself (chat sources). view "indexed": what the assistant has
- * indexed for it, its metadata and chunks (document detail).
- */
-export default function PreviewDocumentModal({
-    isOpen,
-    onClose,
-    driveId,
-    documentTitle,
-    source,
-    mimeType,
-    view = "original",
-}) {
+/** Drive documents show their original and indexed content; uploaded files only the indexed. */
+export default function PreviewDocumentModal({ isOpen, onClose, driveId, documentTitle, source, mimeType }) {
     const modalRef = React.useRef(null);
+    const isLocal = source === "local";
+    const tabs = isLocal ? TABS.filter(({ id }) => id === "indexed") : TABS;
+    const [tab, setTab] = useState(tabs[0].id);
     const [downloading, setDownloading] = useState(false);
     const [pdf, setPdf] = useState(EMPTY_PDF);
     const [chunks, setChunks] = useState(EMPTY_CHUNKS);
 
+    // Each time a document is opened it starts on its first tab, with its chunks unloaded (so
+    // reopening it after a refresh shows the new ones). Adjusted while rendering, not in an effect
+    const session = isOpen ? driveId : null;
+    const [openedFor, setOpenedFor] = useState(session);
+    if (openedFor !== session) {
+        setOpenedFor(session);
+        setTab(tabs[0].id);
+        setChunks(EMPTY_CHUNKS);
+    }
+
     // PDFs and Google Docs/Sheets/Slides are fetched as PDF with the session token, so they
     // show without a Google sign-in. Other Drive files fall back to Google's own viewer
-    // (needs access to the file in Drive); other uploaded files are download-only
-    const isLocal = source === "local";
-    const showIndexed = view === "indexed";
-    const previewAsPdf = !showIndexed && canPreviewAsPdf(mimeType);
+    // (needs access to the file in Drive)
+    const previewAsPdf = !isLocal && canPreviewAsPdf(mimeType);
     const currentPdf = pdf.driveId === driveId ? pdf : EMPTY_PDF;
     const currentChunks = chunks.driveId === driveId ? chunks : EMPTY_CHUNKS;
+    const chunksLoaded = chunks.driveId === driveId;
 
     useEffect(() => {
         if (modalRef.current) {
@@ -58,7 +64,11 @@ export default function PreviewDocumentModal({
             })
             .catch((e) => {
                 if (!cancelled) {
-                    setPdf({ driveId, url: null, error: e.message || "No se pudo cargar la vista previa" });
+                    setPdf({
+                        driveId,
+                        url: null,
+                        error: e.message || "No se pudo cargar la vista previa",
+                    });
                 }
             });
 
@@ -69,9 +79,9 @@ export default function PreviewDocumentModal({
         };
     }, [isOpen, driveId, previewAsPdf]);
 
-    // Loaded on every open, so reopening a document after a refresh shows its new chunks
+    // Chunks load the first time the Indexed tab is shown for an opened document
     useEffect(() => {
-        if (!isOpen || !driveId || !showIndexed) return;
+        if (!isOpen || !driveId || tab !== "indexed" || chunksLoaded) return;
 
         const fallback = "No se pudo cargar el contenido indexado";
         let cancelled = false;
@@ -90,9 +100,8 @@ export default function PreviewDocumentModal({
 
         return () => {
             cancelled = true;
-            setChunks(EMPTY_CHUNKS);
         };
-    }, [isOpen, driveId, showIndexed]);
+    }, [isOpen, driveId, tab, chunksLoaded]);
 
     const handleDownload = async () => {
         if (!driveId) return;
@@ -149,15 +158,32 @@ export default function PreviewDocumentModal({
                     </div>
                 </div>
 
+                {tabs.length > 1 && (
+                    <div role="tablist" className="tabs tabs-border px-4">
+                        {tabs.map(({ id, label }) => (
+                            <button
+                                key={id}
+                                type="button"
+                                role="tab"
+                                aria-selected={tab === id}
+                                className={`tab ${tab === id ? "tab-active" : ""}`}
+                                onClick={() => setTab(id)}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex-1 overflow-hidden">
-                    {showIndexed ? (
+                    {tab === "indexed" ? (
                         <IndexedContent data={currentChunks.data} error={currentChunks.error} isLocal={isLocal} />
                     ) : (
                         <OriginalPreview
                             previewAsPdf={previewAsPdf}
                             pdfUrl={currentPdf.url}
                             pdfError={currentPdf.error}
-                            googleUrl={isLocal ? null : `https://drive.google.com/file/d/${driveId}/preview`}
+                            googleUrl={`https://drive.google.com/file/d/${driveId}/preview`}
                         />
                     )}
                 </div>
@@ -184,7 +210,10 @@ function OriginalPreview({ previewAsPdf, pdfUrl, pdfError, googleUrl }) {
     if (previewAsPdf && !pdfUrl) return <Placeholder>Cargando vista previa…</Placeholder>;
     if (!src) {
         return (
-            <Placeholder>Vista previa no disponible para este tipo de archivo. Puedes descargarlo.</Placeholder>
+            <Placeholder>
+                Vista previa no disponible para este tipo de archivo. Puedes descargarlo o ver su contenido en la
+                pestaña Indexado.
+            </Placeholder>
         );
     }
 

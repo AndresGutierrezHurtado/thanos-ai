@@ -20,8 +20,8 @@ import { SOURCE_LABELS, downloadDocument, refreshDocument } from "@/lib/document
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
- * Indexed documents, paginated: detail (indexed chunks), download. Drive ones can be refreshed
- * from Drive; uploaded ones can be deleted (Drive ones are deleted in Drive).
+ * Indexed documents, paginated: detail (Drive: original and indexed; uploaded: indexed only),
+ * download. Drive ones can be refreshed from Drive; uploaded ones can be deleted (Drive ones are deleted in Drive).
  */
 export default function DocumentList({ reloadKey, onDocumentsChanged }) {
     const [searchInput, setSearchInput] = useState("");
@@ -233,7 +233,11 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
                                             type="button"
                                             className="btn-ghost w-8 h-8 p-0"
                                             tooltipPlacement="left"
-                                            tooltip="Ver contenido indexado"
+                                            tooltip={
+                                                item.source === "local"
+                                                    ? "Ver contenido indexado"
+                                                    : "Ver original y contenido indexado"
+                                            }
                                             aria-label={`Ver ${item.title}`}
                                             onClick={() => setPreview(item)}
                                             leftIcon={<EyeIcon size={15} />}
@@ -311,7 +315,6 @@ export default function DocumentList({ reloadKey, onDocumentsChanged }) {
                 documentTitle={preview?.title}
                 source={preview?.source}
                 mimeType={preview?.mimeType}
-                view="indexed"
             />
         </section>
     );
