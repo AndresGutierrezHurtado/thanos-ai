@@ -189,8 +189,41 @@ function SyncStatus({ sync }) {
                     Última sincronización ({formatDate(sync.finishedAt)}): {counts}
                 </p>
             )}
+            {sync.running && sync.current?.length > 0 && (
+                <CurrentFiles files={sync.current} timeoutMs={sync.fileTimeoutMs} />
+            )}
             {sync.error && <p className="text-xs text-error">Error: {sync.error}</p>}
             {sync.errors.length > 0 && <IssueList title={`${sync.failed} archivo(s) con error`} issues={sync.errors} />}
+        </div>
+    );
+}
+
+function formatElapsed(ms) {
+    const seconds = Math.floor((ms ?? 0) / 1000);
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** Files being indexed now: name, step and time spent; yellow when close to the time limit. */
+function CurrentFiles({ files, timeoutMs }) {
+    return (
+        <div className="space-y-1 text-xs">
+            <p className="font-semibold opacity-80">
+                En proceso{timeoutMs ? ` (máximo ${Math.round(timeoutMs / 60000)} min por archivo)` : ""}
+            </p>
+            <ul className="space-y-1">
+                {files.map((file) => {
+                    const late = timeoutMs && file.elapsedMs >= timeoutMs * 0.8;
+                    return (
+                        <li key={file.file} className={`flex gap-2 ${late ? "text-warning" : "opacity-80"}`}>
+                            <span className="loading loading-spinner loading-xs shrink-0" />
+                            <span className="min-w-0 break-words">
+                                <span className="font-medium">{file.file}</span> · {file.step} ·{" "}
+                                {formatElapsed(file.elapsedMs)}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
         </div>
     );
 }

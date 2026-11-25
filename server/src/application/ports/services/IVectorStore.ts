@@ -19,6 +19,13 @@ export interface VectorQueryOptions {
     sourceType?: string;
 }
 
+export interface AddDocumentsOptions {
+    /** Stops between batches: nothing more is added once aborted */
+    signal?: AbortSignal;
+    /** Called after each batch with the documents added so far */
+    onProgress?: (added: number, total: number) => void;
+}
+
 export interface StoredChunk {
     id: string;
     content: string;
@@ -26,7 +33,7 @@ export interface StoredChunk {
 }
 
 export default interface IVectorStore {
-    addDocuments(collection: string, documents: VectorDocument[]): Promise<void>;
+    addDocuments(collection: string, documents: VectorDocument[], options?: AddDocumentsOptions): Promise<void>;
     deleteByDriveId(collection: string, driveId: string): Promise<void>;
     /** The chunks indexed for a document, in document order, at most `limit`. */
     getByDriveId(collection: string, driveId: string, limit: number): Promise<StoredChunk[]>;

@@ -131,7 +131,10 @@ export default class DIContainer {
             this.getVectorStore(),
             this.getProcessFileService(),
             this.getLogger(),
-            positiveIntEnv("SYNC_CONCURRENCY", 4),
+            {
+                concurrentFiles: positiveIntEnv("SYNC_CONCURRENCY", 4),
+                fileTimeoutMs: positiveIntEnv("SYNC_FILE_TIMEOUT_MIN", 10) * 60_000,
+            },
         );
         return this.informationUseCase;
     }
@@ -209,7 +212,10 @@ export default class DIContainer {
             this.getProcessorFactory(),
             this.getChunker(),
             this.getVectorStore(),
-            { maxFileBytes: positiveIntEnv("SYNC_MAX_FILE_MB", 30) * 1024 * 1024 },
+            {
+                maxFileBytes: positiveIntEnv("SYNC_MAX_FILE_MB", 30) * 1024 * 1024,
+                maxChunks: positiveIntEnv("SYNC_MAX_CHUNKS", 1000),
+            },
         );
     }
 

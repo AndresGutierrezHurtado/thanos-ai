@@ -5,7 +5,12 @@ import Source from "../../domain/entities/source";
 import Document from "../../domain/entities/document";
 
 // PORTS
-import IVectorStore, { StoredChunk, VectorDocument, VectorQueryOptions } from "../../application/ports/services/IVectorStore";
+import IVectorStore, {
+    AddDocumentsOptions,
+    StoredChunk,
+    VectorDocument,
+    VectorQueryOptions,
+} from "../../application/ports/services/IVectorStore";
 import { ChunkMetadata } from "../../application/ports/services/IChunker";
 import IDocumentRepository from "../../application/ports/repositories/IDocumentRepository";
 import IEmbeddingProvider from "../../application/ports/services/IEmbeddingProvider";
@@ -19,6 +24,8 @@ const MAX_CHUNKS_PER_DOCUMENT = 2;
 // Candidates fetched per requested result, so there are enough after that per-document cap
 const CANDIDATES_PER_RESULT = 4;
 const MAX_CANDIDATES = 100;
+// Documents embedded and added per request: shows progress and lets long files be stopped
+const ADD_BATCH_SIZE = 100;
 
 export default class ChromaVectorStore implements IVectorStore {
     private readonly client: ChromaClient;
@@ -57,12 +64,24 @@ export default class ChromaVectorStore implements IVectorStore {
         return col;
     }
 
-    async addDocuments(collection: string, documents: VectorDocument[]): Promise<void> {
+    async addDocuments(
+        collection: string,
+        documents: VectorDocument[],
+        options: AddDocumentsOptions = {},
+    ): Promise<void> {
         if (documents.length === 0) return;
 
         // GETTING THE COLLECTION
         const col = await this.getCollection(collection);
 
+        for (let start = 0; start < documents.length; start += ADD_BATCH_SIZE) {
+            options.signal?.throwIfAborted();
+            await this.addBatch(col, documents.slice(start, start + ADD_BATCH_SIZE));
+            options.onProgress?.(Math.min(start + ADD_BATCH_SIZE, documents.length), documents.length);
+        }
+    }
+
+    private async addBatch(col: Collection, documents: VectorDocument[]): Promise<void> {
         // GETTING THE CONTENTS, EMBEDDINGS AND METADATAS
         const contents = documents.map((d) => d.content);
         const embeddings = await this.embeddingProvider.embedDocuments(

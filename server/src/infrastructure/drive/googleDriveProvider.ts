@@ -93,7 +93,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
     }
 
     // Descargar archivo
-    async downloadFile(fileId: string, mimeType: string): Promise<Buffer> {
+    async downloadFile(fileId: string, mimeType: string, signal?: AbortSignal): Promise<Buffer> {
         const googleNativeTypes = {
             "application/vnd.google-apps.document": "application/pdf",
             "application/vnd.google-apps.spreadsheet": "application/pdf",
@@ -108,6 +108,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
                 },
                 {
                     responseType: "arraybuffer",
+                    signal,
                 },
             );
             return Buffer.from(response.data as ArrayBuffer);
@@ -115,7 +116,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
 
         const response = await this.drive.files.get(
             { fileId, alt: "media" },
-            { responseType: "arraybuffer" },
+            { responseType: "arraybuffer", signal },
         );
 
         return Buffer.from(response.data as ArrayBuffer);

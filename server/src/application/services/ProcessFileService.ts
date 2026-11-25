@@ -21,6 +21,17 @@ export type ProcessFileResult = "processed" | "unchanged";
 export interface ProcessFileOptions {
     /** Larger files are not indexed: they are read whole into memory to extract their text */
     maxFileBytes: number;
+    /** Files with more chunks are not indexed: each chunk is one embedding (time and cost) */
+    maxChunks: number;
+}
+
+export interface ExecuteOptions {
+    /** Re-index even when its content and location did not change */
+    force?: boolean;
+    /** Stops the work when aborted; nothing of the file is saved afterwards */
+    signal?: AbortSignal;
+    /** What it is doing now ("Descargando", "Generando embeddings 100/800"...), to show it */
+    onStep?: (step: string) => void;
 }
 
 export default class ProcessFileService {
@@ -32,16 +43,19 @@ export default class ProcessFileService {
         private readonly options: ProcessFileOptions,
     ) {}
 
-    /**
-     * Indexes one file of a source. Throws when the file cannot be indexed.
-     * `force` re-indexes it even when its content and location did not change.
-     */
+    /** Indexes one file of a source. Throws when the file cannot be indexed. */
     public async execute(
         file: DriveFile,
         source: DocumentSourceName,
         provider: IDriveProvider,
-        options: { force?: boolean } = {},
+        options: ExecuteOptions = {},
     ): Promise<ProcessFileResult> {
+        const { signal } = options;
+        const step = (name: string) => {
+            signal?.throwIfAborted();
+            options.onStep?.(name);
+        };
+
         // CHECK IF FILE ALREADY EXISTS
         const exists = await this.documentRepository.findByDriveId(file.id);
         const checksum = file.md5Checksum ?? file.modifiedTime;
@@ -68,7 +82,9 @@ export default class ProcessFileService {
         }
 
         // INFORMATION EXTRACTION FROM FILE
-        const buffer = await provider.downloadFile(file.id, file.mimeType);
+        step("Descargando");
+        const buffer = await provider.downloadFile(file.id, file.mimeType, signal);
+        step("Extrayendo texto");
         const extracted = await processor.extract(buffer, file.mimeType);
         const folders = file.folders ?? [];
         const metadata: ChunkMetadata = this.extractMetadata(file, folders);
@@ -79,8 +95,14 @@ export default class ProcessFileService {
         if (chunks.length === 0) {
             throw new Error("No se pudo extraer texto del archivo");
         }
+        if (chunks.length > this.options.maxChunks) {
+            throw new Error(
+                `Demasiados fragmentos (${chunks.length.toLocaleString("es-CO")}, máximo ${this.options.maxChunks.toLocaleString("es-CO")})`,
+            );
+        }
 
         // DELETING EXISTING CHUNKS FROM THE VECTOR STORE
+        step(`Generando embeddings 0/${chunks.length}`);
         await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id);
 
         try {
@@ -96,8 +118,13 @@ ${chunk.content}`,
                     // The chunk's own metadata: it carries its section and position
                     metadata: chunk.metadata,
                 })),
+                {
+                    signal,
+                    onProgress: (added, total) => options.onStep?.(`Generando embeddings ${added}/${total}`),
+                },
             );
 
+            step("Guardando");
             // SAVING THE DOCUMENT (AND ITS CHECKSUM) LAST: if indexing failed, the old
             // checksum is kept and the next sync retries this file instead of skipping it
             await this.documentRepository.save({
@@ -113,7 +140,8 @@ ${chunk.content}`,
                 indexVersion: INDEX_VERSION,
             });
         } catch (err: unknown) {
-            // Only this file's chunks: other files are indexed concurrently
+            // Only this file's chunks: other files are indexed concurrently. Also when aborted:
+            // the batches added before stopping must not stay without their document row
             await this.vectorStore.deleteByDriveId(DOCUMENTS_COLLECTION, file.id).catch(() => {});
             throw err;
         }

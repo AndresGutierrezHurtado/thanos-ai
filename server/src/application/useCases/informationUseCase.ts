@@ -22,6 +22,17 @@ export interface SyncStatus {
     /** Set when the whole run failed (e.g. the source could not be listed) */
     error: string | null;
     errors: { file: string; message: string }[];
+    /** Files being indexed now (`elapsedMs` is filled in when the status is read) */
+    current: { file: string; step: string; startedAt: Date; elapsedMs?: number }[];
+    /** A file still indexing after this long fails and the sync moves on */
+    fileTimeoutMs: number;
+}
+
+export interface SyncOptions {
+    /** Files indexed at once: each is held whole in memory while it is processed */
+    concurrentFiles: number;
+    /** A file still indexing after this long fails ("Tiempo agotado") and its slot is freed */
+    fileTimeoutMs: number;
 }
 
 export interface SourceOverview {
@@ -77,8 +88,7 @@ export default class InformationUseCase {
         private readonly vectorStore: IVectorStore,
         private readonly processFileService: ProcessFileService,
         private readonly logger: ILogger,
-        /** Files indexed at once: each is held whole in memory while it is processed */
-        private readonly concurrentFiles: number,
+        private readonly syncOptions: SyncOptions,
     ) {}
 
     public getConfiguredSources(): DocumentSourceName[] {
@@ -95,7 +105,16 @@ export default class InformationUseCase {
                     configured: this.findProvider(source) !== null,
                     documents: stats.count,
                     lastUpdatedAt: stats.lastUpdatedAt,
-                    sync: job ? { ...job.status, errors: [...job.status.errors] } : null,
+                    sync: job
+                        ? {
+                              ...job.status,
+                              errors: [...job.status.errors],
+                              current: job.status.current.map((entry) => ({
+                                  ...entry,
+                                  elapsedMs: Date.now() - entry.startedAt.getTime(),
+                              })),
+                          }
+                        : null,
                 };
             }),
         );
@@ -143,7 +162,7 @@ export default class InformationUseCase {
         }
 
         const job: SyncJob = {
-            status: newStatus(source),
+            status: newStatus(source, this.syncOptions.fileTimeoutMs),
             rerun: false,
             loggedPercentage: 0,
             done: Promise.resolve(),
@@ -302,16 +321,22 @@ export default class InformationUseCase {
             do {
                 job.rerun = false;
                 job.loggedPercentage = 0;
-                Object.assign(status, newStatus(status.source));
+                Object.assign(status, newStatus(status.source, this.syncOptions.fileTimeoutMs));
 
                 const files = await provider.listFiles(limit);
                 status.total = files.length;
                 this.logger.log(SyslogSeverity.INFO, `[sync:${status.source}] ${files.length} files listed`);
 
-                for (let i = 0; i < files.length; i += this.concurrentFiles) {
-                    const batch = files.slice(i, i + this.concurrentFiles);
-                    await Promise.all(batch.map((file) => this.syncFile(job, provider, file)));
-                }
+                // Workers take the next file as soon as theirs ends: a slow file holds only
+                // its own slot. syncFile never throws, so one failure stops nothing
+                let next = 0;
+                const worker = async () => {
+                    while (next < files.length) {
+                        await this.syncFile(job, provider, files[next++]);
+                    }
+                };
+                const workers = Math.min(this.syncOptions.concurrentFiles, files.length);
+                await Promise.all(Array.from({ length: workers }, worker));
 
                 // A limited run only saw part of the source: pruning would delete the rest
                 if (limit === undefined) {
@@ -336,10 +361,33 @@ export default class InformationUseCase {
     private async syncFile(job: SyncJob, provider: IDriveProvider, file: DriveFile): Promise<void> {
         const { status } = job;
 
+        const current = { file: file.path ?? file.name, step: "Revisando", startedAt: new Date() };
+        status.current.push(current);
+        const controller = new AbortController();
+        let timer: NodeJS.Timeout | undefined;
+
         try {
             // A refresh of this file started before the sync: let it finish, then compare checksums
             await this.refreshing.get(file.id)?.catch(() => {});
-            const result = await this.processFileService.execute(file, status.source, provider);
+
+            // On timeout the file fails now and its slot is freed. The abort stops the work at
+            // its next step (download, batch of embeddings, save) and removes what it added;
+            // synchronous text extraction cannot be interrupted, it stops right after
+            const timeout = new Promise<never>((_, reject) => {
+                timer = setTimeout(() => {
+                    const minutes = Math.round(this.syncOptions.fileTimeoutMs / 60_000);
+                    const error = new Error(`Tiempo agotado (${minutes} min) en: ${current.step}`);
+                    controller.abort(error);
+                    reject(error);
+                }, this.syncOptions.fileTimeoutMs);
+            });
+            const result = await Promise.race([
+                this.processFileService.execute(file, status.source, provider, {
+                    signal: controller.signal,
+                    onStep: (step) => (current.step = step),
+                }),
+                timeout,
+            ]);
             status[result]++;
         } catch (err) {
             status.failed++;
@@ -351,6 +399,9 @@ export default class InformationUseCase {
                 `[sync:${status.source}] error processing ${file.name} (${file.id}): ${errorMessage(err)}`,
                 { error: err as Error },
             );
+        } finally {
+            clearTimeout(timer);
+            status.current.splice(status.current.indexOf(current), 1);
         }
 
         // LOG THE PROGRESS EVERY 5%
@@ -401,7 +452,7 @@ export default class InformationUseCase {
     }
 }
 
-function newStatus(source: DocumentSourceName): SyncStatus {
+function newStatus(source: DocumentSourceName, fileTimeoutMs: number): SyncStatus {
     return {
         source,
         running: true,
@@ -414,6 +465,8 @@ function newStatus(source: DocumentSourceName): SyncStatus {
         finishedAt: null,
         error: null,
         errors: [],
+        current: [],
+        fileTimeoutMs,
     };
 }
 

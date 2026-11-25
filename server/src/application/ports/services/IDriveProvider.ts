@@ -22,7 +22,8 @@ export interface DriveFile {
 /** A source of documents to index (Google Drive, uploaded files...). */
 export default interface IDriveProvider {
     listFiles(limit?: number): Promise<DriveFile[]>;
-    downloadFile(fileId: string, mimeType: string): Promise<Buffer>;
+    /** `signal` cancels the download (e.g. when the file took too long to index). */
+    downloadFile(fileId: string, mimeType: string, signal?: AbortSignal): Promise<Buffer>;
     /** null only when the file does not exist; other failures (network, access) throw. */
     getFileById(fileId: string): Promise<DriveFile | null>;
 }
