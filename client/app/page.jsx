@@ -13,6 +13,7 @@ export default function Page() {
     const [file, setFile] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [streamingText, setStreamingText] = useState("");
+    const [streamingStep, setStreamingStep] = useState(null);
 
     const handleFileChange = (e) => {
         const selected = e?.target?.files?.[0] ?? null;
@@ -38,6 +39,7 @@ export default function Page() {
 
         setIsCreating(true);
         setStreamingText("");
+        setStreamingStep(null);
         try {
             await streamRequest(
                 "POST",
@@ -45,6 +47,7 @@ export default function Page() {
                 { content: trimmedContent, mediaContent },
                 {
                     onChunk: (chunk) => setStreamingText((prev) => prev + chunk),
+                    onStatus: (step) => setStreamingStep(step),
                     onFinal: (data) => {
                         setContent("");
                         setFile(null);
@@ -62,6 +65,7 @@ export default function Page() {
         } finally {
             setIsCreating(false);
             setStreamingText("");
+            setStreamingStep(null);
         }
     };
 
@@ -145,7 +149,7 @@ export default function Page() {
                 </div>
                 {isCreating && (
                     <div className="w-full rounded-lg border border-neutral-content/10 bg-neutral-content/5 p-4 min-h-[80px]">
-                        <p className="text-sm opacity-70 mb-2">Generando respuesta…</p>
+                        <p className="text-sm opacity-70 mb-2">{streamingStep ? `${streamingStep}…` : "Generando respuesta…"}</p>
                         {streamingText && (
                             <p className="text-sm whitespace-pre-wrap">{streamingText}</p>
                         )}

@@ -7,61 +7,84 @@ import MessageRole from "../../domain/valueObjects/MessageRole";
 import DateTimeValue from "../../domain/valueObjects/DateTimeValue";
 
 // PORTS
-import IChatProvider, { ChatMessage, ChatTool } from "../ports/services/IChatProvider";
+import IChatProvider, { ChatMessage } from "../ports/services/IChatProvider";
 import IVectorStore from "../ports/services/IVectorStore";
 import IMessageRepository from "../ports/repositories/IMessageRepository";
 import ISourceRepository from "../ports/repositories/ISourceRepository";
+import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 
 import { SYSTEM_PROMPT, SPEECH_SYSTEM_PROMPT } from "./prompts";
+import DocumentTools from "./DocumentTools";
 
-const DOCUMENTS_COLLECTION = "iso-docs";
+/** What a streamed answer sends while it is generated: answer text, or progress. */
+export type ResponseEvent = { text: string } | { status: string };
+
+export interface MessageServiceConfig {
+    /** Characters of documents the assistant may read for one written answer */
+    readBudget: number;
+}
+
+// Tool rounds (search, read...) before the assistant must answer
+const MAX_TOOL_ROUNDS = 12;
+const SPEECH_MAX_TOOL_ROUNDS = 4;
 
 /**
- * Orchestrates the assistant: builds prompts, gives the model a document-search
- * tool backed by the vector store, and persists the answer with its sources.
+ * Orchestrates the assistant: builds prompts, gives the model document tools (explore,
+ * find, search, read) and persists the answer with its sources.
  */
 export default class MessageService {
     constructor(
         private readonly chatProvider: IChatProvider,
         private readonly vectorStore: IVectorStore,
+        private readonly documentRepository: IDocumentRepository,
         private readonly messageRepository: IMessageRepository,
         private readonly sourceRepository: ISourceRepository,
+        private readonly config: MessageServiceConfig,
     ) {}
 
     async generateResponse(
         chat: Chat,
         messages: Message[],
         extractedText?: string,
-        onChunk?: (text: string) => void,
+        onEvent?: (event: ResponseEvent) => void,
         userSystemPrompt?: string | null,
     ): Promise<Chat> {
         const systemPrompt = userSystemPrompt?.trim()
             ? `${SYSTEM_PROMPT}\n\nINSTRUCCIONES ADICIONALES DEL USUARIO:\n${userSystemPrompt}`
             : SYSTEM_PROMPT;
 
-        const sources: Source[] = [];
+        const tools = new DocumentTools(this.documentRepository, this.vectorStore, {
+            readBudget: this.config.readBudget,
+            onStatus: onEvent && ((status) => onEvent({ status })),
+        });
+        const chatMessages = await this.toChatMessages(systemPrompt, messages, tools, extractedText);
+
         const response = await this.chatProvider.chat({
-            messages: this.toChatMessages(systemPrompt, messages, extractedText),
-            tools: [this.searchDocumentsTool(sources)],
+            messages: chatMessages,
+            tools: tools.tools(),
             temperature: 0.3,
-            maxTokens: 1500,
-            onChunk,
+            maxTokens: 2000,
+            maxToolRounds: MAX_TOOL_ROUNDS,
+            onChunk: onEvent && ((text) => onEvent({ text })),
         });
 
-        return this.saveAssistantMessage(chat, response, sources);
+        return this.saveAssistantMessage(chat, response, tools.sources());
     }
 
     async generateSpeechResponse(chat: Chat, messages: Message[]): Promise<Chat> {
-        // Voice: fewer tokens and a conversational, paragraph-only style
-        const sources: Source[] = [];
+        // Voice: fewer tokens, less reading and a conversational, paragraph-only style
+        const tools = new DocumentTools(this.documentRepository, this.vectorStore, {
+            readBudget: Math.min(this.config.readBudget, 20_000),
+        });
         const response = await this.chatProvider.chat({
-            messages: this.toChatMessages(SPEECH_SYSTEM_PROMPT, messages),
-            tools: [this.searchDocumentsTool(sources)],
+            messages: await this.toChatMessages(SPEECH_SYSTEM_PROMPT, messages, tools),
+            tools: tools.tools(),
             temperature: 0.35,
             maxTokens: 500,
+            maxToolRounds: SPEECH_MAX_TOOL_ROUNDS,
         });
 
-        return this.saveAssistantMessage(chat, response, sources);
+        return this.saveAssistantMessage(chat, response, tools.sources());
     }
 
     async generateTitle(content: string): Promise<string> {
@@ -76,10 +99,18 @@ export default class MessageService {
         });
     }
 
-    private toChatMessages(systemPrompt: string, messages: Message[], extractedText?: string): ChatMessage[] {
+    private async toChatMessages(
+        systemPrompt: string,
+        messages: Message[],
+        tools: DocumentTools,
+        extractedText?: string,
+    ): Promise<ChatMessage[]> {
         const chatMessages: ChatMessage[] = [
             { role: "system", content: systemPrompt },
-            ...messages.map((message) => ({ role: message.getRole(), content: message.getContent() })),
+            ...messages.map((message) => ({
+                role: message.getRole(),
+                content: message.getContent(),
+            })),
         ];
 
         // Attachments are appended to the latest user message
@@ -89,39 +120,6 @@ export default class MessageService {
         }
 
         return chatMessages;
-    }
-
-    /** Search tool for the model; every result is also collected into `sources`. */
-    private searchDocumentsTool(sources: Source[]): ChatTool {
-        return {
-            name: "search_documents",
-            description: "Busca información en los documentos internos de la empresa",
-            parameters: {
-                type: "object",
-                properties: {
-                    query: {
-                        type: "string",
-                        description: "La consulta para buscar información en los documentos internos de la empresa",
-                    },
-                    limit: { type: "number", description: "El límite de documentos a buscar", default: 5 },
-                },
-                required: ["query"],
-            },
-            execute: async (args) => {
-                const query = String(args.query ?? "");
-                const limit = typeof args.limit === "number" ? args.limit : 5;
-                const results = await this.vectorStore.query(DOCUMENTS_COLLECTION, query, { limit });
-                sources.push(...results);
-
-                let context = "CONTEXTO RELEVANTE DE LOS DOCUMENTOS:\n";
-                for (const result of results) {
-                    const document = result.getDocument();
-                    const url = document ? `https://drive.google.com/file/d/${document.getDriveId()}/view` : null;
-                    context += `- '${document?.getPath()}' (${url}): ${result.getContent()}\n`;
-                }
-                return context;
-            },
-        };
     }
 
     private async saveAssistantMessage(chat: Chat, content: string, sources: Source[]): Promise<Chat> {

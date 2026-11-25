@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ResponseEvent } from "../../../application/services/MessageService";
 
 // Use Cases
 import MessageUseCase from "../../../application/useCases/MessageUseCase";
@@ -31,12 +32,12 @@ export default class MessageController {
             res.setHeader("Cache-Control", "no-cache");
             res.setHeader("Connection", "keep-alive");
             res.flushHeaders?.();
-            const onChunk = (text: string) => {
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            const onEvent = (event: ResponseEvent) => {
+                res.write(`data: ${JSON.stringify(event)}\n\n`);
             };
             const message = await this.messageUseCase.sendMessage(
                 { chatId, content, mediaContent },
-                onChunk,
+                onEvent,
                 userId,
             );
             res.write(
@@ -74,12 +75,12 @@ export default class MessageController {
             res.setHeader("Cache-Control", "no-cache");
             res.setHeader("Connection", "keep-alive");
             res.flushHeaders?.();
-            const onChunk = (text: string) => {
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            const onEvent = (event: ResponseEvent) => {
+                res.write(`data: ${JSON.stringify(event)}\n\n`);
             };
             const result = await this.messageUseCase.updateMessage(
                 { id, content },
-                onChunk,
+                onEvent,
                 userId,
             );
             res.write(

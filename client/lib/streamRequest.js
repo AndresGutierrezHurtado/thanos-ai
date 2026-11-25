@@ -5,7 +5,7 @@ import { API_URL } from "@/lib/api";
  * Realiza una petición con streaming SSE.
  * Incluye Authorization Bearer si hay token.
  */
-export async function streamRequest(method, endpoint, body, { onChunk, onFinal }) {
+export async function streamRequest(method, endpoint, body, { onChunk, onStatus, onFinal }) {
     const url = `${API_URL}${endpoint}`;
     const payload = { ...body, stream: true };
     const headers = {
@@ -53,6 +53,10 @@ export async function streamRequest(method, endpoint, body, { onChunk, onFinal }
             }
             if (json.text !== undefined && onChunk) {
                 onChunk(json.text);
+            }
+            // Progreso mientras la IA busca y lee documentos ("Leyendo X...")
+            if (json.status !== undefined && onStatus) {
+                onStatus(json.status);
             }
             if (json.success === true && json.data !== undefined && onFinal) {
                 onFinal(json.data);

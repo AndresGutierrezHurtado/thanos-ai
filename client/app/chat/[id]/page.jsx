@@ -84,6 +84,18 @@ export default function ChatByIdPage() {
         });
     }, []);
 
+    // Pasos de la IA mientras trabaja (buscar, leer...): se muestran sobre la respuesta
+    const addStepToLastAssistantMessage = useCallback((step) => {
+        setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") {
+                next[next.length - 1] = { ...last, steps: [...(last.steps ?? []), step] };
+            }
+            return next;
+        });
+    }, []);
+
     const prepareForStreamingAfterUserMessage = useCallback(
         (messageId, newContent = null) => {
             setMessages((prev) => {
@@ -192,6 +204,7 @@ export default function ChatByIdPage() {
                 { chatId, content: trimmedContent, mediaContent },
                 {
                     onChunk: appendToLastAssistantMessage,
+                    onStatus: addStepToLastAssistantMessage,
                     onFinal: () => {
                         loadMessages();
                         setTimeout(() => textareaRef.current?.focus(), 100);
@@ -233,6 +246,7 @@ export default function ChatByIdPage() {
                     { content },
                     {
                         onChunk: appendToLastAssistantMessage,
+                        onStatus: addStepToLastAssistantMessage,
                         onFinal: () => {
                             loadMessages();
                             setTimeout(() => textareaRef.current?.focus(), 100);
@@ -266,6 +280,7 @@ export default function ChatByIdPage() {
             chatId,
             prepareForStreamingAfterUserMessage,
             appendToLastAssistantMessage,
+            addStepToLastAssistantMessage,
         ]
     );
 

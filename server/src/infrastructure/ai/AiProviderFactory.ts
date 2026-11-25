@@ -5,6 +5,7 @@ import ISpeechProvider from "../../application/ports/services/ISpeechProvider";
 import OpenAiChatProvider from "./chat/OpenAiChatProvider";
 import OllamaChatProvider from "./chat/OllamaChatProvider";
 import AzureChatProvider from "./chat/AzureChatProvider";
+import AnthropicChatProvider from "./chat/AnthropicChatProvider";
 import OpenAiEmbeddingProvider from "./embedding/OpenAiEmbeddingProvider";
 import OllamaEmbeddingProvider from "./embedding/OllamaEmbeddingProvider";
 import AzureEmbeddingProvider from "./embedding/AzureEmbeddingProvider";
@@ -14,9 +15,10 @@ import OpenAiSpeechProvider from "./speech/OpenAiSpeechProvider";
  * Picks each AI implementation from .env. This is the only place that reads AI
  * configuration; the implementations receive typed config objects.
  *
- *   AI_CHAT_PROVIDER      = openai | ollama | azure   (AI_CHAT_MODEL; Azure: deployment name)
+ *   AI_CHAT_PROVIDER      = openai | ollama | azure | anthropic   (AI_CHAT_MODEL; Azure: deployment name)
  *   AI_EMBEDDING_PROVIDER = openai | ollama | azure   (AI_EMBEDDING_MODEL; Azure: deployment name)
  *   AI_SPEECH_PROVIDER    = openai
+ *   AI_AGENT_READ_BUDGET  = characters of documents the assistant may read per answer
  */
 export default class AiProviderFactory {
     static createChatProvider(): IChatProvider {
@@ -41,9 +43,23 @@ export default class AiProviderFactory {
                     apiKey: env("AZURE_OPENAI_API_KEY"),
                     deployment: required("AI_CHAT_MODEL", model),
                 });
+            case "anthropic":
+                return new AnthropicChatProvider({
+                    apiKey: env("ANTHROPIC_API_KEY"),
+                    model: model ?? "claude-sonnet-5-5",
+                });
             default:
-                throw unsupported("AI_CHAT_PROVIDER", provider, "openai, ollama, azure");
+                throw unsupported("AI_CHAT_PROVIDER", provider, "openai, ollama, azure, anthropic");
         }
+    }
+
+    /**
+     * Characters of documents the assistant may read for one answer. The default suits models
+     * with 128k+ tokens of context; lower it for small local models.
+     */
+    static agentReadBudget(): number {
+        const value = Number.parseInt(env("AI_AGENT_READ_BUDGET") ?? "", 10);
+        return Number.isFinite(value) && value > 0 ? value : DEFAULT_AGENT_READ_BUDGET;
     }
 
     static createEmbeddingProvider(): IEmbeddingProvider {
@@ -90,6 +106,8 @@ export default class AiProviderFactory {
         }
     }
 }
+
+const DEFAULT_AGENT_READ_BUDGET = 120_000;
 
 /** Reads an env var, treating empty values as unset. */
 function env(name: string): string | undefined {

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ResponseEvent } from "../../../application/services/MessageService";
 
 // Use Cases
 import ChatUseCase from "../../../application/useCases/chatUseCase";
@@ -82,10 +83,10 @@ export default class ChatController {
             res.setHeader("Cache-Control", "no-cache");
             res.setHeader("Connection", "keep-alive");
             res.flushHeaders?.();
-            const onChunk = (text: string) => {
-                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            const onEvent = (event: ResponseEvent) => {
+                res.write(`data: ${JSON.stringify(event)}\n\n`);
             };
-            const chat = await this.chatUseCase.createChat(dto, onChunk, userId);
+            const chat = await this.chatUseCase.createChat(dto, onEvent, userId);
             res.write(
                 `data: ${JSON.stringify({
                     success: true,

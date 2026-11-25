@@ -190,8 +190,10 @@ export default class DIContainer {
         return new MessageService(
             this.getChatProvider(),
             this.getVectorStore(),
+            this.getDocumentRepository(),
             this.getMessageRepository(),
             this.getSourceRepository(),
+            { readBudget: AiProviderFactory.agentReadBudget() },
         );
     }
 

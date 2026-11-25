@@ -19,7 +19,7 @@ import IMediaContentRepository from "../ports/repositories/IMediaContentReposito
 import IUserRepository from "../ports/repositories/IUserRepository";
 
 // Application Services
-import MessageService from "../services/MessageService";
+import MessageService, { ResponseEvent } from "../services/MessageService";
 
 // Infrastructure
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
@@ -57,7 +57,7 @@ export default class ChatUseCase {
 
     public async createChat(
         dto: SendMessageDto,
-        onChunk?: (text: string) => void,
+        onEvent?: (event: ResponseEvent) => void,
         userId?: string,
     ): Promise<MessageResource> {
         const { content, mediaContent } = dto;
@@ -125,7 +125,7 @@ export default class ChatUseCase {
             chat,
             [userMessage],
             extractedText,
-            onChunk,
+            onEvent,
             userSystemPrompt,
         );
 

@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 
 // ICONS
 import {
+    CheckIcon,
     CopyIcon,
     LoaderIcon,
     PenIcon,
@@ -19,6 +20,7 @@ import {
 // COMPONENTS
 import PreviewDocumentModal from "./PreviewDocumentModal";
 import Button from "./atoms/Button";
+
 
 export default function ChatMessageList({
     messages = [],
@@ -136,6 +138,23 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
                 <p className="text-sm scale-y-105 font-semibold">Thanos AI</p>
             </div>
             <div className="flex flex-col gap-2 w-full">
+                {message.streaming && (message.steps ?? []).length > 0 && (
+                    <ul className="flex flex-col gap-1 text-sm opacity-70">
+                        {message.steps.map((step, index) => {
+                            const current = index === message.steps.length - 1 && !message.content.text;
+                            return (
+                                <li key={index} className="flex items-center gap-2">
+                                    {current ? (
+                                        <LoaderIcon size={14} className="animate-spin shrink-0" />
+                                    ) : (
+                                        <CheckIcon size={14} className="shrink-0" />
+                                    )}
+                                    <span className="truncate">{step}</span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
                 <div className="w-fit overflow-x-clip text-ellipsis flex items-center gap-2 flex-wrap">
                     <div className="markdown prose" ref={contentRef}>
                         <Markdown remarkPlugins={[remarkGfm]} components={components}>

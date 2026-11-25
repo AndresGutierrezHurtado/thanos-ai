@@ -18,6 +18,8 @@ export interface ChatRequest {
     tools?: ChatTool[];
     temperature?: number;
     maxTokens?: number;
+    /** Rounds of tool calls allowed before the model must answer (default 5) */
+    maxToolRounds?: number;
     /** When set, the response is streamed and each text fragment is passed here. */
     onChunk?: (text: string) => void;
 }

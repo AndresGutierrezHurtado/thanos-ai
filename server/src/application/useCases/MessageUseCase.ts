@@ -22,7 +22,7 @@ import MediaContent from "../../domain/entities/mediaContent";
 import { MediaContentType } from "../../domain/valueObjects/MediaContentType";
 
 // Application Services
-import MessageService from "../services/MessageService";
+import MessageService, { ResponseEvent } from "../services/MessageService";
 
 // Infrastructure
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
@@ -41,7 +41,7 @@ export default class MessageUseCase {
 
     public async sendMessage(
         messageDto: SendMessageDto,
-        onChunk?: (text: string) => void,
+        onEvent?: (event: ResponseEvent) => void,
         userId?: string,
     ): Promise<MessageResource> {
         const { chatId, content, mediaContent } = messageDto;
@@ -104,7 +104,7 @@ export default class MessageUseCase {
             chat,
             messages,
             extractedText,
-            onChunk,
+            onEvent,
             userSystemPrompt,
         );
 
@@ -113,7 +113,7 @@ export default class MessageUseCase {
 
     public async updateMessage(
         dto: UpdateMessageDto,
-        onChunk?: (text: string) => void,
+        onEvent?: (event: ResponseEvent) => void,
         userId?: string,
     ): Promise<MessageResource> {
         // Get the message to update
@@ -149,7 +149,7 @@ export default class MessageUseCase {
             chat,
             messages,
             undefined,
-            onChunk,
+            onEvent,
             userSystemPrompt,
         );
 

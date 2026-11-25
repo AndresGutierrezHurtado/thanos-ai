@@ -10,7 +10,7 @@ import {
 import IChatProvider, { ChatMessage, ChatRequest, ChatTool } from "../../../application/ports/services/IChatProvider";
 
 // Safety cap so a model that keeps calling tools cannot loop forever
-const MAX_TOOL_ROUNDS = 5;
+const DEFAULT_MAX_TOOL_ROUNDS = 5;
 
 export interface ChatModelOptions {
     temperature: number;
@@ -24,24 +24,48 @@ export interface ChatModelOptions {
 export default abstract class LangChainChatProvider implements IChatProvider {
     protected abstract createModel(options: ChatModelOptions): BaseChatModel;
 
-    async chat({ messages, tools = [], temperature = 0.3, maxTokens = 500, onChunk }: ChatRequest): Promise<string> {
+    async chat({
+        messages,
+        tools = [],
+        temperature = 0.3,
+        maxTokens = 500,
+        maxToolRounds = DEFAULT_MAX_TOOL_ROUNDS,
+        onChunk,
+    }: ChatRequest): Promise<string> {
         const baseModel = this.createModel({ temperature, maxTokens });
-        const model = tools.length > 0 ? baseModel.bindTools!(tools.map(toToolDefinition)) : baseModel;
+        const definitions = tools.map(toToolDefinition);
+        const model = tools.length > 0 ? baseModel.bindTools!(definitions) : baseModel;
+        // Last round: tools stay declared (the history has tool calls) but none may be called
+        const answerModel = tools.length > 0 ? baseModel.bindTools!(definitions, { tool_choice: "none" }) : baseModel;
         const history: BaseMessage[] = messages.map(toLangChainMessage);
 
         for (let round = 0; ; round++) {
-            const reply = onChunk ? await streamReply(model, history, onChunk) : await model.invoke(history);
+            const current = round >= maxToolRounds ? answerModel : model;
+            const reply = onChunk ? await streamReply(current, history, onChunk) : await current.invoke(history);
             const toolCalls = reply.tool_calls ?? [];
-            if (toolCalls.length === 0 || round >= MAX_TOOL_ROUNDS) {
-                return reply.text;
+            if (toolCalls.length === 0) return reply.text;
+            if (round >= maxToolRounds) {
+                // Providers that ignore tool_choice "none" (Ollama) may still ask for tools here
+                return reply.text || "No alcancé a completar la búsqueda. Intenta con una pregunta más específica.";
             }
 
             history.push(new AIMessage({ content: reply.content, tool_calls: toolCalls }));
-            for (const call of toolCalls) {
-                const tool = tools.find((t) => t.name === call.name);
-                const result = tool ? await tool.execute(call.args) : `Unknown tool "${call.name}"`;
-                history.push(new ToolMessage({ content: result, tool_call_id: call.id ?? call.name }));
-            }
+            // Calls of one round are independent: run them together, keep their order
+            const results = await Promise.all(
+                toolCalls.map(async (call) => {
+                    const tool = tools.find((t) => t.name === call.name);
+                    if (!tool) return `Unknown tool "${call.name}"`;
+                    try {
+                        return await tool.execute(call.args);
+                    } catch (err) {
+                        // The model can retry or answer without it; one failing tool must not lose the answer
+                        return `Error en ${call.name}: ${err instanceof Error ? err.message : String(err)}`;
+                    }
+                }),
+            );
+            toolCalls.forEach((call, i) => {
+                history.push(new ToolMessage({ content: results[i], tool_call_id: call.id ?? call.name }));
+            });
         }
     }
 }
