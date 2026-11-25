@@ -3,7 +3,10 @@ import { ChunkMetadata } from "./IChunker";
 
 export interface VectorDocument {
     id: string;
+    /** Stored and returned by searches */
     content: string;
+    /** Embedded instead of `content` when set (e.g. content plus what document it is from) */
+    embeddingText?: string;
     metadata: ChunkMetadata;
 }
 

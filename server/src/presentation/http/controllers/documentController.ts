@@ -13,7 +13,7 @@ const PAGE_SIZE = 50;
 const MAX_FILES_PER_UPLOAD = 50;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_DELETE_IDS = 500;
-// A document over this many chunks is shown truncated (one chunk is ~600 words)
+// A document over this many chunks is shown truncated (one chunk is ~350 words)
 const MAX_CHUNKS = 1000;
 
 export default class DocumentController {
@@ -170,9 +170,6 @@ export default class DocumentController {
             data: {
                 document: toDocumentResource(result.document),
                 metadata: {
-                    area: first.area ?? null,
-                    type: first.type ?? null,
-                    code: first.code ?? null,
                     sourceType: first.sourceType ?? null,
                     documentVersion: first.documentVersion ?? null,
                 },

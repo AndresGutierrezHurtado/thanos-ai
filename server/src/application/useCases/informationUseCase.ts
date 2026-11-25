@@ -226,9 +226,10 @@ export default class InformationUseCase {
                 return { status: "removed" };
             }
 
-            // Drive does not return paths for a single file: keep the stored folder, new name
+            // Drive does not return paths for a single file: keep the stored folders, new name
             const path = file.path ?? renamedPath(document.getPath(), file.name);
-            await this.processFileService.execute({ ...file, path }, document.getSource(), provider, {
+            const folders = file.folders ?? document.getFolders();
+            await this.processFileService.execute({ ...file, path, folders }, document.getSource(), provider, {
                 force: true,
             });
 

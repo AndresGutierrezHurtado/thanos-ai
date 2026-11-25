@@ -61,7 +61,9 @@ export default class ChromaVectorStore implements IVectorStore {
 
         // GETTING THE CONTENTS, EMBEDDINGS AND METADATAS
         const contents = documents.map((d) => d.content);
-        const embeddings = await this.embeddingProvider.embedDocuments(contents);
+        const embeddings = await this.embeddingProvider.embedDocuments(
+            documents.map((d) => d.embeddingText ?? d.content),
+        );
         const metadatas = documents.map((d) => {
             const m: Record<string, string | number | boolean> = {};
             for (const [k, v] of Object.entries(d.metadata)) {

@@ -1,3 +1,9 @@
+/** A folder in a source. Ids are stable; names may contain "/", so paths cannot be split back. */
+export interface DriveFolder {
+    id: string;
+    name: string;
+}
+
 export interface DriveFile {
     id: string;
     name: string;
@@ -7,6 +13,8 @@ export interface DriveFile {
     size?: number;
     webViewLink?: string;
     path?: string;
+    /** Folders from the source root down to the file's own folder (set when listing) */
+    folders?: DriveFolder[];
     /** In the source's trash: no longer part of it */
     trashed?: boolean;
 }

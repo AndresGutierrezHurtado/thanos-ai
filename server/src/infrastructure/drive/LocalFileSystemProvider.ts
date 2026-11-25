@@ -143,5 +143,12 @@ function toDriveFile(relative: string, stats: Stats): DriveFile {
         modifiedTime: stats.mtime.toISOString(),
         size: stats.size,
         path: relative,
+        folders: toFolders(relative),
     };
+}
+
+/** "a/b/file.pdf" -> [{ id: enc("a"), name: "a" }, { id: enc("a/b"), name: "b" }] */
+function toFolders(relative: string): { id: string; name: string }[] {
+    const names = relative.split("/").slice(0, -1);
+    return names.map((name, i) => ({ id: encodeId(names.slice(0, i + 1).join("/")), name }));
 }

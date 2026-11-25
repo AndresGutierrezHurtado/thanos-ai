@@ -2,7 +2,7 @@ import { google, drive_v3 } from "googleapis";
 
 // Ports
 import ILogger, { SyslogSeverity } from "../../application/ports/services/ILogger";
-import IDriveProvider, { type DriveFile } from "../../application/ports/services/IDriveProvider";
+import IDriveProvider, { type DriveFile, type DriveFolder } from "../../application/ports/services/IDriveProvider";
 
 export default class GoogleDriveProvider implements IDriveProvider {
     private drive: drive_v3.Drive;
@@ -37,6 +37,7 @@ export default class GoogleDriveProvider implements IDriveProvider {
         folderId: string | null = null,
         files: DriveFile[] = [],
         currentPath: string = "",
+        parents: DriveFolder[] = [],
     ): Promise<DriveFile[]> {
         if (limit && files.length >= limit) return files;
 
@@ -56,11 +57,15 @@ export default class GoogleDriveProvider implements IDriveProvider {
             // Extract files in the subfolders
             for (const file of response.data.files || []) {
                 if (file.mimeType === "application/vnd.google-apps.folder") {
-                    await this.listFiles(limit, file.id, files, currentPath + file.name + "/");
+                    await this.listFiles(limit, file.id, files, currentPath + file.name + "/", [
+                        ...parents,
+                        { id: file.id as string, name: file.name as string },
+                    ]);
                 } else {
                     const driveFile: DriveFile = {
                         ...(file as DriveFile),
                         path: currentPath + file.name,
+                        folders: parents,
                     };
 
                     files.push(driveFile);

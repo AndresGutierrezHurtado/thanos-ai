@@ -1,4 +1,4 @@
-import IDriveProvider, { DriveFile } from "../ports/services/IDriveProvider";
+import IDriveProvider, { DriveFile, DriveFolder } from "../ports/services/IDriveProvider";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 import ProcessorFactory from "../../infrastructure/services/ProcessorFactory";
 import IChunker, { ChunkData, ChunkMetadata } from "../ports/services/IChunker";
@@ -7,6 +7,13 @@ import resolveFileType from "../../domain/services/resolveFileType";
 import { DocumentSourceName } from "../../domain/entities/document";
 
 export const DOCUMENTS_COLLECTION = "iso-docs";
+
+/**
+ * Version of what indexing stores (metadata, chunking, embedded text). A sync re-indexes every
+ * document indexed with an older version, so raise it whenever any of those change.
+ * 2: folders and search text, chunk context embedded, 350-word chunks.
+ */
+export const INDEX_VERSION = 2;
 
 /** "processed": (re)indexed now. "unchanged": already indexed with the same checksum. */
 export type ProcessFileResult = "processed" | "unchanged";
@@ -39,7 +46,9 @@ export default class ProcessFileService {
         const storedPath = exists?.getPath();
         const moved = storedPath !== undefined && storedPath !== file.path;
 
-        if (!options.force && exists && exists.getChecksum() === checksum && !moved) {
+        const outdated = exists !== null && exists.getIndexVersion() < INDEX_VERSION;
+
+        if (!options.force && exists && exists.getChecksum() === checksum && !moved && !outdated) {
             return "unchanged";
         }
 
@@ -47,7 +56,8 @@ export default class ProcessFileService {
         const buffer = await provider.downloadFile(file.id, file.mimeType);
         const processor = this.processorFactory.get(file.mimeType);
         const extracted = await processor.extract(buffer, file.mimeType);
-        const metadata: ChunkMetadata = this.extractMetadata(file, extracted.text);
+        const folders = file.folders ?? [];
+        const metadata: ChunkMetadata = this.extractMetadata(file, folders);
 
         // CHUNKING THE DOCUMENT
         const chunks = this.chunker.createChunks(extracted, metadata);
@@ -66,6 +76,9 @@ export default class ProcessFileService {
                 chunks.map((chunk: ChunkData) => ({
                     id: chunk.id,
                     content: chunk.content,
+                    embeddingText: `${chunk.context}
+
+${chunk.content}`,
                     // The chunk's own metadata: it carries its section and position
                     metadata: chunk.metadata,
                 })),
@@ -75,13 +88,15 @@ export default class ProcessFileService {
             // checksum is kept and the next sync retries this file instead of skipping it
             await this.documentRepository.save({
                 driveId: metadata.driveId,
-                title: metadata.name,
+                title: file.name,
                 mimeType: file.mimeType,
                 version: metadata.documentVersion,
                 checksum: checksum as string,
-                normCode: metadata.code ?? null,
+                normCode: null,
                 path: metadata.path,
                 source,
+                folders,
+                indexVersion: INDEX_VERSION,
             });
         } catch (err: unknown) {
             // Only this file's chunks: other files are indexed concurrently
@@ -92,74 +107,16 @@ export default class ProcessFileService {
         return "processed";
     }
 
-    private extractMetadata(file: DriveFile, content: string): ChunkMetadata {
-        let area: string | null = null;
-        let type: string | null = null;
-        let code: string | null = null;
-
-        // EXTRACTING FROM NAME
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        const nameMatch = cleanName.match(/^([A-Z]{1,3})-([A-Z]{1,3})-(\d+(?:-[A-Z]\d+)?)/);
-
-        if (nameMatch) {
-            const [, areaCode, typeCode, number] = nameMatch;
-            const parts = (file.path ?? "").split("/").filter(Boolean);
-
-            const typeMap: Record<string, string> = {
-                PR: "Procedimiento",
-                PO: "Política",
-                RG: "Reglamento",
-                CR: "Cartilla",
-                PG: "Programa",
-                F: "Formato",
-                MT: "Matriz",
-                OD: "Descripción y objetivos",
-                CRT: "Caracterización del proceso",
-                INS: "Instructivo",
-                MN: "Manual",
-                PL: "Plan",
-                FT: "Ficha",
-                AN: "Anexo",
-                CIR: "Circular",
-            };
-
-            const areaMap: Record<string, string> = {
-                G: "Gerencial / Información Empresarial",
-                C: "Calidad",
-                OPL: "Operaciones / Logística",
-                INV: "Inventarios",
-                MTO: "Ingeniería y mantenimiento",
-                COM: "Compras",
-                TH: "Talento Humano",
-                RH: "Talento Humano",
-                CF: "Contraloría y financiero",
-                J: "Jurídico",
-                CO: "Comercial",
-                TI: "Tecnología de la información",
-                IT: "Tecnología de la información",
-                "I.T": "Tecnología de la información",
-                AC: "Comunicaciones",
-            };
-
-            type = typeMap[typeCode] ?? typeCode;
-            area = areaMap[areaCode] ?? parts[0] ?? areaCode ?? null;
-            code = `${areaCode}-${typeCode}-${number}`;
-        }
-
-        // FINAL CLEANING
-        area = area?.replace(/^\d+\.\s*/, "").trim() ?? null;
-        type = type?.replace(/^\d+(\.\d+)*\.?\s*/, "").trim() ?? null;
-
+    private extractMetadata(file: DriveFile, folders: DriveFolder[]): ChunkMetadata {
         return {
             driveId: file.id,
-            name: file.name,
+            // Without extension: it adds nothing to the embedding
+            name: file.name.replace(/\.[^/.]+$/, ""),
             documentVersion: file.modifiedTime,
             section: "Content",
             sourceType: resolveFileType(file.mimeType),
             path: file.path,
-            area,
-            type,
-            code,
+            location: folders.map((folder) => folder.name).join(" > ") || undefined,
         };
     }
 }

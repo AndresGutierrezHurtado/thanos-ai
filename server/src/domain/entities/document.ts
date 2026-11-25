@@ -5,6 +5,12 @@ import DateTimeValue from "../valueObjects/DateTimeValue";
 export type DocumentSourceName = "drive" | "local";
 export const DOCUMENT_SOURCES: DocumentSourceName[] = ["drive", "local"];
 
+/** A folder the document is in, from the source root down. Names may contain "/". */
+export interface DocumentFolder {
+    id: string;
+    name: string;
+}
+
 export default class Document {
     private id: Identifier | null;
     private driveId: string;
@@ -16,6 +22,8 @@ export default class Document {
     private processedAt: DateTimeValue;
     private path?: string;
     private source: DocumentSourceName;
+    private folders: DocumentFolder[];
+    private indexVersion: number;
 
     constructor(
         id: Identifier | null,
@@ -28,6 +36,8 @@ export default class Document {
         processedAt: DateTimeValue,
         path?: string,
         source: DocumentSourceName = "drive",
+        folders: DocumentFolder[] = [],
+        indexVersion = 0,
     ) {
         this.id = id;
         this.driveId = driveId;
@@ -39,6 +49,8 @@ export default class Document {
         this.processedAt = processedAt;
         this.path = path;
         this.source = source;
+        this.folders = folders;
+        this.indexVersion = indexVersion;
     }
 
     // Getters
@@ -80,6 +92,20 @@ export default class Document {
 
     public getSource(): DocumentSourceName {
         return this.source;
+    }
+
+    public getFolders(): DocumentFolder[] {
+        return this.folders;
+    }
+
+    /** "Carpeta > Subcarpeta" (empty at the source root) */
+    public getLocation(): string {
+        return this.folders.map((folder) => folder.name).join(" > ");
+    }
+
+    /** Version of the indexing pipeline that produced its chunks (0: before versions existed) */
+    public getIndexVersion(): number {
+        return this.indexVersion;
     }
 
     // Setters

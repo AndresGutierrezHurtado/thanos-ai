@@ -226,9 +226,7 @@ function IndexedContent({ data, error, isLocal }) {
 
     const { document, metadata, chunks, truncated } = data;
     const fields = [
-        ["Código", metadata.code ?? document.normCode],
-        ["Área", metadata.area],
-        ["Tipo", metadata.type],
+        ["Ubicación", document.location],
         ["Formato", metadata.sourceType],
         ["Ruta", document.path],
         ["Versión", formatDate(document.version)],

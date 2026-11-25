@@ -1,4 +1,4 @@
-import Document, { DocumentSourceName } from "../../../domain/entities/document";
+import Document, { DocumentFolder, DocumentSourceName } from "../../../domain/entities/document";
 
 export interface DocumentResource {
     id: string;
@@ -11,6 +11,9 @@ export interface DocumentResource {
     processedAt: Date;
     path: string | null;
     source: DocumentSourceName;
+    folders: DocumentFolder[];
+    /** "Carpeta > Subcarpeta" */
+    location: string;
 }
 
 export function toDocumentResource(document: Document): DocumentResource {
@@ -25,6 +28,8 @@ export function toDocumentResource(document: Document): DocumentResource {
         processedAt: document.getProcessedAt().getValue(),
         path: document.getPath() ?? null,
         source: document.getSource(),
+        folders: document.getFolders(),
+        location: document.getLocation(),
     };
 }
 

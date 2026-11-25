@@ -7,9 +7,8 @@ export interface ChunkMetadata {
     section: string;
     sourceType: string;
     path?: string;
-    area?: string | null;
-    type?: string | null;
-    code?: string | null;
+    /** "Carpeta > Subcarpeta" */
+    location?: string;
     /** Position of the chunk in its document (missing on chunks indexed before it existed) */
     chunkIndex?: number;
 }
@@ -17,6 +16,8 @@ export interface ChunkMetadata {
 export interface ChunkData {
     id: string;
     content: string;
+    /** What the chunk is from (document, location, section): embedded with it, not stored in it */
+    context: string;
     metadata: ChunkMetadata;
 }
 

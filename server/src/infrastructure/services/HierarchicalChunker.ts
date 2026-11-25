@@ -1,7 +1,8 @@
 import IChunker, { ChunkData, ChunkMetadata } from "../../application/ports/services/IChunker";
 import { ExtractedDocument } from "../../application/ports/services/IDocumentProcessor";
 
-const CHUNK_SIZE = 600;
+// Words per chunk: smaller chunks keep each embedding about one topic
+const CHUNK_SIZE = 350;
 const CHUNK_OVERLAP = 0.15;
 
 export default class HierarchicalChunker implements IChunker {
@@ -10,7 +11,7 @@ export default class HierarchicalChunker implements IChunker {
         context: ChunkMetadata
     ): ChunkData[] {
         const chunks: ChunkData[] = [];
-        const { driveId, documentVersion, sourceType, path, area, type, code, name } = context;
+        const { driveId, documentVersion, sourceType, path, location, name } = context;
 
         const sections =
             (extracted.sections?.length ?? 0) > 0
@@ -19,11 +20,20 @@ export default class HierarchicalChunker implements IChunker {
 
         for (const section of sections) {
             const sectionChunks = this.chunkBySize(section.content, CHUNK_SIZE, CHUNK_OVERLAP);
+            const header = [
+                `Documento: ${name}`,
+                location && `Ubicación: ${location}`,
+                section.title !== "Content" && `Sección: ${section.title}`,
+            ]
+                .filter(Boolean)
+                .join(" | ");
+
             for (let i = 0; i < sectionChunks.length; i++) {
                 const chunkId = this.buildChunkId(driveId, section.title, i, documentVersion);
                 chunks.push({
                     id: chunkId,
                     content: sectionChunks[i],
+                    context: header,
                     metadata: {
                         driveId,
                         name,
@@ -31,9 +41,7 @@ export default class HierarchicalChunker implements IChunker {
                         section: section.title,
                         sourceType,
                         path,
-                        area,
-                        type,
-                        code,
+                        location,
                         chunkIndex: chunks.length,
                     },
                 });

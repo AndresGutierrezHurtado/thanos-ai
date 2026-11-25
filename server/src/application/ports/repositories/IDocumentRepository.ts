@@ -1,4 +1,4 @@
-import Document, { DocumentSourceName } from "../../../domain/entities/document";
+import Document, { DocumentFolder, DocumentSourceName } from "../../../domain/entities/document";
 import Identifier from "../../../domain/valueObjects/Identifier";
 
 export interface DocumentRecord {
@@ -10,6 +10,8 @@ export interface DocumentRecord {
     normCode: string | null;
     path?: string;
     source: DocumentSourceName;
+    folders: DocumentFolder[];
+    indexVersion: number;
 }
 
 export interface DocumentListQuery {
