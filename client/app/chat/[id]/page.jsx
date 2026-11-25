@@ -152,11 +152,12 @@ export default function ChatByIdPage() {
     }, [chatId]);
 
     // Handlers
-    const handleSubmit = async (event) => {
-        event.preventDefault();
+    // `text`: the input's content as sent (its "@" mentions encoded)
+    const handleSubmit = async (event, text) => {
+        event?.preventDefault();
         if (!chatId) return;
 
-        const trimmedContent = content.trim();
+        const trimmedContent = (text ?? content).trim();
         const mediaContent =
             file && file.size > 0
                 ? {

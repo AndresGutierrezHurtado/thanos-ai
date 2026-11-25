@@ -14,7 +14,8 @@ import ISourceRepository from "../ports/repositories/ISourceRepository";
 import IDocumentRepository from "../ports/repositories/IDocumentRepository";
 
 import { SYSTEM_PROMPT, SPEECH_SYSTEM_PROMPT } from "./prompts";
-import DocumentTools from "./DocumentTools";
+import DocumentTools, { describe, formatRead } from "./DocumentTools";
+import { parseMentions, renderMentions } from "./mentions";
 
 /** What a streamed answer sends while it is generated: answer text, or progress. */
 export type ResponseEvent = { text: string } | { status: string };
@@ -30,7 +31,7 @@ const SPEECH_MAX_TOOL_ROUNDS = 4;
 
 /**
  * Orchestrates the assistant: builds prompts, gives the model document tools (explore,
- * find, search, read) and persists the answer with its sources.
+ * find, search, read), resolves "@" mentions, and persists the answer with its sources.
  */
 export default class MessageService {
     constructor(
@@ -93,7 +94,7 @@ export default class MessageService {
                 { role: "system", content: "responde lo mas breve posible" },
                 {
                     role: "user",
-                    content: `Genera un titulo corto y descriptivo para la conversación segun el contenido de la conversación: ${content}`,
+                    content: `Genera un titulo corto y descriptivo para la conversación segun el contenido de la conversación: ${renderMentions(content)}`,
                 },
             ],
         });
@@ -109,17 +110,67 @@ export default class MessageService {
             { role: "system", content: systemPrompt },
             ...messages.map((message) => ({
                 role: message.getRole(),
-                content: message.getContent(),
+                content: renderMentions(message.getContent()),
             })),
         ];
 
+        const lastUserIndex = messages.map((m) => m.getRole()).lastIndexOf(MessageRole.USER);
+        const lastUser = lastUserIndex >= 0 ? chatMessages[lastUserIndex + 1] : chatMessages[chatMessages.length - 1];
+
+        // Mentions of the latest message are resolved and given as context with it
+        if (lastUserIndex >= 0) {
+            const context = await this.mentionsContext(messages[lastUserIndex].getContent(), tools);
+            if (context) lastUser.content += `\n\n${context}`;
+        }
+
         // Attachments are appended to the latest user message
         if (extractedText) {
-            const lastUser = [...chatMessages].reverse().find((m) => m.role === "user") ?? chatMessages[chatMessages.length - 1];
             lastUser.content += `\n\nCONTENIDO DEL ARCHIVO ADJUNTO:\n${extractedText}`;
         }
 
         return chatMessages;
+    }
+
+    /**
+     * Context for the documents and folders the user mentioned with "@". Small documents are
+     * given in full; larger ones and folders are left for the assistant to read or explore.
+     * Mentions of things that do not exist (typed by hand, or since removed) are ignored.
+     */
+    private async mentionsContext(content: string, tools: DocumentTools): Promise<string | null> {
+        const mentions = parseMentions(content);
+        if (mentions.length === 0) return null;
+
+        const docIds = mentions.filter((m) => m.kind === "doc").map((m) => m.id);
+        const folderIds = mentions.filter((m) => m.kind === "folder").map((m) => m.id);
+        const [documents, folders] = await Promise.all([
+            this.documentRepository.findByDriveIds(docIds),
+            folderIds.length
+                ? this.documentRepository.findFolders({ ids: folderIds, limit: folderIds.length })
+                : Promise.resolve([]),
+        ]);
+
+        const parts: string[] = [];
+        for (const document of documents) {
+            if (await tools.fitsWhole(document.getDriveId())) {
+                const read = await tools.readDocument(document.getDriveId());
+                if (read && read.totalChunks > 0) {
+                    parts.push(`DOCUMENTO MENCIONADO (contenido completo):\n${formatRead(read, 0)}`);
+                    continue;
+                }
+            }
+            parts.push(
+                `DOCUMENTO MENCIONADO: ${describe(document)}. Es extenso: léelo con read_document (por partes si hace falta) o busca en él con search_documents y documentIds.`,
+            );
+        }
+        for (const folder of folders) {
+            parts.push(
+                `CARPETA MENCIONADA: ${folder.location} [folder:${folder.id}] (${folder.documents} documentos). ` +
+                    "Trabaja dentro de ella: explórala con list_folder, busca con find_documents o search_documents usando este folderId, " +
+                    "elige los documentos relevantes para la tarea y léelos con read_document antes de responder.",
+            );
+        }
+
+        return parts.length ? `CONTEXTO DE LAS MENCIONES (@) DEL USUARIO:\n\n${parts.join("\n\n")}` : null;
     }
 
     private async saveAssistantMessage(chat: Chat, content: string, sources: Source[]): Promise<Chat> {

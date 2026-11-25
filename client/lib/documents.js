@@ -130,6 +130,11 @@ export function refreshDocument(driveId) {
 }
 
 /** The chunks the assistant has indexed for a document. */
+/** Folders and documents to mention with "@" in the chat. */
+export function searchMentions(query) {
+    return useApi("GET", `/documents/mentions?q=${encodeURIComponent(query)}`);
+}
+
 export function fetchDocumentChunks(driveId) {
     return useApi("GET", `/documents/${encodeURIComponent(driveId)}/chunks`);
 }

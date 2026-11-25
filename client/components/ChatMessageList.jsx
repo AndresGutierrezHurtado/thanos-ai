@@ -19,8 +19,11 @@ import {
 
 // COMPONENTS
 import PreviewDocumentModal from "./PreviewDocumentModal";
+import MentionText from "./MentionText";
 import Button from "./atoms/Button";
+import { fetchDocumentChunks } from "@/lib/documents";
 
+const CLOSED_PREVIEW = { isOpen: false, driveId: null, documentTitle: null, source: null, mimeType: null };
 
 export default function ChatMessageList({
     messages = [],
@@ -271,6 +274,21 @@ function AssistantMessage({ message, prevUserMessage, disabled, onRegenerateResp
 
 function UserMessage({ message, disabled, onUpdateMessage }) {
     const [isEditing, setIsEditing] = useState(false);
+    const [preview, setPreview] = useState(CLOSED_PREVIEW);
+
+    // La marca de la mención no trae fuente ni tipo: se leen del documento indexado
+    const openMentionedDocument = async (driveId, label) => {
+        const response = await fetchDocumentChunks(driveId);
+        const document = response?.data?.document;
+        if (!response?.success || !document) return toast.error("El documento ya no está disponible");
+        setPreview({
+            isOpen: true,
+            driveId,
+            documentTitle: document.title || label,
+            source: document.source,
+            mimeType: document.mimeType,
+        });
+    };
     const [editedContent, setEditedContent] = useState(message.content.text);
     const textareaRef = useRef(null);
 
@@ -392,10 +410,20 @@ function UserMessage({ message, disabled, onUpdateMessage }) {
                             </div>
                         </>
                     ) : (
-                        <>{message.content.text}</>
+                        <p className="whitespace-pre-wrap break-words">
+                            <MentionText text={message.content.text} onOpenDocument={openMentionedDocument} />
+                        </p>
                     )}
                 </div>
             </div>
+            <PreviewDocumentModal
+                isOpen={preview.isOpen}
+                onClose={() => setPreview(CLOSED_PREVIEW)}
+                driveId={preview.driveId}
+                documentTitle={preview.documentTitle}
+                source={preview.source}
+                mimeType={preview.mimeType}
+            />
         </div>
     );
 }

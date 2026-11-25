@@ -47,6 +47,17 @@ export default class DocumentController {
         });
     }
 
+    public async mentions(req: Request, res: Response): Promise<Response> {
+        const text = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
+        const { folders, documents } = await this.informationUseCase.searchMentions(text);
+
+        return res.status(200).json({
+            success: true,
+            message: "Menciones obtenidas",
+            data: { folders, documents: toDocumentResourceArray(documents) },
+        });
+    }
+
     public async sync(req: Request, res: Response): Promise<Response> {
         const source = parseSource(req.body?.source);
         if (!source || !this.informationUseCase.getConfiguredSources().includes(source)) {

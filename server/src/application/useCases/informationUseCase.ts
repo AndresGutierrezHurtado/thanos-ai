@@ -1,6 +1,6 @@
 import IDriveProvider, { DriveFile, IWritableDriveProvider } from "../ports/services/IDriveProvider";
 import IVectorStore, { StoredChunk } from "../ports/services/IVectorStore";
-import IDocumentRepository from "../ports/repositories/IDocumentRepository";
+import IDocumentRepository, { FolderSummary } from "../ports/repositories/IDocumentRepository";
 import Source from "../../domain/entities/source";
 import Document, { DOCUMENT_SOURCES, DocumentSourceName } from "../../domain/entities/document";
 import ProcessFileService, { DOCUMENTS_COLLECTION } from "../services/ProcessFileService";
@@ -112,6 +112,15 @@ export default class InformationUseCase {
             skip: (query.page - 1) * query.pageSize,
             limit: query.pageSize,
         });
+    }
+
+    /** Folders and documents matching what the user typed after "@" in the chat. */
+    public async searchMentions(text: string): Promise<{ folders: FolderSummary[]; documents: Document[] }> {
+        const [folders, documents] = await Promise.all([
+            this.documentRepository.findFolders({ text, limit: 5 }),
+            this.documentRepository.find({ text, limit: 8 }),
+        ]);
+        return { folders, documents: documents.items };
     }
 
     public async listChromaFiles(query: string): Promise<Source[]> {

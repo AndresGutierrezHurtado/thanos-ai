@@ -23,7 +23,7 @@ export default function Page() {
     const handleSubmit = async (e, text) => {
         e?.preventDefault();
 
-        const trimmedContent = text ?? content.trim();
+        const trimmedContent = (text ?? content).trim();
         const mediaContent =
             file && file.size > 0
                 ? {

@@ -11,6 +11,7 @@ const routes = Router();
 routes.use("/documents", requireAuth);
 
 routes.get("/documents", documentController.list.bind(documentController));
+routes.get("/documents/mentions", documentController.mentions.bind(documentController));
 routes.get("/documents/sources", documentController.getSources.bind(documentController));
 routes.post("/documents/sync", documentController.sync.bind(documentController));
 routes.post("/documents/upload", documentController.upload.bind(documentController));
